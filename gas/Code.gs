@@ -68,15 +68,18 @@ function handleRequest_(e) {
     var action = p.action || 'ping';
 
     // 管理者専用アクション（名簿閲覧・状態操作は管理キー必須）
-    var ADMIN_ACTIONS = ['admin_summary', 'read_sheet', 'admin_update_status', 'admin_promote'];
+    var ADMIN_ACTIONS = ['admin_summary', 'read_sheet', 'admin_update_status', 'admin_promote',
+                         'admin_save_push_token', 'admin_test_push'];
     if (ADMIN_ACTIONS.indexOf(action) !== -1) {
       if (String(p.token) !== String(ADMIN_TOKEN)) {
         return out_({ ok: false, error: 'unauthorized' });
       }
-      if (action === 'admin_summary')       return adminSummary_();
-      if (action === 'read_sheet')          return readSheet_(p);
-      if (action === 'admin_update_status') return adminUpdateStatus_(p);
-      if (action === 'admin_promote')       return manualPromote_(p);
+      if (action === 'admin_summary')         return adminSummary_();
+      if (action === 'read_sheet')            return readSheet_(p);
+      if (action === 'admin_update_status')   return adminUpdateStatus_(p);
+      if (action === 'admin_promote')         return manualPromote_(p);
+      if (action === 'admin_save_push_token') return adminSavePushToken_(p);
+      if (action === 'admin_test_push')       return adminTestPush_(p);
     }
 
     // トークン認証（一般）
@@ -101,6 +104,126 @@ function handleRequest_(e) {
   } catch (err) {
     return out_({ ok: false, error: String(err) });
   }
+}
+
+// ========== 【v6】運営プッシュ通知（FCM・エルラボ＋と同方式） ==========
+// 必要なスクリプトプロパティ：FCM_CLIENT_EMAIL / FCM_PRIVATE_KEY（エルラボGASからコピー）
+var ADMIN_APP_URL = 'https://apps.l-mine.com/kamiya-seminar-reception/admin.html';
+
+/** 通知先トークンを保存するシート */
+function pushSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName('🔔 通知先');
+  if (!sh) { sh = ss.insertSheet('🔔 通知先'); sh.appendRow(['token', '端末名', '登録日時']); }
+  return sh;
+}
+
+/** 通知トークン登録（同一トークンは日時更新） */
+function adminSavePushToken_(p) {
+  var token = String(p.push_token || '').trim();
+  if (!token) return out_({ ok: false, error: 'no_token' });
+  var sh = pushSheet_();
+  var v = sh.getDataRange().getValues();
+  var now = formatDate_(new Date());
+  for (var r = 1; r < v.length; r++) {
+    if (String(v[r][0]) === token) {
+      sh.getRange(r + 1, 3).setValue(now);
+      if (p.label) sh.getRange(r + 1, 2).setValue(String(p.label));
+      return out_({ ok: true, dup: true });
+    }
+  }
+  sh.appendRow([token, String(p.label || ''), now]);
+  logAction_('push_token_registered', '', '', String(p.label || ''), '');
+  return out_({ ok: true });
+}
+
+/** テスト通知（指定トークンのみ／未指定なら全端末） */
+function adminTestPush_(p) {
+  var at = getFcmAccessToken_();
+  if (!at) return out_({ ok: false, error: 'no_fcm_credentials' });
+  var tokens = [];
+  if (p.push_token) {
+    tokens = [String(p.push_token)];
+  } else {
+    var v = pushSheet_().getDataRange().getValues();
+    for (var r = 1; r < v.length; r++) { var t = String(v[r][0] || '').trim(); if (t) tokens.push(t); }
+  }
+  var res = fcmSend_(at, tokens, '🔔 テスト通知', '受付管理システムの通知テストです。この通知が見えていれば設定完了です！', ADMIN_APP_URL);
+  return out_({ ok: true, sent: res.sent, total: res.total });
+}
+
+/** 運営全端末へ通知（鍵未設定なら静かにスキップ） */
+function notifyOps_(title, body) {
+  try {
+    var at = getFcmAccessToken_();
+    if (!at) return;
+    var v = pushSheet_().getDataRange().getValues();
+    var tokens = [];
+    for (var r = 1; r < v.length; r++) { var t = String(v[r][0] || '').trim(); if (t) tokens.push(t); }
+    if (!tokens.length) return;
+    fcmSend_(at, tokens, title, body, ADMIN_APP_URL);
+  } catch (err) {
+    try { logAction_('error', '', '', 'notifyOps: ' + err, ''); } catch (_) {}
+  }
+}
+
+/** FCM v1 送信（失効トークンは自動削除） */
+function fcmSend_(at, tokens, title, body, url) {
+  if (!tokens.length) return { sent: 0, total: 0 };
+  var reqs = tokens.map(function (t) {
+    return {
+      url: 'https://fcm.googleapis.com/v1/projects/elabo-plus/messages:send',
+      method: 'post', contentType: 'application/json',
+      headers: { Authorization: 'Bearer ' + at }, muteHttpExceptions: true,
+      payload: JSON.stringify({ message: { token: t, data: { title: title, body: body, url: url || ADMIN_APP_URL } } })
+    };
+  });
+  var sent = 0; var dead = [];
+  for (var i = 0; i < reqs.length; i += 100) {
+    var res = UrlFetchApp.fetchAll(reqs.slice(i, i + 100));
+    res.forEach(function (x, k) {
+      var code = x.getResponseCode();
+      if (code < 300) { sent++; return; }
+      var t = String(x.getContentText() || '');
+      if (code === 404 || /UNREGISTERED|INVALID_ARGUMENT|NOT_FOUND/i.test(t)) dead.push(tokens[i + k]);
+    });
+  }
+  // 失効トークン削除
+  if (dead.length) {
+    var deadMap = {}; dead.forEach(function (t) { deadMap[t] = 1; });
+    var sh = pushSheet_();
+    var v = sh.getDataRange().getValues();
+    for (var r = v.length - 1; r >= 1; r--) {
+      if (deadMap[String(v[r][0] || '').trim()]) sh.deleteRow(r + 1);
+    }
+  }
+  return { sent: sent, total: tokens.length };
+}
+
+/** サービスアカウントでFCM v1のアクセストークンを取得 */
+function getFcmAccessToken_() {
+  var props = PropertiesService.getScriptProperties();
+  var email = props.getProperty('FCM_CLIENT_EMAIL');
+  var key = props.getProperty('FCM_PRIVATE_KEY');
+  if (!email || !key) return null;
+  key = String(key).trim();
+  if (key.charAt(0) === '{') {
+    try { var o = JSON.parse(key); if (o.private_key) key = o.private_key; if (o.client_email) email = o.client_email; } catch (e) {}
+  }
+  key = key.replace(/^["']+|["']+$/g, '');
+  key = key.replace(/\\r/g, '').replace(/\\n/g, '\n').replace(/\r/g, '').trim();
+  var b64 = function (s) { return Utilities.base64EncodeWebSafe(s).replace(/=+$/, ''); };
+  var now = Math.floor(Date.now() / 1000);
+  var head = b64(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  var claim = b64(JSON.stringify({ iss: email, scope: 'https://www.googleapis.com/auth/firebase.messaging', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 }));
+  var input = head + '.' + claim;
+  var sig = Utilities.base64EncodeWebSafe(Utilities.computeRsaSha256Signature(input, key)).replace(/=+$/, '');
+  var jwt = input + '.' + sig;
+  var res = UrlFetchApp.fetch('https://oauth2.googleapis.com/token', {
+    method: 'post', muteHttpExceptions: true,
+    payload: { grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: jwt }
+  });
+  try { return JSON.parse(res.getContentText()).access_token || null; } catch (e) { return null; }
 }
 
 // ========== 【v4】管理者用サマリー（全セミナーの受付状況＋名簿） ==========
@@ -330,6 +453,11 @@ function reportBankTransfer_(p) {
   sh.getRange(row, 11).setValue(memo);
 
   logAction_('bank_transfer_reported', uid, sh.getName(), '→ 振込報告済み', memo);
+
+  // 運営へプッシュ通知（入金確認のアクションが必要なため）
+  notifyOps_('🏦 振込のご報告が届きました',
+    (found.data[1] || 'どなたか') + 'さんから振込のご報告がありました。入金確認をお願いします。');
+
   return out_({ ok: true });
 }
 
@@ -601,6 +729,12 @@ function checkExpired() {
     }
   });
 
+  // 運営へプッシュ通知（期限切れ処理のお知らせ）
+  if (expiredCount > 0) {
+    notifyOps_('⏰ 期限切れ処理を行いました',
+      expiredCount + '件のお申込みが期限切れになりました。待機の方がいる場合は自動で繰上げています。');
+  }
+
   return out_({ ok: true, expiredCount: expiredCount });
 }
 
@@ -654,6 +788,10 @@ function promoteNextWaiting_(sh) {
   // プロラインへ「空きできました」通知
   moveScenario_(uid, '空きできました');
   logAction_('auto_promote', uid, sh.getName(), 'キャンセル待ち → 決済案内中', '');
+
+  // 運営へプッシュ通知（繰上げ発生のお知らせ）
+  notifyOps_('⬆ 繰上げが発生しました',
+    (data[minWaitIdx][1] || 'どなたか') + 'さんが繰上げで「決済案内中」になりました（' + sh.getName() + '）。');
 }
 
 // ========== プロラインへシナリオ移動指示 ==========

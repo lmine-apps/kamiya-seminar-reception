@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>受付管理｜Bonheur Lelien</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#9c6f5f">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="受付管理">
 <link rel="stylesheet" href="css/style.css?v=7">
 <style>
   .container { max-width: 720px; }
@@ -124,6 +130,7 @@
     <div class="refresh-bar">
       <span class="time" id="updated-at">-</span>
       <span>
+        <button id="push-btn" onclick="togglePush()" style="margin-right:6px;">🔔 通知</button>
         <button onclick="showScreen('screen-manual')" style="margin-right:6px;">📖 使い方</button>
         <button onclick="loadData()">🔄 更新</button>
       </span>
@@ -180,6 +187,15 @@
         <tr><th><span class="st st-cancel">キャンセル済</span></th><td>ご本人キャンセル or 運営キャンセル（アプリからの場合、理由はスプシ備考列に記録）</td></tr>
       </table>
 
+      <h3>🔔 プッシュ通知の受け取り方（端末ごとに1回）</h3>
+      <table class="info-table" style="font-size:13px;">
+        <tr><th>iPhone</th><td>Safariで共有ボタン→「<strong>ホーム画面に追加</strong>」→ホーム画面の「受付管理」アイコンから開く→右上の「🔔 通知」→許可</td></tr>
+        <tr><th>Android</th><td>右上の「🔔 通知」→許可（ホーム画面追加はお好みで）</td></tr>
+      </table>
+      <div class="note-box" style="font-size:12px;">
+        通知が届くのは2つだけ：<strong>🏦振込のご報告が届いた時</strong>（入金確認のお願い）と<strong>⏰繰上げ・期限切れが起きた時</strong>。申込やカード決済のたびには通知しません（管理画面で確認）。
+      </div>
+
       <h3>注意事項</h3>
       <div class="note-box" style="font-size:12px;">
         ・最新状況を見るときは右上の「🔄 更新」を押す（残席表示には時間差があります）<br>
@@ -197,6 +213,8 @@
 
 <script src="js/config.js?v=7"></script>
 <script src="js/common.js?v=7"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script>
 const SEM_LABELS = {
   marke_priority: 'マーケ先行',
@@ -451,7 +469,81 @@ function renderRoster() {
   }).join('');
 }
 
+/* --- 運営プッシュ通知（FCM・エルラボ＋と同じ方式） --- */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBpBpGmxfWhyHq3rzwH2Oa_6IWDIZbOAj8",
+  authDomain: "elabo-plus.firebaseapp.com",
+  projectId: "elabo-plus",
+  storageBucket: "elabo-plus.firebasestorage.app",
+  messagingSenderId: "452649305918",
+  appId: "1:452649305918:web:4bef5bae57aee4d86c4e6f"
+};
+const VAPID_KEY = "BAtxAvwJITAJ_q2DHtIajcTI_UEgJQhOlPI3uQ8IlXoV_kfyG3SQyRSVkT83Iyln9RsReuwgcR3By6g7roWif1Y";
+
+try { firebase.initializeApp(FIREBASE_CONFIG); } catch (_) {}
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('firebase-messaging-sw.js').catch(function(){});
+}
+
+function updatePushBtn() {
+  const btn = document.getElementById('push-btn');
+  if (!btn) return;
+  let on = false;
+  try { on = localStorage.getItem('kamiya_push_on') === '1'; } catch (_) {}
+  btn.textContent = on ? '🔔 通知ON' : '🔔 通知OFF';
+}
+
+async function togglePush() {
+  if (!adminKey) { alert('先に管理キーでログインしてください。'); return; }
+  let on = false;
+  try { on = localStorage.getItem('kamiya_push_on') === '1'; } catch (_) {}
+  if (on) {
+    alert('この端末は通知ON済みです。\n通知を止めたい場合は、スマホの設定でこのアプリの通知をオフにするか、とーるさんへご連絡ください。');
+    return;
+  }
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+    alert('この環境は通知に対応していません。\niPhoneの場合：共有ボタン→「ホーム画面に追加」→ホーム画面のアイコンから開いて、もう一度お試しください。');
+    return;
+  }
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+      alert('通知が許可されませんでした。端末の設定から通知を許可してください。');
+      return;
+    }
+    const reg = await navigator.serviceWorker.register('firebase-messaging-sw.js');
+    await navigator.serviceWorker.ready;
+    const token = await firebase.messaging().getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+    if (!token) throw new Error('token_empty');
+
+    const label = prompt('どなたの端末ですか？（例：神谷さんiPhone・とーるPC）') || '名前なし';
+    const url = new URL(CONFIG.GAS_URL);
+    url.searchParams.set('action', 'admin_save_push_token');
+    url.searchParams.set('token', adminKey);
+    url.searchParams.set('push_token', token);
+    url.searchParams.set('label', label);
+    const res = await fetch(url.toString());
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'save_failed');
+
+    try { localStorage.setItem('kamiya_push_on', '1'); } catch (_) {}
+    updatePushBtn();
+
+    if (confirm('✅ 通知を登録しました！\nテスト通知をこの端末に送ってみますか？')) {
+      const tUrl = new URL(CONFIG.GAS_URL);
+      tUrl.searchParams.set('action', 'admin_test_push');
+      tUrl.searchParams.set('token', adminKey);
+      tUrl.searchParams.set('push_token', token);
+      await fetch(tUrl.toString());
+      alert('テスト通知を送信しました。数秒以内に届くはずです📱\n（届かない場合は、いったんアプリを閉じてホーム画面から様子を見てください）');
+    }
+  } catch (err) {
+    alert('通知の登録に失敗しました：' + (err.message || err) + '\n\niPhoneの場合：共有→「ホーム画面に追加」→ホーム画面のアイコンから開いて再度お試しください。');
+  }
+}
+
 /* --- 初期化 --- */
+updatePushBtn();
 document.getElementById('key-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const v = document.getElementById('key-input').value.trim();
