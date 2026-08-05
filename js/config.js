@@ -73,7 +73,7 @@ const CONFIG = {
       paymentNote: 'クレジットカード決済または銀行振込にてお支払いください。',
       items: '筆記用具',
       venue: {
-        name: '沖縄県総合福祉センター',  // ※部屋番号は確定後に追記（例：402号室）
+        name: '沖縄県総合福祉センター（9/29・11/25＝401号室／10/29＝402号室）',
         address: '〒903-8603 沖縄県那覇市首里石嶺町4-373-1',
         mapUrl: 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('沖縄県総合福祉センター')
       }
@@ -89,7 +89,7 @@ const CONFIG = {
       paymentNote: 'クレジットカード決済または銀行振込にてお支払いください。',
       items: '筆記用具',
       venue: {
-        name: '沖縄県総合福祉センター',  // ※部屋番号は確定後に追記（例：402号室）
+        name: '沖縄県総合福祉センター（9/29・11/25＝401号室／10/29＝402号室）',
         address: '〒903-8603 沖縄県那覇市首里石嶺町4-373-1',
         mapUrl: 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('沖縄県総合福祉センター')
       }
