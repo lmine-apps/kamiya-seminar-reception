@@ -127,6 +127,9 @@
     <div class="card">
       <span class="icon-large">🕊</span>
       <h2>キャンセル待ちで承りました</h2>
+      <p class="message-center" id="done-waiting-race-note" style="display:none; font-size:13px; color:#c96f5e;">
+        誠に恐れ入ります。<br>お手続きの間に満席となりました。
+      </p>
       <p class="message-center">
         ただいま満席のため、<br>
         <strong><span id="done-wait-num">-</span>番目</strong>のキャンセル待ちで<br>お受けいたしました。<br><br>
@@ -186,12 +189,25 @@ function init() {
     if (res.ok) {
       const note = document.getElementById('capacity-note');
       if (res.available > 0) {
-        note.textContent = '残席：' + res.available + ' 席';
+        note.innerHTML = '残席：' + res.available + ' 席<br>' +
+          '<span style="font-size:11px; color:#8a7d76;">※残席数は目安です。反映までに時間差が生じる場合があります。</span>';
       } else {
-        note.innerHTML = '<strong>ただいま満席です。</strong>キャンセル待ちでのお申込みとなります。';
+        enterWaitlistMode();
       }
     }
   }).catch(() => {});
+}
+
+/** 満席時：キャンセル待ちモード（ユーザーが認識した上で送信できるように） */
+let waitlistMode = false;
+function enterWaitlistMode() {
+  waitlistMode = true;
+  document.getElementById('capacity-note').innerHTML =
+    '<strong style="color:#c96f5e;">ただいま満席です。</strong><br>' +
+    'このフォームからは<strong>キャンセル待ち</strong>としてお申込みいただけます。<br>' +
+    '<span style="font-size:11px; color:#8a7d76;">空きが出ましたら、お待ちの順にLINEでお知らせいたします（お手続き期限は3日以内）。<br>' +
+    '※残席の反映には時間差が生じる場合があります。</span>';
+  document.getElementById('btn-submit').textContent = 'キャンセル待ちで申し込む';
 }
 
 document.getElementById('apply-form').addEventListener('submit', async (e) => {
@@ -226,6 +242,8 @@ document.getElementById('apply-form').addEventListener('submit', async (e) => {
       showScreen('screen-done-payment');
     } else if (res.status === 'キャンセル待ち') {
       document.getElementById('done-wait-num').textContent = res.waitNum || '-';
+      // 「空席のつもりで送信→実は満席」のレアケースだけお詫びを表示
+      document.getElementById('done-waiting-race-note').style.display = waitlistMode ? 'none' : '';
       showScreen('screen-done-waiting');
     } else {
       showScreen('screen-already');
@@ -235,7 +253,7 @@ document.getElementById('apply-form').addEventListener('submit', async (e) => {
     showError(String(err));
   } finally {
     btn.disabled = false;
-    btn.textContent = 'この内容で申し込む';
+    btn.textContent = waitlistMode ? 'キャンセル待ちで申し込む' : 'この内容で申し込む';
   }
 });
 
