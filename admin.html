@@ -30,6 +30,19 @@
     border:none; cursor:pointer; font-family:inherit; font-weight:600;
   }
   .fbtn.active { background:var(--primary-dark); color:#fff; }
+  /* 操作ボタン */
+  .abtn {
+    display:block; width:100%; margin:2px 0; padding:5px 8px; border-radius:10px; font-size:10px;
+    border:none; cursor:pointer; font-family:inherit; font-weight:700; white-space:nowrap;
+  }
+  .abtn-ok     { background:#e7f0e7; color:#5c8a5c; }
+  .abtn-cancel { background:#f7e5e1; color:#c96f5e; }
+  .abtn-back   { background:#eee7f3; color:#8a5ca5; }
+  .abtn:disabled { opacity:.5; }
+  .promote-btn {
+    margin-left:auto; padding:5px 12px; border-radius:14px; font-size:11px; font-weight:700;
+    background:#e7f0e7; color:#5c8a5c; border:1.5px solid #b7d4b7; cursor:pointer; font-family:inherit;
+  }
   /* 名簿テーブル */
   .roster { width:100%; border-collapse:collapse; background:var(--card); border-radius:12px; overflow:hidden; font-size:12px; box-shadow:0 2px 12px rgba(120,90,70,.07); }
   .roster th { background:#f8f3ee; color:var(--text-light); font-size:11px; padding:8px 6px; text-align:left; white-space:nowrap; }
@@ -119,7 +132,7 @@
     <div class="table-scroll">
       <table class="roster">
         <thead>
-          <tr><th>お名前</th><th>状態</th><th>期限</th><th>申込</th><th>連絡先</th></tr>
+          <tr><th>お名前</th><th>状態</th><th>期限</th><th>申込</th><th>連絡先</th><th>操作</th></tr>
         </thead>
         <tbody id="roster-body"></tbody>
       </table>
@@ -231,13 +244,66 @@ function renderSummary() {
 
 function renderFilters() {
   const s = summaryData.seminars[currentSem];
-  document.getElementById('filters').innerHTML = FILTERS.map(f => {
+  let html = FILTERS.map(f => {
     const count = f === 'すべて' ? s.rows.length : (s.counts[f] || 0);
     return '<button class="fbtn' + (f === currentFilter ? ' active' : '') + '" onclick="switchFilter(\'' + f + '\')">' +
       f + ' ' + count + '</button>';
   }).join('');
+  // 空席があり待機者がいる時だけ手動繰上げボタンを表示
+  if (s.counts['キャンセル待ち'] > 0 && s.available > 0) {
+    html += '<button class="promote-btn" onclick="doPromote()">⬆ 待機1番を繰上げる</button>';
+  }
+  document.getElementById('filters').innerHTML = html;
 }
 function switchFilter(f) { currentFilter = f; renderFilters(); renderRoster(); }
+
+/* --- 管理操作（状態変更→通知も自動で飛ぶ） --- */
+const ACTION_DEFS = {
+  '決済案内中':   [{ st: '確定', label: '✔ 確定にする', cls: 'abtn-ok', msg: '確定にします。本人に「確定」のLINE通知が届きます。よろしいですか？' },
+                   { st: 'キャンセル済', label: '✕ キャンセル', cls: 'abtn-cancel', msg: 'キャンセルにします。本人に通知が届き、待機1番の方が自動で繰上がります。よろしいですか？' }],
+  '振込報告済み': [{ st: '確定', label: '✔ 入金確認→確定', cls: 'abtn-ok', msg: '入金を確認して確定にします。本人に「確定」のLINE通知が届きます。よろしいですか？' },
+                   { st: 'キャンセル済', label: '✕ キャンセル', cls: 'abtn-cancel', msg: 'キャンセルにします。本人に通知が届き、待機1番の方が自動で繰上がります。よろしいですか？' }],
+  'キャンセル待ち': [{ st: 'キャンセル済', label: '✕ キャンセル', cls: 'abtn-cancel', msg: '待機からキャンセルにします。本人に通知が届きます。よろしいですか？' }],
+  '期限切れ':     [{ st: '決済案内中', label: '↩ 復帰させる', cls: 'abtn-back', msg: '決済案内中に戻します（期限は今から3日）。LINE通知は飛びません。よろしいですか？' }],
+  'キャンセル済': [{ st: '決済案内中', label: '↩ 復帰させる', cls: 'abtn-back', msg: '決済案内中に戻します（期限は今から3日）。LINE通知は飛びません。よろしいですか？' }],
+  '確定':         [{ st: 'キャンセル済', label: '✕ キャンセル', cls: 'abtn-cancel', msg: '【注意】確定済みの方をキャンセルにします。返金なしルールのため、事前に本人と合意のうえ実行してください。本人にキャンセル通知が届き、待機1番の方が繰上がります。本当によろしいですか？' }]
+};
+
+async function doUpdateStatus(uid, newStatus, msg) {
+  if (!confirm(msg)) return;
+  showLoading(true);
+  try {
+    const url = new URL(CONFIG.GAS_URL);
+    url.searchParams.set('action', 'admin_update_status');
+    url.searchParams.set('token', adminKey);
+    url.searchParams.set('seminar', currentSem);
+    url.searchParams.set('uid', uid);
+    url.searchParams.set('new_status', newStatus);
+    const res = await fetch(url.toString());
+    const data = await res.json();
+    if (!data.ok) alert('操作に失敗しました：' + (data.error || ''));
+  } catch (err) {
+    alert('通信エラーです。もう一度お試しください。');
+  }
+  loadData();
+}
+
+async function doPromote() {
+  if (!confirm('キャンセル待ちの1番目の方を繰上げます。本人に「あなたの番」のLINE通知が届きます。よろしいですか？')) return;
+  showLoading(true);
+  try {
+    const url = new URL(CONFIG.GAS_URL);
+    url.searchParams.set('action', 'admin_promote');
+    url.searchParams.set('token', adminKey);
+    url.searchParams.set('seminar', currentSem);
+    const res = await fetch(url.toString());
+    const data = await res.json();
+    if (!data.ok) alert('操作に失敗しました：' + (data.error || ''));
+  } catch (err) {
+    alert('通信エラーです。もう一度お試しください。');
+  }
+  loadData();
+}
 
 /** 期限までの残りを「残り○日」表記に */
 function daysLeftLabel(deadlineStr, status) {
@@ -276,7 +342,7 @@ function renderRoster() {
   });
 
   if (!rows.length) {
-    body.innerHTML = '<tr><td colspan="5" class="empty-row">該当者はいません</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" class="empty-row">該当者はいません</td></tr>';
     return;
   }
 
@@ -284,12 +350,17 @@ function renderRoster() {
     const badge = '<span class="st ' + (STATUS_CLASS[r.status] || '') + '">' + esc(r.status) +
       (r.status === 'キャンセル待ち' && r.wait_num ? ' ' + esc(String(r.wait_num)) + '番' : '') + '</span>';
     const method = r.method ? '<div class="sub">' + esc(r.method) + '</div>' : '';
+    const actions = (ACTION_DEFS[r.status] || []).map(a =>
+      '<button class="abtn ' + a.cls + '" onclick=\'doUpdateStatus(' + JSON.stringify(r.uid) + ',' +
+      JSON.stringify(a.st) + ',' + JSON.stringify(a.msg) + ')\'>' + a.label + '</button>'
+    ).join('');
     return '<tr>' +
       '<td><span class="nm">' + esc(r.name || '（無記名）') + '</span>' + method + '</td>' +
       '<td>' + badge + '</td>' +
       '<td>' + daysLeftLabel(r.deadline, r.status) + (r.deadline && r.status === '決済案内中' ? '<div class="sub">' + shortDate(r.deadline) + 'まで</div>' : '') + '</td>' +
       '<td class="sub">' + shortDate(r.applied) + '</td>' +
       '<td class="sub">' + esc(r.phone || '') + '<br>' + esc(r.email || '') + '</td>' +
+      '<td>' + actions + '</td>' +
       '</tr>';
   }).join('');
 }

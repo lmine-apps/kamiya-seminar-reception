@@ -161,6 +161,33 @@
       <div class="note-box">
         開催日が近づきましたら、改めてLINEにてご案内いたします。当日お会いできますこと、心より楽しみにしております。
       </div>
+      <button class="btn btn-text" id="btn-cancel-confirmed" style="font-size:12px;">ご参加をキャンセルされたい場合はこちら</button>
+    </div>
+  </div>
+
+  <!-- 確定者キャンセル確認（誤タップ防止：理由＋チェック＋最終確認の3段構え） -->
+  <div class="screen" id="screen-cancel-confirm">
+    <div class="badge-wrap"><span class="badge warn">キャンセルのお手続き</span></div>
+    <div class="card">
+      <h2>本当にキャンセルされますか？</h2>
+      <div class="note-box" style="border-left-color:#c96f5e; background:#fdf3ef;">
+        <strong>ご注意ください</strong><br>
+        ・<strong>決済完了後の返金は一切ございません</strong>（キャンセルされてもご返金はできかねます）<br>
+        ・キャンセル後にお席を元に戻すことはできません（空きが出た方に順次ご案内するため）
+      </div>
+      <form id="cancel-confirm-form">
+        <div class="form-group">
+          <label>キャンセルの理由<span class="req">必須</span></label>
+          <textarea name="reason" required placeholder="例：どうしても外せない予定が入ってしまったため"></textarea>
+        </div>
+        <div class="form-group" style="display:flex; align-items:flex-start; gap:8px;">
+          <input type="checkbox" id="cancel-agree" style="width:auto; margin-top:5px;">
+          <label for="cancel-agree" style="font-weight:400; font-size:13px; margin:0;">返金がないことを理解した上で、キャンセルを希望します</label>
+        </div>
+        <button type="submit" class="btn btn-primary" id="btn-cancel-final" disabled
+          style="background:linear-gradient(135deg,#c96f5e,#a85545); box-shadow:0 4px 14px rgba(168,85,69,.3);">キャンセルを確定する</button>
+        <button type="button" class="btn btn-text" onclick="showScreen('screen-confirmed')">戻る（キャンセルしない）</button>
+      </form>
     </div>
   </div>
 
@@ -362,6 +389,38 @@ async function doCancel() {
 }
 document.getElementById('btn-cancel-payment').addEventListener('click', doCancel);
 document.getElementById('btn-cancel-waiting').addEventListener('click', doCancel);
+
+/* --- 確定者のキャンセル（3段階ガード） --- */
+document.getElementById('btn-cancel-confirmed').addEventListener('click', () => {
+  showScreen('screen-cancel-confirm');
+});
+document.getElementById('cancel-agree').addEventListener('change', (e) => {
+  document.getElementById('btn-cancel-final').disabled = !e.target.checked;
+});
+document.getElementById('cancel-confirm-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const reason = new FormData(e.target).get('reason').trim();
+  if (!reason) return;
+  // 最終確認（3段階目）
+  if (!confirm('本当にキャンセルしてよろしいですか？\nこの操作は取り消せず、ご返金もできかねます。')) return;
+  const btn = document.getElementById('btn-cancel-final');
+  btn.disabled = true;
+  btn.textContent = '処理中…';
+  try {
+    const res = await apiPost('cancel_application', {
+      uid: uid,
+      reason: reason,
+      confirm_no_refund: '1'
+    });
+    if (res.ok) showScreen('screen-cancelled');
+    else showError(res.error || '');
+  } catch (err) {
+    showError(String(err));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'キャンセルを確定する';
+  }
+});
 
 /** 振込報告 */
 document.getElementById('bank-report-form').addEventListener('submit', async (e) => {

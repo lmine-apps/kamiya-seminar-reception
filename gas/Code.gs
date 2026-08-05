@@ -67,14 +67,16 @@ function handleRequest_(e) {
 
     var action = p.action || 'ping';
 
-    // 管理者専用アクション（名簿が読めるため管理キー必須）
-    var ADMIN_ACTIONS = ['admin_summary', 'read_sheet'];
+    // 管理者専用アクション（名簿閲覧・状態操作は管理キー必須）
+    var ADMIN_ACTIONS = ['admin_summary', 'read_sheet', 'admin_update_status', 'admin_promote'];
     if (ADMIN_ACTIONS.indexOf(action) !== -1) {
       if (String(p.token) !== String(ADMIN_TOKEN)) {
         return out_({ ok: false, error: 'unauthorized' });
       }
-      if (action === 'admin_summary') return adminSummary_();
-      if (action === 'read_sheet')    return readSheet_(p);
+      if (action === 'admin_summary')       return adminSummary_();
+      if (action === 'read_sheet')          return readSheet_(p);
+      if (action === 'admin_update_status') return adminUpdateStatus_(p);
+      if (action === 'admin_promote')       return manualPromote_(p);
     }
 
     // トークン認証（一般）
@@ -121,6 +123,7 @@ function adminSummary_() {
           var status = String(data[i][6] || '');
           if (counts.hasOwnProperty(status)) counts[status]++;
           rows.push({
+            uid:      String(data[i][0]),
             name:     data[i][1] || '',
             email:    data[i][2] || '',
             phone:    data[i][3] || '',
@@ -146,6 +149,68 @@ function adminSummary_() {
   });
 
   return out_(result);
+}
+
+// ========== 【v5】管理画面からの状態変更（通知も自動発火） ==========
+function adminUpdateStatus_(p) {
+  var config = SEMINARS[p.seminar];
+  if (!config) return out_({ ok: false, error: 'unknown seminar' });
+  var uid = String(p.uid || '');
+  var newStatus = String(p.new_status || '');
+  if (!uid || !newStatus) return out_({ ok: false, error: 'uid and new_status required' });
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(config.sheet);
+    if (!sh) return out_({ ok: false, error: 'sheet not found' });
+    var row = findRowByUid_(sh, uid);
+    if (!row) return out_({ ok: false, error: 'user not found' });
+
+    var prev = String(sh.getRange(row, 7).getValue());
+    var now = new Date();
+
+    if (newStatus === '確定') {
+      sh.getRange(row, 6).setValue('');            // 期限クリア
+      sh.getRange(row, 7).setValue('確定');
+      sh.getRange(row, 8).setValue('');            // 待機順クリア
+      sh.getRange(row, 9).setValue(formatDate_(now));
+      if (!sh.getRange(row, 10).getValue()) sh.getRange(row, 10).setValue(p.method || '手動確認');
+      moveScenario_(uid, '確定');
+
+    } else if (newStatus === '期限切れ') {
+      sh.getRange(row, 7).setValue('期限切れ');
+      sh.getRange(row, 8).setValue('');
+      moveScenario_(uid, '期限切れ');
+      promoteNextWaiting_(sh);
+
+    } else if (newStatus === 'キャンセル済') {
+      sh.getRange(row, 7).setValue('キャンセル済');
+      if (prev === 'キャンセル待ち') {
+        var myNum = Number(sh.getRange(row, 8).getValue());
+        sh.getRange(row, 8).setValue('');
+        renumberWaiting_(sh, myNum);
+      } else {
+        sh.getRange(row, 8).setValue('');
+        promoteNextWaiting_(sh);
+      }
+      moveScenario_(uid, 'キャンセル完了');
+
+    } else if (newStatus === '決済案内中') {
+      // 復帰（期限切れ・キャンセル済からの救済など）：期限は今から3日
+      sh.getRange(row, 6).setValue(formatDate_(new Date(now.getTime() + DEADLINE_DAYS * 86400000)));
+      sh.getRange(row, 7).setValue('決済案内中');
+      sh.getRange(row, 8).setValue('');
+
+    } else {
+      return out_({ ok: false, error: 'unknown status: ' + newStatus });
+    }
+
+    logAction_('admin_update_status', uid, config.sheet, prev + ' → ' + newStatus, '管理画面から操作');
+    return out_({ ok: true, prev: prev, status: newStatus });
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // ========== 【v2】uid状態取得 ==========
@@ -303,9 +368,15 @@ function cancelApplication_(p) {
     var row = found.row;
     var prevStatus = found.data[6];
 
-    // 確定済みは自己キャンセル不可（返金なしルールのため手動対応）
-    if (prevStatus === '確定') {
+    // 確定済みのキャンセルは「返金なし了解フラグ」必須（アプリ側で理由入力＋二重確認済みの場合のみ）
+    if (prevStatus === '確定' && String(p.confirm_no_refund) !== '1') {
       return out_({ ok: false, error: 'confirmed_cannot_cancel' });
+    }
+
+    // キャンセル理由を備考(K列)に記録
+    if (p.reason) {
+      var memo = String(sh.getRange(row, 11).getValue() || '');
+      sh.getRange(row, 11).setValue((memo ? memo + ' / ' : '') + 'キャンセル理由:' + p.reason);
     }
 
     sh.getRange(row, 7).setValue('キャンセル済');
