@@ -682,6 +682,14 @@ body.page-photo-bg::before {
   pointer-events: none;
 }
 
+/* 写真背景ページのカードは少し透かして、すりガラス風に背景を見せる */
+body.page-photo-bg .card,
+body.page-photo-bg .steps-bar {
+  background: rgba(255, 254, 253, .86);
+  backdrop-filter: blur(7px) saturate(1.05);
+  -webkit-backdrop-filter: blur(7px) saturate(1.05);
+}
+
 /* 写真背景カード（確定画面など・カード内に薄く敷く） */
 .photo-card { position: relative; }
 .photo-card::after {
