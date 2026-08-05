@@ -76,6 +76,38 @@
   /* キー入力 */
   .key-gate input { text-align:center; letter-spacing:1px; }
   .table-scroll { overflow-x:auto; border-radius:12px; }
+  /* スマホ最適化（名簿をカード型に組み替えて見やすく） */
+  @media (max-width: 700px) {
+    .roster thead { display: none; }
+    .roster, .roster tbody { display: block; }
+    .roster tr {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 2px 8px;
+      padding: 12px 12px 10px;
+      border-top: 1px solid #f3ece5;
+    }
+    .roster tr:first-child { border-top: none; }
+    .roster td { display: block; padding: 1px 0; border: none; }
+    /* 1行目：名前（大きく）＋状態バッジ */
+    .roster td:nth-child(1) { order: 1; flex: 1 1 auto; min-width: 0; }
+    .roster .nm { font-size: 16px; }
+    .roster td:nth-child(2) { order: 2; flex: 0 0 auto; }
+    .st { font-size: 11px; padding: 3px 10px; }
+    /* 2行目：期限（左）・申込日（右） */
+    .roster td:nth-child(3) { order: 3; flex: 1 1 auto; font-size: 12px; }
+    .roster td:nth-child(4) { order: 4; flex: 0 0 auto; }
+    /* 3行目：連絡先 */
+    .roster td:nth-child(5) { order: 5; flex: 1 1 100%; }
+    .roster .sub { font-size: 11px; }
+    /* 4行目：操作ボタンを横並びに */
+    .roster td:nth-child(6) { order: 6; flex: 1 1 100%; display: flex; gap: 6px; margin-top: 6px; }
+    .roster td:nth-child(6):empty { display: none; }
+    .abtn { width: auto; flex: 1; margin: 0; padding: 9px 6px; font-size: 12px; border-radius: 12px; }
+    .empty-row { display: block; }
+  }
+
   /* PC最適化（管理画面：広い名簿テーブル） */
   @media (min-width: 1100px) {
     .container { max-width: 980px; }
