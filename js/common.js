@@ -82,6 +82,73 @@ function startCountdown(deadlineStr, elId) {
   tick();
 }
 
+/**
+ * フリップ式カウントダウン開始（1秒刻み・秒境界に同期）
+ * @param {string} deadlineStr 期限日時
+ * @param {string} rootId .luxury-countdown 要素のID
+ */
+function startFlipCountdown(deadlineStr, rootId) {
+  const root = document.getElementById(rootId);
+  if (!root || !deadlineStr) return;
+  const deadline = new Date(String(deadlineStr).replace(/-/g, '/')); // Safari対応
+
+  // 再表示時は前のタイマーを停止してリセット
+  if (root._flipTimer) clearTimeout(root._flipTimer);
+  root.classList.remove('is-expired');
+  let firstRender = true;
+
+  function createDigits(container, value) {
+    container.innerHTML = '';
+    value.split('').forEach(function (n) {
+      const d = document.createElement('span');
+      d.className = 'luxury-countdown__digit';
+      d.textContent = n;
+      d.dataset.value = n;
+      container.appendChild(d);
+    });
+  }
+
+  function updateDigits(unitName, value) {
+    const container = root.querySelector('[data-unit="' + unitName + '"]');
+    if (!container) return;
+    const formatted = String(value).padStart(2, '0');
+    const digits = container.querySelectorAll('.luxury-countdown__digit');
+    if (firstRender || digits.length !== formatted.length) {
+      createDigits(container, formatted);
+      return;
+    }
+    formatted.split('').forEach(function (newNum, i) {
+      const digit = digits[i];
+      if (digit.dataset.value === newNum) return;
+      digit.classList.remove('flip-in');
+      digit.classList.add('flip-out');
+      setTimeout(function () {
+        digit.textContent = newNum;
+        digit.dataset.value = newNum;
+        digit.classList.remove('flip-out');
+        digit.classList.add('flip-in');
+        setTimeout(function () { digit.classList.remove('flip-in'); }, 220);
+      }, 180);
+    });
+  }
+
+  function tick() {
+    const diff = deadline.getTime() - Date.now();
+    if (diff <= 0) {
+      root.classList.add('is-expired');
+      return;
+    }
+    updateDigits('days',    Math.floor(diff / 86400000));
+    updateDigits('hours',   Math.floor(diff % 86400000 / 3600000));
+    updateDigits('minutes', Math.floor(diff % 3600000 / 60000));
+    updateDigits('seconds', Math.floor(diff % 60000 / 1000));
+    firstRender = false;
+    // 秒の境目に同期（ズレ補正）
+    root._flipTimer = setTimeout(tick, 1000 - (Date.now() % 1000) + 20);
+  }
+  tick();
+}
+
 /** 日時文字列を「8月20日（木）12:00」形式に */
 function formatDeadline(str) {
   if (!str) return '';

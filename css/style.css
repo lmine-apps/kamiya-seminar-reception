@@ -210,7 +210,7 @@ body {
   margin-top: 4px;
 }
 
-/* カウントダウン */
+/* カウントダウン（旧シンプル版・予備） */
 .countdown-box {
   background: #fdf3ef;
   border: 1.5px solid #f0d9d0;
@@ -228,6 +228,135 @@ body {
 }
 .countdown-box .time.expired { font-size: 16px; }
 .countdown-box .deadline-date { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+
+/* フリップ式カウントダウン（アプリの世界観に合わせた上品配色） */
+.luxury-countdown {
+  position: relative;
+  margin: 16px 0;
+  padding: 24px 12px 18px;
+  overflow: hidden;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(200, 169, 107, 0.10), transparent 42%),
+    linear-gradient(145deg, #fdf8f3 0%, #f6ebe2 100%);
+  border: 1px solid rgba(200, 169, 107, 0.45);
+  border-radius: 16px;
+  box-shadow:
+    0 10px 26px rgba(120, 90, 70, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  box-sizing: border-box;
+}
+.luxury-countdown::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 12%;
+  width: 76%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(200, 169, 107, 0.9), transparent);
+}
+.luxury-countdown * { box-sizing: border-box; }
+.luxury-countdown__eyebrow {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  margin-bottom: 6px;
+  color: var(--gold);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+}
+.luxury-countdown__eyebrow::before,
+.luxury-countdown__eyebrow::after {
+  content: "";
+  width: 28px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(200, 169, 107, 0.75));
+}
+.luxury-countdown__eyebrow::after { transform: scaleX(-1); }
+.luxury-countdown__title {
+  margin-bottom: 16px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+.luxury-countdown__grid {
+  display: flex; align-items: flex-start; justify-content: center; gap: 6px;
+}
+.luxury-countdown__unit { min-width: 68px; }
+.luxury-countdown__digits {
+  display: flex; justify-content: center; gap: 3px;
+  perspective: 500px;
+}
+.luxury-countdown__digit {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 48px;
+  overflow: hidden;
+  color: #faf3ec;
+  background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  box-shadow:
+    0 6px 12px rgba(156, 111, 95, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  font-family: "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  transform-origin: center center;
+  backface-visibility: hidden;
+}
+.luxury-countdown__digit::before {
+  content: "";
+  position: absolute;
+  top: 50%; right: 0; left: 0;
+  z-index: 2; height: 1px;
+  background: rgba(0, 0, 0, 0.18);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+.luxury-countdown__digit.flip-out { animation: luxuryFlipOut 0.18s ease-in forwards; }
+.luxury-countdown__digit.flip-in  { animation: luxuryFlipIn 0.22s ease-out forwards; }
+@keyframes luxuryFlipOut { from { transform: rotateX(0deg); } to { transform: rotateX(-90deg); } }
+@keyframes luxuryFlipIn  { from { transform: rotateX(90deg); } to { transform: rotateX(0deg); } }
+.luxury-countdown__unit-label {
+  margin-top: 7px;
+  color: var(--text-light);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+}
+.luxury-countdown__separator {
+  padding-top: 9px;
+  color: var(--gold);
+  font-family: Georgia, serif;
+  font-size: 21px;
+  opacity: 0.8;
+}
+.luxury-countdown__deadline {
+  margin-top: 16px;
+  padding-top: 12px;
+  color: var(--text-light);
+  border-top: 1px solid rgba(200, 169, 107, 0.25);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+.luxury-countdown__deadline strong {
+  color: var(--primary-dark);
+  font-weight: 600;
+}
+.luxury-countdown__expired {
+  display: none;
+  padding: 14px 0 8px;
+  color: var(--warn);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+.luxury-countdown.is-expired .luxury-countdown__grid { display: none; }
+.luxury-countdown.is-expired .luxury-countdown__expired { display: block; }
+@media (max-width: 400px) {
+  .luxury-countdown { padding: 20px 6px 16px; }
+  .luxury-countdown__grid { gap: 3px; }
+  .luxury-countdown__unit { min-width: 56px; }
+  .luxury-countdown__digit { width: 26px; height: 42px; font-size: 22px; }
+  .luxury-countdown__separator { padding-top: 8px; font-size: 18px; }
+}
 
 /* 待機順 */
 .wait-number {

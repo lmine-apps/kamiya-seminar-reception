@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=9">
+<link rel="stylesheet" href="css/style.css?v=10">
 </head>
 <body>
 <div class="container">
@@ -75,10 +75,32 @@
         <tr><th>受講料</th><td id="pay-price"></td></tr>
       </table>
 
-      <div class="countdown-box" id="pay-countdown-box">
-        <div class="label">お支払い期限まで</div>
-        <div class="time" id="pay-countdown">--</div>
-        <div class="deadline-date" id="pay-deadline-date"></div>
+      <div class="luxury-countdown" id="pay-countdown-box">
+        <div class="luxury-countdown__eyebrow">PAYMENT DEADLINE</div>
+        <div class="luxury-countdown__title">お支払い期限まで</div>
+        <div class="luxury-countdown__grid">
+          <div class="luxury-countdown__unit">
+            <div class="luxury-countdown__digits" data-unit="days"></div>
+            <div class="luxury-countdown__unit-label">DAYS</div>
+          </div>
+          <div class="luxury-countdown__separator">:</div>
+          <div class="luxury-countdown__unit">
+            <div class="luxury-countdown__digits" data-unit="hours"></div>
+            <div class="luxury-countdown__unit-label">HOURS</div>
+          </div>
+          <div class="luxury-countdown__separator">:</div>
+          <div class="luxury-countdown__unit">
+            <div class="luxury-countdown__digits" data-unit="minutes"></div>
+            <div class="luxury-countdown__unit-label">MINUTES</div>
+          </div>
+          <div class="luxury-countdown__separator">:</div>
+          <div class="luxury-countdown__unit">
+            <div class="luxury-countdown__digits" data-unit="seconds"></div>
+            <div class="luxury-countdown__unit-label">SECONDS</div>
+          </div>
+        </div>
+        <div class="luxury-countdown__expired">お支払い期限を過ぎています</div>
+        <div class="luxury-countdown__deadline">お支払い期限：<strong id="pay-deadline-date"></strong></div>
       </div>
 
       <div id="pay-methods"></div>
@@ -230,8 +252,8 @@
 
 </div>
 
-<script src="js/config.js?v=9"></script>
-<script src="js/common.js?v=9"></script>
+<script src="js/config.js?v=10"></script>
+<script src="js/common.js?v=10"></script>
 <script>
 const uid = getUid();
 let currentStatus = null;
@@ -305,8 +327,8 @@ function renderPayment(st, sem) {
 
   if (st.deadline) {
     document.getElementById('pay-countdown-box').style.display = '';
-    document.getElementById('pay-deadline-date').textContent = '期限：' + formatDeadline(st.deadline);
-    startCountdown(st.deadline, 'pay-countdown');
+    document.getElementById('pay-deadline-date').textContent = formatDeadline(st.deadline);
+    startFlipCountdown(st.deadline, 'pay-countdown-box');
   } else {
     document.getElementById('pay-countdown-box').style.display = 'none';
   }
