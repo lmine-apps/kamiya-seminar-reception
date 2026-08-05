@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>受付管理｜Bonheur Lelien</title>
+<link rel="stylesheet" href="css/style.css?v=4">
+<style>
+  .container { max-width: 720px; }
+  /* タブ */
+  .tabs { display:flex; gap:6px; margin-bottom:14px; overflow-x:auto; padding-bottom:4px; }
+  .tab {
+    flex-shrink:0; padding:9px 14px; border-radius:20px; font-size:13px; font-weight:600;
+    background:#fff; color:var(--text-light); border:1.5px solid var(--line); cursor:pointer;
+    font-family:inherit;
+  }
+  .tab.active { background:linear-gradient(135deg,var(--primary),var(--primary-dark)); color:#fff; border-color:transparent; }
+  /* サマリーカード */
+  .summary-row { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-bottom:14px; }
+  .sum-card { background:var(--card); border-radius:12px; padding:10px 4px; text-align:center; box-shadow:0 2px 8px rgba(120,90,70,.06); }
+  .sum-card .v { font-size:22px; font-weight:700; color:var(--primary-dark); line-height:1.3; }
+  .sum-card .k { font-size:10px; color:var(--text-light); }
+  .sum-card.alert .v { color:var(--warn); }
+  .sum-card.ok .v { color:var(--success); }
+  /* フィルタ */
+  .filters { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+  .fbtn {
+    padding:5px 11px; border-radius:14px; font-size:11px; background:#f0e9e2; color:var(--text-light);
+    border:none; cursor:pointer; font-family:inherit; font-weight:600;
+  }
+  .fbtn.active { background:var(--primary-dark); color:#fff; }
+  /* 名簿テーブル */
+  .roster { width:100%; border-collapse:collapse; background:var(--card); border-radius:12px; overflow:hidden; font-size:12px; box-shadow:0 2px 12px rgba(120,90,70,.07); }
+  .roster th { background:#f8f3ee; color:var(--text-light); font-size:11px; padding:8px 6px; text-align:left; white-space:nowrap; }
+  .roster td { padding:9px 6px; border-top:1px solid #f3ece5; vertical-align:top; }
+  .roster .nm { font-weight:600; font-size:13px; }
+  .roster .sub { font-size:10px; color:var(--text-light); }
+  .st { display:inline-block; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:700; white-space:nowrap; }
+  .st-kakutei   { background:#e7f0e7; color:#5c8a5c; }
+  .st-kessai    { background:#fdeee3; color:#c97b3d; }
+  .st-furikomi  { background:#e5edf7; color:#4a6fa5; }
+  .st-taiki     { background:#efe5f5; color:#8a5ca5; }
+  .st-kigen     { background:#eeeae7; color:#9a8f88; }
+  .st-cancel    { background:#eeeae7; color:#9a8f88; }
+  .days-left { font-weight:700; }
+  .days-left.urgent { color:var(--warn); }
+  .empty-row { text-align:center; color:var(--text-light); padding:24px !important; font-size:13px; }
+  /* 更新バー */
+  .refresh-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .refresh-bar .time { font-size:11px; color:var(--text-light); }
+  .refresh-bar button {
+    padding:7px 16px; border-radius:16px; border:1.5px solid var(--primary); background:#fff;
+    color:var(--primary-dark); font-size:12px; font-weight:600; cursor:pointer; font-family:inherit;
+  }
+  /* キー入力 */
+  .key-gate input { text-align:center; letter-spacing:1px; }
+  .table-scroll { overflow-x:auto; border-radius:12px; }
+  /* PC最適化（管理画面：広い名簿テーブル） */
+  @media (min-width: 1100px) {
+    .container { max-width: 980px; }
+    .tabs { gap:10px; }
+    .tab { font-size:14px; padding:10px 20px; }
+    .summary-row { gap:14px; }
+    .sum-card { padding:16px 8px; }
+    .sum-card .v { font-size:30px; }
+    .sum-card .k { font-size:12px; }
+    .roster { font-size:14px; }
+    .roster th { font-size:12px; padding:12px 12px; }
+    .roster td { padding:12px 12px; }
+    .roster .nm { font-size:15px; }
+    .roster .sub { font-size:12px; }
+    .st { font-size:12px; }
+    .fbtn { font-size:12px; padding:6px 14px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="brand">BONHEUR LELIEN</div>
+    <h1>受付管理</h1>
+    <div class="divider"></div>
+  </div>
+
+  <!-- ローディング -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <div>読み込んでいます…</div>
+  </div>
+
+  <!-- 管理キー入力 -->
+  <div class="screen" id="screen-key">
+    <div class="card key-gate">
+      <span class="icon-large">🔑</span>
+      <h2>管理キーを入力してください</h2>
+      <form id="key-form">
+        <div class="form-group">
+          <input type="password" id="key-input" placeholder="管理キー" autocomplete="off">
+        </div>
+        <button type="submit" class="btn btn-primary">開く</button>
+      </form>
+      <p class="form-note" id="key-error" style="text-align:center; color:var(--warn);"></p>
+    </div>
+  </div>
+
+  <!-- ダッシュボード -->
+  <div class="screen" id="screen-dash">
+
+    <div class="refresh-bar">
+      <span class="time" id="updated-at">-</span>
+      <button onclick="loadData()">🔄 更新</button>
+    </div>
+
+    <div class="tabs" id="tabs"></div>
+    <div class="summary-row" id="summary"></div>
+    <div class="filters" id="filters"></div>
+    <div class="table-scroll">
+      <table class="roster">
+        <thead>
+          <tr><th>お名前</th><th>状態</th><th>期限</th><th>申込</th><th>連絡先</th></tr>
+        </thead>
+        <tbody id="roster-body"></tbody>
+      </table>
+    </div>
+    <button class="btn btn-text" onclick="logout()" style="margin-top:18px;">🔒 ログアウト（キーを削除）</button>
+  </div>
+
+  <div class="footer">株式会社 Bonheur Lelien｜運営者専用ページ</div>
+</div>
+
+<script src="js/config.js?v=4"></script>
+<script src="js/common.js?v=4"></script>
+<script>
+const SEM_LABELS = {
+  marke_priority: 'マーケ先行',
+  marke_general:  'マーケ一般',
+  self_priority:  'セルフ先行',
+  self_general:   'セルフ一般'
+};
+const STATUS_CLASS = {
+  '確定': 'st-kakutei', '決済案内中': 'st-kessai', '振込報告済み': 'st-furikomi',
+  'キャンセル待ち': 'st-taiki', '期限切れ': 'st-kigen', 'キャンセル済': 'st-cancel'
+};
+const FILTERS = ['すべて', '確定', '決済案内中', '振込報告済み', 'キャンセル待ち', '期限切れ', 'キャンセル済'];
+
+let adminKey = null;
+let summaryData = null;
+let currentSem = 'self_priority';
+let currentFilter = 'すべて';
+
+/* --- 管理キー --- */
+function getKey() {
+  const urlKey = new URLSearchParams(location.search).get('key');
+  if (urlKey) {
+    try { localStorage.setItem('kamiya_admin_key', urlKey); } catch (_) {}
+    // URLからキーを消す（履歴に残さない）
+    history.replaceState(null, '', location.pathname);
+    return urlKey;
+  }
+  try { return localStorage.getItem('kamiya_admin_key'); } catch (_) { return null; }
+}
+function logout() {
+  try { localStorage.removeItem('kamiya_admin_key'); } catch (_) {}
+  location.reload();
+}
+
+/* --- データ取得 --- */
+async function loadData() {
+  showLoading(true);
+  try {
+    const url = new URL(CONFIG.GAS_URL);
+    url.searchParams.set('action', 'admin_summary');
+    url.searchParams.set('token', adminKey);
+    const res = await fetch(url.toString());
+    const data = await res.json();
+    if (!data.ok) {
+      if (data.error === 'unauthorized') {
+        try { localStorage.removeItem('kamiya_admin_key'); } catch (_) {}
+        showKeyGate('管理キーが正しくありません');
+        return;
+      }
+      throw new Error(data.error || 'error');
+    }
+    summaryData = data;
+    document.getElementById('updated-at').textContent = '最終更新：' + (data.generated_at || '');
+    renderAll();
+    showScreen('screen-dash');
+  } catch (err) {
+    showKeyGate('読み込みに失敗しました。通信環境をご確認ください。');
+  }
+}
+
+function showKeyGate(msg) {
+  document.getElementById('key-error').textContent = msg || '';
+  showScreen('screen-key');
+}
+
+/* --- 描画 --- */
+function renderAll() {
+  renderTabs();
+  renderSummary();
+  renderFilters();
+  renderRoster();
+}
+
+function renderTabs() {
+  const el = document.getElementById('tabs');
+  el.innerHTML = Object.keys(SEM_LABELS).map(k => {
+    const s = summaryData.seminars[k];
+    const waiting = s ? s.counts['キャンセル待ち'] : 0;
+    return '<button class="tab' + (k === currentSem ? ' active' : '') + '" onclick="switchSem(\'' + k + '\')">' +
+      SEM_LABELS[k] + '（' + (s ? s.occupied : 0) + '/' + (s ? s.capacity : '-') + '）' +
+      (waiting > 0 ? ' 待' + waiting : '') + '</button>';
+  }).join('');
+}
+function switchSem(k) { currentSem = k; currentFilter = 'すべて'; renderAll(); }
+
+function renderSummary() {
+  const s = summaryData.seminars[currentSem];
+  if (!s) return;
+  const inProgress = s.counts['決済案内中'] + s.counts['振込報告済み'];
+  document.getElementById('summary').innerHTML =
+    '<div class="sum-card"><div class="v">' + s.capacity + '</div><div class="k">定員</div></div>' +
+    '<div class="sum-card ok"><div class="v">' + s.counts['確定'] + '</div><div class="k">確定</div></div>' +
+    '<div class="sum-card"><div class="v">' + inProgress + '</div><div class="k">手続き中</div></div>' +
+    '<div class="sum-card' + (s.counts['キャンセル待ち'] > 0 ? ' alert' : '') + '"><div class="v">' + s.counts['キャンセル待ち'] + '</div><div class="k">待機</div></div>' +
+    '<div class="sum-card' + (s.available === 0 ? ' alert' : '') + '"><div class="v">' + s.available + '</div><div class="k">残席</div></div>';
+}
+
+function renderFilters() {
+  const s = summaryData.seminars[currentSem];
+  document.getElementById('filters').innerHTML = FILTERS.map(f => {
+    const count = f === 'すべて' ? s.rows.length : (s.counts[f] || 0);
+    return '<button class="fbtn' + (f === currentFilter ? ' active' : '') + '" onclick="switchFilter(\'' + f + '\')">' +
+      f + ' ' + count + '</button>';
+  }).join('');
+}
+function switchFilter(f) { currentFilter = f; renderFilters(); renderRoster(); }
+
+/** 期限までの残りを「残り○日」表記に */
+function daysLeftLabel(deadlineStr, status) {
+  if (!deadlineStr || status !== '決済案内中') return '';
+  const dl = new Date(String(deadlineStr).replace(/-/g, '/'));
+  if (isNaN(dl)) return '';
+  const diff = dl - new Date();
+  if (diff <= 0) return '<span class="days-left urgent">期限超過</span>';
+  const days = diff / 86400000;
+  if (days < 1) return '<span class="days-left urgent">残り' + Math.ceil(diff / 3600000) + '時間</span>';
+  return '<span class="days-left' + (days < 2 ? ' urgent' : '') + '">残り' + Math.ceil(days) + '日</span>';
+}
+
+/** 申込日を短く（8/5 17:31） */
+function shortDate(str) {
+  if (!str) return '';
+  const d = new Date(String(str).replace(/-/g, '/'));
+  if (isNaN(d)) return String(str);
+  return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+
+function renderRoster() {
+  const s = summaryData.seminars[currentSem];
+  const body = document.getElementById('roster-body');
+  let rows = s.rows.slice();
+
+  if (currentFilter !== 'すべて') rows = rows.filter(r => r.status === currentFilter);
+
+  // 並び：確定→振込報告→決済案内中→待機(順番)→期限切れ→キャンセル、同状態内は申込順
+  const order = { '確定': 1, '振込報告済み': 2, '決済案内中': 3, 'キャンセル待ち': 4, '期限切れ': 5, 'キャンセル済': 6 };
+  rows.sort((a, b) => {
+    const oa = order[a.status] || 9, ob = order[b.status] || 9;
+    if (oa !== ob) return oa - ob;
+    if (a.status === 'キャンセル待ち') return (Number(a.wait_num) || 99) - (Number(b.wait_num) || 99);
+    return String(a.applied).localeCompare(String(b.applied));
+  });
+
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="5" class="empty-row">該当者はいません</td></tr>';
+    return;
+  }
+
+  body.innerHTML = rows.map(r => {
+    const badge = '<span class="st ' + (STATUS_CLASS[r.status] || '') + '">' + esc(r.status) +
+      (r.status === 'キャンセル待ち' && r.wait_num ? ' ' + esc(String(r.wait_num)) + '番' : '') + '</span>';
+    const method = r.method ? '<div class="sub">' + esc(r.method) + '</div>' : '';
+    return '<tr>' +
+      '<td><span class="nm">' + esc(r.name || '（無記名）') + '</span>' + method + '</td>' +
+      '<td>' + badge + '</td>' +
+      '<td>' + daysLeftLabel(r.deadline, r.status) + (r.deadline && r.status === '決済案内中' ? '<div class="sub">' + shortDate(r.deadline) + 'まで</div>' : '') + '</td>' +
+      '<td class="sub">' + shortDate(r.applied) + '</td>' +
+      '<td class="sub">' + esc(r.phone || '') + '<br>' + esc(r.email || '') + '</td>' +
+      '</tr>';
+  }).join('');
+}
+
+/* --- 初期化 --- */
+document.getElementById('key-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const v = document.getElementById('key-input').value.trim();
+  if (!v) return;
+  adminKey = v;
+  try { localStorage.setItem('kamiya_admin_key', v); } catch (_) {}
+  loadData();
+});
+
+adminKey = getKey();
+if (adminKey) loadData();
+else showKeyGate();
+</script>
+</body>
+</html>

@@ -26,6 +26,7 @@
 
 // ========== 設定 ==========
 var TOKEN = 'TOORU-kamiya-reception-hK8pL2';
+var ADMIN_TOKEN = 'kamiya-admin-Wq7xR3nT';  // 管理画面専用（名簿閲覧用・一般トークンでは読めない）
 
 // プロライン「外部システム連携用の実行URL」（2026-08-05 とーるさん取得済み）
 var PROLINE_URLS = {
@@ -64,12 +65,22 @@ function handleRequest_(e) {
       p = e.parameter;
     }
 
-    // トークン認証
+    var action = p.action || 'ping';
+
+    // 管理者専用アクション（名簿が読めるため管理キー必須）
+    var ADMIN_ACTIONS = ['admin_summary', 'read_sheet'];
+    if (ADMIN_ACTIONS.indexOf(action) !== -1) {
+      if (String(p.token) !== String(ADMIN_TOKEN)) {
+        return out_({ ok: false, error: 'unauthorized' });
+      }
+      if (action === 'admin_summary') return adminSummary_();
+      if (action === 'read_sheet')    return readSheet_(p);
+    }
+
+    // トークン認証（一般）
     if (String(p.token) !== String(TOKEN)) {
       return out_({ ok: false, error: 'unauthorized' });
     }
-
-    var action = p.action || 'ping';
 
     if (action === 'ping')                 return out_({ ok: true, message: 'GAS alive' });
     // --- v1（プロライン連携） ---
@@ -77,7 +88,6 @@ function handleRequest_(e) {
     if (action === 'payment_completed')    return handlePaymentComplete_(p);
     if (action === 'manual_promote')       return manualPromote_(p);
     if (action === 'check_expired')        return checkExpired();
-    if (action === 'read_sheet')           return readSheet_(p);
     // --- v2（Webアプリ用） ---
     if (action === 'get_status')           return getStatus_(p);
     if (action === 'submit_application')   return submitApplication_(p);
@@ -89,6 +99,53 @@ function handleRequest_(e) {
   } catch (err) {
     return out_({ ok: false, error: String(err) });
   }
+}
+
+// ========== 【v4】管理者用サマリー（全セミナーの受付状況＋名簿） ==========
+function adminSummary_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var result = { ok: true, generated_at: formatDate_(new Date()), seminars: {} };
+
+  Object.keys(SEMINARS).forEach(function (key) {
+    var config = SEMINARS[key];
+    var sh = ss.getSheetByName(config.sheet);
+    var rows = [];
+    var counts = { '確定': 0, '決済案内中': 0, '振込報告済み': 0, 'キャンセル待ち': 0, '期限切れ': 0, 'キャンセル済': 0 };
+
+    if (sh) {
+      var lastRow = sh.getLastRow();
+      if (lastRow >= DATA_START_ROW) {
+        var data = sh.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, LAST_COL).getValues();
+        for (var i = 0; i < data.length; i++) {
+          if (!data[i][0]) continue; // uid空行はスキップ
+          var status = String(data[i][6] || '');
+          if (counts.hasOwnProperty(status)) counts[status]++;
+          rows.push({
+            name:     data[i][1] || '',
+            email:    data[i][2] || '',
+            phone:    data[i][3] || '',
+            applied:  data[i][4] ? formatDateValue_(data[i][4]) : '',
+            deadline: data[i][5] ? formatDateValue_(data[i][5]) : '',
+            status:   status,
+            wait_num: data[i][7] || '',
+            paid_at:  data[i][8] ? formatDateValue_(data[i][8]) : '',
+            method:   data[i][9] || ''
+          });
+        }
+      }
+    }
+
+    var occupied = counts['確定'] + counts['決済案内中'] + counts['振込報告済み'];
+    result.seminars[key] = {
+      capacity: config.capacity,
+      occupied: occupied,
+      available: Math.max(0, config.capacity - occupied),
+      counts: counts,
+      rows: rows
+    };
+  });
+
+  return out_(result);
 }
 
 // ========== 【v2】uid状態取得 ==========

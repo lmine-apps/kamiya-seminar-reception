@@ -337,6 +337,24 @@ body {
 .step.active { color: var(--primary-dark); font-weight: 700; }
 .step.active .label::after { content: ' ◀ いまここ'; font-size: 10px; }
 
+/* PC最適化（参加者ページ：中央カラムを広げて読みやすく） */
+@media (min-width: 900px) {
+  .container { max-width: 600px; }
+  .header { padding: 40px 16px 24px; }
+  .header h1 { font-size: 24px; }
+  .header .brand { font-size: 12px; }
+  .card { padding: 32px 36px; }
+  .card h2 { font-size: 19px; }
+  .info-table { font-size: 15px; }
+  .btn { font-size: 17px; padding: 16px; }
+  .form-group input,
+  .form-group select,
+  .form-group textarea { font-size: 15px; }
+  .steps-bar { padding: 18px 20px 14px; }
+  .step { font-size: 12px; }
+  .countdown-box .time { font-size: 26px; }
+}
+
 /* フッター */
 .footer {
   text-align: center;
