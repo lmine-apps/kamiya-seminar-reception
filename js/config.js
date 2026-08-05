@@ -21,7 +21,7 @@ const CONFIG = {
     holder: '株式会社ボヌールルリアン'
   },
 
-  // 会場
+  // 会場（既定値＝セミナー個別のvenue未設定時のフォールバック）
   VENUE: {
     name: '沖縄県総合福祉センター 402号室',
     address: '〒903-8603 沖縄県那覇市首里石嶺町4-373-1',
@@ -39,7 +39,12 @@ const CONFIG = {
       capacity: 20,
       payment: 'cash',   // 当日現金
       paymentNote: '当日、会場にて現金でお支払いください。',
-      items: '筆記用具'
+      items: '筆記用具',
+      venue: {
+        name: '沖縄県総合福祉センター 402号室',
+        address: '〒903-8603 沖縄県那覇市首里石嶺町4-373-1',
+        mapUrl: 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('沖縄県総合福祉センター')
+      }
     },
     self_general: {
       title: 'セルフイメージセミナー【一般受付】',
@@ -50,7 +55,12 @@ const CONFIG = {
       capacity: 30,
       payment: 'prepaid',   // 事前決済（カード／振込）
       paymentNote: 'クレジットカード決済または銀行振込にてお支払いください。',
-      items: '筆記用具'
+      items: '筆記用具',
+      venue: {
+        name: '沖縄県総合福祉センター 402号室',
+        address: '〒903-8603 沖縄県那覇市首里石嶺町4-373-1',
+        mapUrl: 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('沖縄県総合福祉センター')
+      }
     },
     marke_priority: {
       title: 'マーケティングセミナー【先行受付】',
@@ -61,7 +71,12 @@ const CONFIG = {
       capacity: 5,
       payment: 'prepaid',
       paymentNote: 'クレジットカード決済または銀行振込にてお支払いください。',
-      items: '筆記用具'
+      items: '筆記用具',
+      venue: {
+        name: '沖縄県総合福祉センター',  // ※部屋番号は確定後に追記（例：402号室）
+        address: '〒903-8603 沖縄県那覇市首里石嶺町4-373-1',
+        mapUrl: 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('沖縄県総合福祉センター')
+      }
     },
     marke_general: {
       title: 'マーケティングセミナー【一般受付】',
@@ -72,7 +87,12 @@ const CONFIG = {
       capacity: 10,
       payment: 'prepaid',
       paymentNote: 'クレジットカード決済または銀行振込にてお支払いください。',
-      items: '筆記用具'
+      items: '筆記用具',
+      venue: {
+        name: '沖縄県総合福祉センター',  // ※部屋番号は確定後に追記（例：402号室）
+        address: '〒903-8603 沖縄県那覇市首里石嶺町4-373-1',
+        mapUrl: 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('沖縄県総合福祉センター')
+      }
     }
   },
 

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
-<link rel="stylesheet" href="css/style.css?v=4">
+<link rel="stylesheet" href="css/style.css?v=5">
 </head>
 <body>
 <div class="container">
@@ -228,8 +228,8 @@
 
 </div>
 
-<script src="js/config.js?v=4"></script>
-<script src="js/common.js?v=4"></script>
+<script src="js/config.js?v=5"></script>
+<script src="js/common.js?v=5"></script>
 <script>
 const uid = getUid();
 let currentStatus = null;
@@ -298,7 +298,7 @@ function renderPayment(st, sem) {
   renderSteps('steps-bank-report', 2, false, false);
   document.getElementById('pay-seminar-title').textContent = sem.title || st.seminar;
   document.getElementById('pay-schedule').textContent = sem.schedule || '';
-  document.getElementById('pay-venue').textContent = CONFIG.VENUE.name;
+  document.getElementById('pay-venue').textContent = getVenue(sem).name;
   document.getElementById('pay-price').textContent = sem.price || '';
 
   if (st.deadline) {
@@ -364,9 +364,10 @@ function renderConfirmed(st, sem) {
     st.name ? st.name + ' さま' : '';
   document.getElementById('conf-seminar').textContent = sem.title || st.seminar;
   document.getElementById('conf-schedule').textContent = sem.schedule || '';
-  document.getElementById('conf-venue').textContent = CONFIG.VENUE.name + '（' + CONFIG.VENUE.address + '）';
+  var venue = getVenue(sem);
+  document.getElementById('conf-venue').textContent = venue.name + '（' + venue.address + '）';
   document.getElementById('conf-items').textContent = sem.items || '筆記用具';
-  document.getElementById('conf-map-link').href = CONFIG.VENUE.mapUrl;
+  document.getElementById('conf-map-link').href = venue.mapUrl;
   if (sem.payment === 'cash') {
     document.getElementById('conf-payment-row').style.display = '';
     document.getElementById('conf-payment').textContent = '当日、会場にて現金でお支払いください（' + (sem.price || '') + '）';

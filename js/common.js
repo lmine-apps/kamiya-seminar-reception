@@ -113,6 +113,11 @@ function renderSteps(containerId, current, isCash, allDone) {
   }).join('');
 }
 
+/** セミナー個別の会場情報を取得（未設定なら既定値VENUEにフォールバック） */
+function getVenue(sem) {
+  return (sem && sem.venue) ? sem.venue : CONFIG.VENUE;
+}
+
 /** HTMLエスケープ */
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({

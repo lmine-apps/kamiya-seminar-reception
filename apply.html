@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
 <title>受付フォーム｜Bonheur Lelien</title>
-<link rel="stylesheet" href="css/style.css?v=4">
+<link rel="stylesheet" href="css/style.css?v=5">
 </head>
 <body>
 <div class="container">
@@ -158,8 +158,8 @@
 
 </div>
 
-<script src="js/config.js?v=4"></script>
-<script src="js/common.js?v=4"></script>
+<script src="js/config.js?v=5"></script>
+<script src="js/common.js?v=5"></script>
 <script>
 const uid = getUid();
 const seminarKey = new URLSearchParams(location.search).get('seminar');
@@ -177,7 +177,7 @@ function init() {
 
   document.getElementById('form-seminar-title').textContent = sem.title;
   document.getElementById('form-schedule').textContent = sem.schedule;
-  document.getElementById('form-venue').textContent = CONFIG.VENUE.name;
+  document.getElementById('form-venue').textContent = getVenue(sem).name;
   document.getElementById('form-price').textContent = sem.price;
   document.getElementById('form-payment').textContent =
     sem.payment === 'cash' ? '当日 会場にて現金' : 'クレジットカード／銀行振込';
