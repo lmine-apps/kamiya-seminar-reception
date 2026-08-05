@@ -36,6 +36,12 @@ body {
   text-align: center;
   padding: 28px 16px 20px;
 }
+.header .brand-logo {
+  height: 52px;
+  width: auto;
+  display: block;
+  margin: 0 auto 6px;
+}
 .header .brand {
   font-size: 11px;
   letter-spacing: 3px;
