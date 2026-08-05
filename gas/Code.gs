@@ -510,9 +510,18 @@ function handlePaymentComplete_(p) {
   }
   if (!sh || !row) return out_({ ok: false, error: 'user not found' });
 
+  // 二重発火ガード：すでに確定なら何もしない
+  // （⑦シナリオの「実行時に外部プログラム実行」経由の呼び出しがループしないための重要な処理）
+  var currentStatus = String(sh.getRange(row, 7).getValue());
+  if (currentStatus === '確定') {
+    return out_({ ok: true, message: 'already confirmed' });
+  }
+
+  sh.getRange(row, 6).setValue('');   // 期限クリア
   sh.getRange(row, 7).setValue('確定');
+  sh.getRange(row, 8).setValue('');   // 待機順クリア
   sh.getRange(row, 9).setValue(formatDate_(new Date()));
-  sh.getRange(row, 10).setValue(p.method || 'Stripe');
+  if (!sh.getRange(row, 10).getValue()) sh.getRange(row, 10).setValue(p.method || 'Stripe');
 
   moveScenario_(p.uid, '確定');
   logAction_('payment_completed', p.uid, sh.getName(), '→ 確定', p.method || '');
