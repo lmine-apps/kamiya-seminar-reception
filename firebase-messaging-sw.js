@@ -33,5 +33,7 @@ self.addEventListener('notificationclick', function(event){
   event.waitUntil(clients.openWindow(url));
 });
 
-// PWAインストール可能条件用（そのまま通す）
-self.addEventListener('fetch', function(e){ /* passthrough */ });
+// 通信には一切介入しない（fetchハンドラを置くとiOSでGAS通信が失敗するため削除）
+// SWは新版を即時有効化（更新待ちで古いSWが残らないように）
+self.addEventListener('install', function(){ self.skipWaiting(); });
+self.addEventListener('activate', function(e){ e.waitUntil(clients.claim()); });
