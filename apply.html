@@ -184,6 +184,13 @@ function init() {
 
   showScreen('screen-form');
 
+  // すでに申込済みならフォームではなく状態画面（決済/待機/確定など）へ転送
+  apiGet('get_status', { uid: uid }).then(res => {
+    if (res.ok && res.seminar === seminarKey && res.status && res.status !== '未登録') {
+      location.replace('index.html');
+    }
+  }).catch(() => {});
+
   // 残席表示（取得できなくても申込は可能）
   apiGet('get_capacity', { seminar: seminarKey }).then(res => {
     if (res.ok) {
