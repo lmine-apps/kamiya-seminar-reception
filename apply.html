@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex">
 <title>受付フォーム｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=15">
+<link rel="stylesheet" href="css/style.css?v=16">
 </head>
 <body>
 <div class="container">
@@ -50,7 +50,7 @@
   <!-- 申込フォーム -->
   <div class="screen" id="screen-form">
     <div id="steps-form"></div>
-    <div class="card" id="seminar-info-card">
+    <div class="card photo-card photo-apply" id="seminar-info-card">
       <h2 id="form-seminar-title"></h2>
       <table class="info-table">
         <tr><th>日程</th><td id="form-schedule"></td></tr>
@@ -166,8 +166,8 @@
 
 </div>
 
-<script src="js/config.js?v=15"></script>
-<script src="js/common.js?v=15"></script>
+<script src="js/config.js?v=16"></script>
+<script src="js/common.js?v=16"></script>
 <script>
 let uid = getUid();
 const seminarKey = new URLSearchParams(location.search).get('seminar');

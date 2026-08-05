@@ -665,6 +665,26 @@ body {
   .seminar-select-card:hover .arrow { transform: translateX(4px); }
 }
 
+/* 写真背景カード（会場の空気をアイボリーのベール越しに薄く敷く） */
+.photo-card { position: relative; }
+.photo-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg,
+      rgba(255, 254, 253, .74) 0%,
+      rgba(255, 254, 253, .86) 55%,
+      rgba(255, 254, 253, .97) 100%),
+    var(--photo, none) center 28% / cover no-repeat;
+  pointer-events: none;
+}
+.photo-card > * { position: relative; z-index: 1; }
+.photo-apply     { --photo: url('../assets/seminar-1.jpg'); }  /* 講演風景 */
+.photo-confirmed { --photo: url('../assets/seminar-3.jpg'); }  /* 笑顔の会場 */
+
 /* フッター */
 .footer {
   text-align: center;
