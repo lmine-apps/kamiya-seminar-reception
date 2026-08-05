@@ -665,7 +665,24 @@ body {
   .seminar-select-card:hover .arrow { transform: translateX(4px); }
 }
 
-/* 写真背景カード（会場の空気をアイボリーのベール越しに薄く敷く） */
+/* ページ全体の背景写真（カードの外に薄く敷く・受付フォーム用） */
+body.page-photo-bg::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(180deg,
+      rgba(249, 245, 241, .78) 0%,
+      rgba(249, 245, 241, .90) 42%,
+      rgba(249, 245, 241, .985) 78%,
+      var(--bg) 100%),
+    url('../assets/seminar-1.jpg') 12% 28% / cover no-repeat;
+  /* 12% = 左寄せ（スマホの縦切り抜きでも左の登壇者が写る位置） */
+  pointer-events: none;
+}
+
+/* 写真背景カード（確定画面など・カード内に薄く敷く） */
 .photo-card { position: relative; }
 .photo-card::after {
   content: '';
@@ -678,12 +695,14 @@ body {
       rgba(255, 254, 253, .74) 0%,
       rgba(255, 254, 253, .86) 55%,
       rgba(255, 254, 253, .97) 100%),
-    var(--photo, none) center 28% / cover no-repeat;
+    var(--photo, none) var(--photo-pos, center 28%) / cover no-repeat;
   pointer-events: none;
 }
 .photo-card > * { position: relative; z-index: 1; }
-.photo-apply     { --photo: url('../assets/seminar-1.jpg'); }  /* 講演風景 */
-.photo-confirmed { --photo: url('../assets/seminar-3.jpg'); }  /* 笑顔の会場 */
+.photo-confirmed {
+  --photo: url('../assets/seminar-3.jpg');  /* 笑顔の会場 */
+  --photo-pos: 72% 30%;  /* 右寄せ＝立っている神谷さんが写る位置 */
+}
 
 /* フッター */
 .footer {
