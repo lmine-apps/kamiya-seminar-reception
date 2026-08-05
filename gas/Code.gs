@@ -27,13 +27,15 @@
 // ========== 設定 ==========
 var TOKEN = 'TOORU-kamiya-reception-hK8pL2';
 
-// プロライン「外部システム連携用の実行URL」を貼る
+// プロライン「外部システム連携用の実行URL」（2026-08-05 とーるさん取得済み）
 var PROLINE_URLS = {
-  '決済案内':      'https://gr8dq5cg.autosns.app/call-beacon/PLACEHOLDER1/[[uid]]',
-  'キャンセル待ち': 'https://gr8dq5cg.autosns.app/call-beacon/PLACEHOLDER2/[[uid]]',
-  '空きできました': 'https://gr8dq5cg.autosns.app/call-beacon/PLACEHOLDER3/[[uid]]',
-  '期限切れ':      'https://gr8dq5cg.autosns.app/call-beacon/PLACEHOLDER4/[[uid]]',
-  '確定':          'https://gr8dq5cg.autosns.app/call-beacon/PLACEHOLDER5/[[uid]]'
+  '決済案内':      '',  // シナリオなし（アプリ画面で案内するため通知不要）
+  'キャンセル待ち': '',  // 同上
+  '空きできました': 'https://autosns.jp/api/call-beacon/bTFA7xmCIj/[[uid]]',  // ⑤あなたの番
+  '期限切れ':      'https://autosns.jp/api/call-beacon/T4X1DuWLcP/[[uid]]',  // ⑥期限切れ
+  '確定':          'https://autosns.jp/api/call-beacon/fL7KpDojxq/[[uid]]',  // ⑦支払い確定
+  '前日リマインド': 'https://autosns.jp/api/call-beacon/qgD9wnxlmt/[[uid]]',  // ⑧（GAS自動発火なし・将来用）
+  'キャンセル完了': 'https://autosns.jp/api/call-beacon/fG0RdXOvCs/[[uid]]'   // ⑨キャンセル完了通知
 };
 
 // セミナー定義（シート名と定員）
@@ -261,6 +263,8 @@ function cancelApplication_(p) {
       promoteNextWaiting_(sh);
     }
 
+    // LINEへ「キャンセル完了」通知（⑨）
+    moveScenario_(uid, 'キャンセル完了');
     logAction_('user_cancel', uid, sh.getName(), prevStatus + ' → キャンセル済', 'Webアプリ経由');
     return out_({ ok: true });
   } finally {
