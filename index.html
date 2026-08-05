@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>セミナー受付｜Bonheur Lelien</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="brand">BONHEUR LELIEN</div>
+    <h1>セミナー受付</h1>
+    <div class="divider"></div>
+  </div>
+
+  <!-- ローディング -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <div>読み込んでいます…</div>
+  </div>
+
+  <!-- uid無しフォールバック -->
+  <div class="screen" id="screen-nouid">
+    <div class="card">
+      <span class="icon-large">📱</span>
+      <h2>LINEからお開きください</h2>
+      <p class="message-center">
+        お客さま情報が確認できませんでした。<br>
+        お手数ですが、<strong>LINEのトーク履歴にあるURL</strong>をもう一度タップしてお開きくださいませ。
+      </p>
+    </div>
+  </div>
+
+  <!-- エラー -->
+  <div class="screen" id="screen-error">
+    <div class="card">
+      <span class="icon-large">🙏</span>
+      <h2>読み込みできませんでした</h2>
+      <p class="message-center">
+        通信状況をご確認のうえ、<br>もう一度お試しくださいませ。
+      </p>
+      <p class="form-note" id="error-detail" style="text-align:center;"></p>
+      <button class="btn btn-outline" onclick="location.reload()" style="margin-top:16px;">再読み込み</button>
+    </div>
+  </div>
+
+  <!-- 未登録：セミナー選択 -->
+  <div class="screen" id="screen-select">
+    <div class="card">
+      <h2>ご希望のセミナーをお選びください</h2>
+      <div id="seminar-list"></div>
+    </div>
+  </div>
+
+  <!-- 決済案内中 -->
+  <div class="screen" id="screen-payment">
+    <div class="badge-wrap"><span class="badge info">お手続き中</span></div>
+    <div class="card">
+      <h2 id="pay-seminar-title"></h2>
+      <table class="info-table">
+        <tr><th>日程</th><td id="pay-schedule"></td></tr>
+        <tr><th>会場</th><td id="pay-venue"></td></tr>
+        <tr><th>受講料</th><td id="pay-price"></td></tr>
+      </table>
+
+      <div class="countdown-box" id="pay-countdown-box">
+        <div class="label">お支払い期限まで</div>
+        <div class="time" id="pay-countdown">--</div>
+        <div class="deadline-date" id="pay-deadline-date"></div>
+      </div>
+
+      <div id="pay-methods"></div>
+
+      <div class="note-box">
+        期限までにお手続きが確認できない場合、お待ちの方にお席をお譲りいたします。ご了承くださいませ。
+      </div>
+      <button class="btn btn-text" id="btn-cancel-payment">お申込みをキャンセルする</button>
+    </div>
+  </div>
+
+  <!-- 振込報告フォーム -->
+  <div class="screen" id="screen-bank-report">
+    <div class="card">
+      <h2>お振込のご報告</h2>
+      <p class="message-center" style="font-size:13px;">お振込がお済みになりましたら、下記よりご報告くださいませ。</p>
+      <form id="bank-report-form">
+        <div class="form-group">
+          <label>お振込名義<span class="req">必須</span></label>
+          <input type="text" name="transfer_name" required placeholder="ヤマダ ハナコ">
+        </div>
+        <div class="form-group">
+          <label>お振込日</label>
+          <input type="date" name="transfer_date">
+        </div>
+        <button type="submit" class="btn btn-primary" id="btn-bank-submit">報告する</button>
+        <button type="button" class="btn btn-text" onclick="showScreen('screen-payment')">戻る</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 振込報告済み -->
+  <div class="screen" id="screen-bank-reported">
+    <div class="badge-wrap"><span class="badge info">確認中</span></div>
+    <div class="card">
+      <span class="icon-large">🕊</span>
+      <h2>ご報告ありがとうございます</h2>
+      <p class="message-center">
+        お振込のご報告を承りました。<br>
+        入金の確認が取れましたら、<br>LINEにてご連絡いたします。<br>
+        今しばらくお待ちくださいませ。
+      </p>
+    </div>
+  </div>
+
+  <!-- キャンセル待ち -->
+  <div class="screen" id="screen-waiting">
+    <div class="badge-wrap"><span class="badge warn">キャンセル待ち</span></div>
+    <div class="card">
+      <h2 id="wait-seminar-title"></h2>
+      <div class="wait-number">
+        <span class="num" id="wait-num">-</span>
+        <span class="unit">番目</span>
+      </div>
+      <p class="wait-note">現在、キャンセル待ちでお待ちいただいています。<br>お席に空きが出ましたら、LINEでお知らせいたします。</p>
+      <div class="note-box">
+        空きが出た際は<strong>3日以内</strong>にお手続きをお願いいたします。この画面は自動で更新されます。
+      </div>
+      <button class="btn btn-text" id="btn-cancel-waiting">キャンセル待ちをやめる</button>
+    </div>
+  </div>
+
+  <!-- 参加確定 -->
+  <div class="screen" id="screen-confirmed">
+    <div class="badge-wrap"><span class="badge success">ご参加確定</span></div>
+    <div class="card">
+      <span class="icon-large">🌸</span>
+      <h2>ご参加が確定いたしました</h2>
+      <p class="message-center" id="confirmed-name-line"></p>
+      <table class="info-table" style="margin-top:10px;">
+        <tr><th>セミナー</th><td id="conf-seminar"></td></tr>
+        <tr><th>日程</th><td id="conf-schedule"></td></tr>
+        <tr><th>会場</th><td id="conf-venue"></td></tr>
+        <tr><th>持ち物</th><td id="conf-items"></td></tr>
+        <tr id="conf-payment-row" style="display:none;"><th>お支払い</th><td id="conf-payment"></td></tr>
+      </table>
+      <a class="btn btn-outline" id="conf-map-link" href="#" target="_blank" rel="noopener" style="margin-top:16px;">会場の地図を見る</a>
+      <div class="note-box">
+        開催日が近づきましたら、改めてLINEにてご案内いたします。当日お会いできますこと、心より楽しみにしております。
+      </div>
+    </div>
+  </div>
+
+  <!-- 期限切れ -->
+  <div class="screen" id="screen-expired">
+    <div class="badge-wrap"><span class="badge warn">期限切れ</span></div>
+    <div class="card">
+      <span class="icon-large">🙇‍♀️</span>
+      <h2>お手続き期限を過ぎました</h2>
+      <p class="message-center">
+        お支払い期限（3日以内）を過ぎましたため、<br>
+        今回のお申込みはキャンセル扱いと<br>させていただきました。
+      </p>
+      <div class="note-box">
+        引き続きご検討いただける場合は、LINEのチャットにてご連絡くださいませ。状況に応じて、再度お席をご案内できる場合がございます。
+      </div>
+    </div>
+  </div>
+
+  <!-- キャンセル完了 -->
+  <div class="screen" id="screen-cancelled">
+    <div class="card">
+      <span class="icon-large">🍃</span>
+      <h2>キャンセルを承りました</h2>
+      <p class="message-center">
+        お申込みのキャンセルを承りました。<br>
+        またのご縁を心よりお待ちしております。
+      </p>
+    </div>
+  </div>
+
+  <div class="footer">
+    株式会社 Bonheur Lelien<br>
+    <a href="https://gr8dq5cg.autosns.app/cp/K1A5rRFSyJ" target="_blank" rel="noopener">特定商取引法に基づく表記</a>
+    ｜
+    <a href="https://gr8dq5cg.autosns.app/cp/Kvho9IH3dZ" target="_blank" rel="noopener">プライバシーポリシー</a>
+  </div>
+
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script>
+const uid = getUid();
+let currentStatus = null;
+let waitPollTimer = null;
+
+/** 状態取得→画面出し分け */
+async function loadStatus() {
+  if (!uid) { showNoUid(); return; }
+  try {
+    const res = await apiGet('get_status', { uid: uid });
+    if (!res.ok) { showError(res.error || ''); return; }
+    currentStatus = res;
+    render(res);
+  } catch (err) {
+    showError(String(err));
+  }
+}
+
+function render(st) {
+  // 未登録
+  if (!st.seminar || st.status === '未登録') {
+    renderSelect();
+    return;
+  }
+  const sem = CONFIG.SEMINARS[st.seminar] || {};
+
+  switch (st.status) {
+    case '決済案内中':
+      renderPayment(st, sem);
+      break;
+    case '振込報告済み':
+      showScreen('screen-bank-reported');
+      break;
+    case 'キャンセル待ち':
+      renderWaiting(st, sem);
+      break;
+    case '確定':
+      renderConfirmed(st, sem);
+      break;
+    case '期限切れ':
+      showScreen('screen-expired');
+      break;
+    case 'キャンセル済':
+      showScreen('screen-cancelled');
+      break;
+    default:
+      renderSelect();
+  }
+}
+
+/** 未登録：セミナー選択 */
+function renderSelect() {
+  const list = document.getElementById('seminar-list');
+  // 一般受付のみ表示（先行はLINE入口URL経由のため）
+  const keys = ['self_general', 'marke_general'];
+  list.innerHTML = keys.map(k => {
+    const s = CONFIG.SEMINARS[k];
+    return '<a class="seminar-select-card" href="apply.html?seminar=' + k + '">' +
+      '<span class="arrow">›</span>' +
+      '<div class="t">' + esc(s.shortTitle) + '</div>' +
+      '<div class="d">' + esc(s.schedule) + '<br>' + esc(s.price) + '</div></a>';
+  }).join('');
+  showScreen('screen-select');
+}
+
+/** 決済案内中 */
+function renderPayment(st, sem) {
+  document.getElementById('pay-seminar-title').textContent = sem.title || st.seminar;
+  document.getElementById('pay-schedule').textContent = sem.schedule || '';
+  document.getElementById('pay-venue').textContent = CONFIG.VENUE.name;
+  document.getElementById('pay-price').textContent = sem.price || '';
+
+  if (st.deadline) {
+    document.getElementById('pay-countdown-box').style.display = '';
+    document.getElementById('pay-deadline-date').textContent = '期限：' + formatDeadline(st.deadline);
+    startCountdown(st.deadline, 'pay-countdown');
+  } else {
+    document.getElementById('pay-countdown-box').style.display = 'none';
+  }
+
+  // 支払い方法出し分け
+  const box = document.getElementById('pay-methods');
+  if (sem.payment === 'cash') {
+    box.innerHTML = '<div class="note-box">' + esc(sem.paymentNote) + '</div>';
+  } else {
+    let html = '<h3>お支払い方法</h3>';
+    const stripeUrl = CONFIG.STRIPE_URLS[st.seminar];
+    if (stripeUrl) {
+      html += '<a class="btn btn-primary" href="' + stripeUrl +
+        (stripeUrl.indexOf('?') === -1 ? '?' : '&') + 'uid=' + encodeURIComponent(uid) +
+        '">クレジットカードで支払う</a>';
+    }
+    html += '<h3>銀行振込をご希望の方</h3>' +
+      '<div class="bank-box">' +
+      '<div class="row"><span class="k">銀行</span><span>' + esc(CONFIG.BANK_INFO.bank) + '</span></div>' +
+      '<div class="row"><span class="k">支店</span><span>' + esc(CONFIG.BANK_INFO.branch) + '</span></div>' +
+      '<div class="row"><span class="k">口座</span><span>' + esc(CONFIG.BANK_INFO.type) + ' ' + esc(CONFIG.BANK_INFO.number) + '</span></div>' +
+      '<div class="row"><span class="k">名義</span><span>' + esc(CONFIG.BANK_INFO.holder) + '</span></div>' +
+      '</div>' +
+      '<button class="btn btn-outline" onclick="showScreen(\'screen-bank-report\')">振込を報告する</button>';
+    box.innerHTML = html;
+  }
+  showScreen('screen-payment');
+}
+
+/** キャンセル待ち */
+function renderWaiting(st, sem) {
+  document.getElementById('wait-seminar-title').textContent = sem.title || st.seminar;
+  document.getElementById('wait-num').textContent = st.wait_number || '-';
+  showScreen('screen-waiting');
+
+  // 定期ポーリング（状態が変わったら画面切替）
+  if (waitPollTimer) clearInterval(waitPollTimer);
+  waitPollTimer = setInterval(async () => {
+    try {
+      const res = await apiGet('get_status', { uid: uid });
+      if (res.ok) {
+        if (res.status !== 'キャンセル待ち') {
+          clearInterval(waitPollTimer);
+          render(res);
+        } else {
+          document.getElementById('wait-num').textContent = res.wait_number || '-';
+        }
+      }
+    } catch (_) {}
+  }, CONFIG.WAIT_POLL_INTERVAL);
+}
+
+/** 参加確定 */
+function renderConfirmed(st, sem) {
+  document.getElementById('confirmed-name-line').textContent =
+    st.name ? st.name + ' さま' : '';
+  document.getElementById('conf-seminar').textContent = sem.title || st.seminar;
+  document.getElementById('conf-schedule').textContent = sem.schedule || '';
+  document.getElementById('conf-venue').textContent = CONFIG.VENUE.name + '（' + CONFIG.VENUE.address + '）';
+  document.getElementById('conf-items').textContent = sem.items || '筆記用具';
+  document.getElementById('conf-map-link').href = CONFIG.VENUE.mapUrl;
+  if (sem.payment === 'cash') {
+    document.getElementById('conf-payment-row').style.display = '';
+    document.getElementById('conf-payment').textContent = '当日、会場にて現金でお支払いください（' + (sem.price || '') + '）';
+  }
+  showScreen('screen-confirmed');
+}
+
+/** キャンセル処理 */
+async function doCancel() {
+  if (!confirm('本当にキャンセルしてよろしいですか？')) return;
+  showLoading(true);
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  try {
+    const res = await apiGet('cancel_application', { uid: uid });
+    if (res.ok) showScreen('screen-cancelled');
+    else showError(res.error || '');
+  } catch (err) {
+    showError(String(err));
+  }
+}
+document.getElementById('btn-cancel-payment').addEventListener('click', doCancel);
+document.getElementById('btn-cancel-waiting').addEventListener('click', doCancel);
+
+/** 振込報告 */
+document.getElementById('bank-report-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('btn-bank-submit');
+  btn.disabled = true;
+  btn.textContent = '送信中…';
+  const fd = new FormData(e.target);
+  try {
+    const res = await apiPost('report_bank_transfer', {
+      uid: uid,
+      transfer_name: fd.get('transfer_name'),
+      transfer_date: fd.get('transfer_date')
+    });
+    if (res.ok) showScreen('screen-bank-reported');
+    else { showError(res.error || ''); }
+  } catch (err) {
+    showError(String(err));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '報告する';
+  }
+});
+
+loadStatus();
+</script>
+</body>
+</html>

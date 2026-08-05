@@ -1,0 +1,300 @@
+/* ===== 神谷梓さんセミナー受付 スタイル =====
+   美容・心理セラピスト向け：上品・あたたかい・安心感 */
+
+:root {
+  --primary: #b98a7a;        /* ローズブラウン */
+  --primary-dark: #9c6f5f;
+  --accent: #d9b8a5;
+  --bg: #faf6f2;             /* アイボリー */
+  --card: #ffffff;
+  --text: #4a3f3a;
+  --text-light: #8a7d76;
+  --line: #ece2da;
+  --success: #7da87d;
+  --warn: #c96f5e;
+  --gold: #c8a96b;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Noto Sans JP', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+}
+
+.container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 16px 48px;
+}
+
+/* ヘッダー */
+.header {
+  text-align: center;
+  padding: 28px 16px 20px;
+}
+.header .brand {
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--text-light);
+  margin-bottom: 4px;
+}
+.header h1 {
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--primary-dark);
+  letter-spacing: 1px;
+}
+.header .divider {
+  width: 40px;
+  height: 2px;
+  background: var(--accent);
+  margin: 12px auto 0;
+  border-radius: 2px;
+}
+
+/* 画面切替 */
+.screen { display: none; }
+.screen.active { display: block; animation: fadein .4s ease; }
+@keyframes fadein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ローディング */
+#loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60px 0;
+  color: var(--text-light);
+  font-size: 14px;
+  gap: 16px;
+}
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--line);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* カード */
+.card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 24px 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 12px rgba(120, 90, 70, .07);
+}
+.card h2 {
+  font-size: 17px;
+  color: var(--primary-dark);
+  margin-bottom: 14px;
+  text-align: center;
+}
+.card h3 {
+  font-size: 15px;
+  color: var(--primary-dark);
+  margin: 18px 0 8px;
+}
+
+/* ステータスバッジ */
+.badge {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+.badge.info    { background: #f0e6dd; color: var(--primary-dark); }
+.badge.success { background: #e7f0e7; color: var(--success); }
+.badge.warn    { background: #f7e5e1; color: var(--warn); }
+.badge-wrap { text-align: center; margin-bottom: 14px; }
+
+/* セミナー情報テーブル */
+.info-table { width: 100%; font-size: 14px; }
+.info-table th {
+  text-align: left;
+  color: var(--text-light);
+  font-weight: 500;
+  padding: 7px 12px 7px 0;
+  white-space: nowrap;
+  vertical-align: top;
+  width: 5.5em;
+}
+.info-table td { padding: 7px 0; }
+
+/* ボタン */
+.btn {
+  display: block;
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 30px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity .2s, transform .1s;
+  font-family: inherit;
+}
+.btn:active { transform: scale(.98); }
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(156, 111, 95, .3);
+}
+.btn-outline {
+  background: transparent;
+  color: var(--primary-dark);
+  border: 1.5px solid var(--primary);
+}
+.btn-text {
+  background: none;
+  color: var(--text-light);
+  font-size: 13px;
+  font-weight: 400;
+  text-decoration: underline;
+  padding: 10px;
+}
+.btn + .btn { margin-top: 12px; }
+.btn:disabled { opacity: .5; cursor: default; }
+
+/* フォーム */
+.form-group { margin-bottom: 18px; }
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.form-group label .req {
+  color: var(--warn);
+  font-size: 11px;
+  margin-left: 6px;
+}
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  font-size: 16px;
+  font-family: inherit;
+  background: #fff;
+  color: var(--text);
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.form-group textarea { min-height: 90px; resize: vertical; }
+.form-note {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-top: 4px;
+}
+
+/* カウントダウン */
+.countdown-box {
+  background: #fdf3ef;
+  border: 1.5px solid #f0d9d0;
+  border-radius: 12px;
+  padding: 14px;
+  text-align: center;
+  margin: 16px 0;
+}
+.countdown-box .label { font-size: 12px; color: var(--warn); font-weight: 600; }
+.countdown-box .time {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--warn);
+  letter-spacing: 1px;
+}
+.countdown-box .time.expired { font-size: 16px; }
+.countdown-box .deadline-date { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+
+/* 待機順 */
+.wait-number {
+  text-align: center;
+  padding: 20px 0 10px;
+}
+.wait-number .num {
+  font-size: 56px;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1.2;
+}
+.wait-number .unit { font-size: 16px; color: var(--text); }
+.wait-note {
+  font-size: 13px;
+  color: var(--text-light);
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+/* 振込先 */
+.bank-box {
+  background: #f8f3ee;
+  border-radius: 12px;
+  padding: 16px;
+  margin: 12px 0;
+  font-size: 14px;
+}
+.bank-box .row { display: flex; padding: 3px 0; }
+.bank-box .row .k { color: var(--text-light); width: 6em; flex-shrink: 0; }
+
+/* メッセージ */
+.message-center {
+  text-align: center;
+  padding: 10px 0;
+  font-size: 15px;
+}
+.icon-large { font-size: 48px; text-align: center; display: block; margin-bottom: 8px; }
+
+/* 注意書き */
+.note-box {
+  background: #fdf9f4;
+  border-left: 3px solid var(--gold);
+  border-radius: 0 10px 10px 0;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--text-light);
+  margin: 14px 0;
+}
+
+/* セミナー選択カード */
+.seminar-select-card {
+  display: block;
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 14px;
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color .2s;
+}
+.seminar-select-card:active { border-color: var(--accent); }
+.seminar-select-card .t { font-weight: 600; color: var(--primary-dark); font-size: 15px; }
+.seminar-select-card .d { font-size: 13px; color: var(--text-light); margin-top: 4px; }
+.seminar-select-card .arrow { float: right; color: var(--accent); }
+
+/* フッター */
+.footer {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-light);
+  padding: 24px 0 8px;
+  letter-spacing: 1px;
+}
+.footer a { color: var(--text-light); }

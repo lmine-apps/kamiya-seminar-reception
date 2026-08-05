@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>お申込みフォーム｜Bonheur Lelien</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="brand">BONHEUR LELIEN</div>
+    <h1>お申込みフォーム</h1>
+    <div class="divider"></div>
+  </div>
+
+  <!-- ローディング -->
+  <div id="loading" style="display:none;">
+    <div class="spinner"></div>
+    <div>送信しています…</div>
+  </div>
+
+  <!-- uid無しフォールバック -->
+  <div class="screen" id="screen-nouid">
+    <div class="card">
+      <span class="icon-large">📱</span>
+      <h2>LINEからお開きください</h2>
+      <p class="message-center">
+        お客さま情報が確認できませんでした。<br>
+        お手数ですが、<strong>LINEのトーク履歴にあるURL</strong>をもう一度タップしてお開きくださいませ。
+      </p>
+    </div>
+  </div>
+
+  <!-- エラー -->
+  <div class="screen" id="screen-error">
+    <div class="card">
+      <span class="icon-large">🙏</span>
+      <h2>送信できませんでした</h2>
+      <p class="message-center">通信状況をご確認のうえ、<br>もう一度お試しくださいませ。</p>
+      <p class="form-note" id="error-detail" style="text-align:center;"></p>
+      <button class="btn btn-outline" onclick="showScreen('screen-form')" style="margin-top:16px;">フォームに戻る</button>
+    </div>
+  </div>
+
+  <!-- 申込フォーム -->
+  <div class="screen" id="screen-form">
+    <div class="card" id="seminar-info-card">
+      <h2 id="form-seminar-title"></h2>
+      <table class="info-table">
+        <tr><th>日程</th><td id="form-schedule"></td></tr>
+        <tr><th>会場</th><td id="form-venue"></td></tr>
+        <tr><th>受講料</th><td id="form-price"></td></tr>
+        <tr><th>お支払い</th><td id="form-payment"></td></tr>
+      </table>
+      <p class="form-note" id="capacity-note" style="text-align:center; margin-top:10px;"></p>
+    </div>
+
+    <div class="card">
+      <form id="apply-form">
+        <div class="form-group">
+          <label>お名前<span class="req">必須</span></label>
+          <input type="text" name="name" required placeholder="山田 花子">
+        </div>
+        <div class="form-group">
+          <label>お電話番号<span class="req">必須</span></label>
+          <input type="tel" name="phone" required placeholder="090-1234-5678" inputmode="tel">
+        </div>
+        <div class="form-group">
+          <label>生年月日<span class="req">必須</span></label>
+          <input type="date" name="birthday" required>
+        </div>
+        <div class="form-group">
+          <label>メールアドレス<span class="req">必須</span></label>
+          <input type="email" name="email" required placeholder="example@email.com" inputmode="email">
+        </div>
+        <div class="form-group">
+          <label>ご職業</label>
+          <input type="text" name="job" placeholder="例：セラピスト、会社員 など">
+        </div>
+        <div class="form-group">
+          <label>いま感じているお悩み（任意）</label>
+          <textarea name="worries" placeholder="お気軽にお書きくださいませ"></textarea>
+        </div>
+        <div class="note-box">
+          お預かりした個人情報は、セミナー運営のご連絡のみに使用いたします。
+        </div>
+        <button type="submit" class="btn btn-primary" id="btn-submit">この内容で申し込む</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 送信完了：定員内（決済へ） -->
+  <div class="screen" id="screen-done-payment">
+    <div class="card">
+      <span class="icon-large">🌸</span>
+      <h2>お申込みを承りました</h2>
+      <p class="message-center">
+        お席を確保いたしました。<br>
+        続けて、お支払いのお手続きを<br>お願いいたします。
+      </p>
+      <a class="btn btn-primary" id="btn-to-payment" href="index.html" style="margin-top:16px;">お支払いに進む</a>
+    </div>
+  </div>
+
+  <!-- 送信完了：セルフ先行（当日現金＝確定） -->
+  <div class="screen" id="screen-done-confirmed">
+    <div class="card">
+      <span class="icon-large">🌸</span>
+      <h2>お申込みが確定いたしました</h2>
+      <p class="message-center">
+        お席を確保いたしました。<br>
+        受講料は当日、会場にて<br>現金でお支払いくださいませ。
+      </p>
+      <a class="btn btn-primary" href="index.html" style="margin-top:16px;">当日のご案内を見る</a>
+    </div>
+  </div>
+
+  <!-- 送信完了：キャンセル待ち -->
+  <div class="screen" id="screen-done-waiting">
+    <div class="badge-wrap"><span class="badge warn">キャンセル待ち</span></div>
+    <div class="card">
+      <span class="icon-large">🕊</span>
+      <h2>キャンセル待ちで承りました</h2>
+      <p class="message-center">
+        ただいま満席のため、<br>
+        <strong><span id="done-wait-num">-</span>番目</strong>のキャンセル待ちで<br>お受けいたしました。<br><br>
+        空きが出ましたら、<br>LINEでお知らせいたします。
+      </p>
+      <a class="btn btn-outline" href="index.html" style="margin-top:16px;">待機状況を見る</a>
+    </div>
+  </div>
+
+  <!-- 申込済み -->
+  <div class="screen" id="screen-already">
+    <div class="card">
+      <span class="icon-large">💡</span>
+      <h2>すでにお申込みいただいています</h2>
+      <p class="message-center">現在のお手続き状況は<br>こちらからご確認いただけます。</p>
+      <a class="btn btn-primary" href="index.html" style="margin-top:16px;">状況を確認する</a>
+    </div>
+  </div>
+
+  <div class="footer">
+    株式会社 Bonheur Lelien<br>
+    <a href="https://gr8dq5cg.autosns.app/cp/K1A5rRFSyJ" target="_blank" rel="noopener">特定商取引法に基づく表記</a>
+    ｜
+    <a href="https://gr8dq5cg.autosns.app/cp/Kvho9IH3dZ" target="_blank" rel="noopener">プライバシーポリシー</a>
+  </div>
+
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script>
+const uid = getUid();
+const seminarKey = new URLSearchParams(location.search).get('seminar');
+const sem = CONFIG.SEMINARS[seminarKey];
+
+function init() {
+  if (!uid) { showNoUid(); return; }
+  if (!sem) { location.href = 'index.html'; return; }
+
+  document.getElementById('form-seminar-title').textContent = sem.title;
+  document.getElementById('form-schedule').textContent = sem.schedule;
+  document.getElementById('form-venue').textContent = CONFIG.VENUE.name;
+  document.getElementById('form-price').textContent = sem.price;
+  document.getElementById('form-payment').textContent =
+    sem.payment === 'cash' ? '当日 会場にて現金' : 'クレジットカード／銀行振込';
+
+  showScreen('screen-form');
+
+  // 残席表示（取得できなくても申込は可能）
+  apiGet('get_capacity', { seminar: seminarKey }).then(res => {
+    if (res.ok) {
+      const note = document.getElementById('capacity-note');
+      if (res.available > 0) {
+        note.textContent = '残席：' + res.available + ' 席';
+      } else {
+        note.innerHTML = '<strong>ただいま満席です。</strong>キャンセル待ちでのお申込みとなります。';
+      }
+    }
+  }).catch(() => {});
+}
+
+document.getElementById('apply-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = true;
+  btn.textContent = '送信中…';
+  showLoading(true);
+
+  const fd = new FormData(e.target);
+  try {
+    const res = await apiPost('submit_application', {
+      uid: uid,
+      seminar: seminarKey,
+      name: fd.get('name'),
+      phone: fd.get('phone'),
+      birthday: fd.get('birthday'),
+      email: fd.get('email'),
+      job: fd.get('job'),
+      worries: fd.get('worries')
+    });
+    showLoading(false);
+    if (!res.ok) { showError(res.error || ''); return; }
+
+    if (res.already) {
+      showScreen('screen-already');
+    } else if (res.status === '確定') {
+      showScreen('screen-done-confirmed');
+    } else if (res.status === '決済案内中') {
+      showScreen('screen-done-payment');
+    } else if (res.status === 'キャンセル待ち') {
+      document.getElementById('done-wait-num').textContent = res.waitNum || '-';
+      showScreen('screen-done-waiting');
+    } else {
+      showScreen('screen-already');
+    }
+  } catch (err) {
+    showLoading(false);
+    showError(String(err));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'この内容で申し込む';
+  }
+});
+
+init();
+</script>
+</body>
+</html>
