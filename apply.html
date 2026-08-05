@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
-<title>お申込みフォーム｜Bonheur Lelien</title>
+<title>受付フォーム｜Bonheur Lelien</title>
 <link rel="stylesheet" href="css/style.css?v=4">
 </head>
 <body>
@@ -12,7 +12,7 @@
 
   <div class="header">
     <div class="brand">BONHEUR LELIEN</div>
-    <h1>お申込みフォーム</h1>
+    <h1>受付フォーム</h1>
     <div class="divider"></div>
   </div>
 
@@ -196,8 +196,8 @@ function init() {
     if (res.ok) {
       const note = document.getElementById('capacity-note');
       if (res.available > 0) {
-        note.innerHTML = '残席：' + res.available + ' 席<br>' +
-          '<span style="font-size:11px; color:#8a7d76;">※残席数は目安です。反映までに時間差が生じる場合があります。</span>';
+        note.innerHTML = '<span style="font-size:16px; font-weight:700; color:#9c6f5f;">残席：' + res.available + ' 席</span><br>' +
+          '<span style="font-size:12px; color:#8a7d76;">※残席数は目安です。反映までに時間差が生じる場合があります。</span>';
       } else {
         enterWaitlistMode();
       }
@@ -210,9 +210,9 @@ let waitlistMode = false;
 function enterWaitlistMode() {
   waitlistMode = true;
   document.getElementById('capacity-note').innerHTML =
-    '<strong style="color:#c96f5e;">ただいま満席です。</strong><br>' +
+    '<span style="font-size:16px; font-weight:700; color:#c96f5e;">ただいま満席です。</span><br>' +
     'このフォームからは<strong>キャンセル待ち</strong>としてお申込みいただけます。<br>' +
-    '<span style="font-size:11px; color:#8a7d76;">空きが出ましたら、お待ちの順にLINEでお知らせいたします（お手続き期限は3日以内）。<br>' +
+    '<span style="font-size:12px; color:#8a7d76;">空きが出ましたら、お待ちの順にLINEでお知らせいたします（お手続き期限は3日以内）。<br>' +
     '※残席の反映には時間差が生じる場合があります。</span>';
   document.getElementById('btn-submit').textContent = 'キャンセル待ちで申し込む';
 }
