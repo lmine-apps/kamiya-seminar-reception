@@ -886,6 +886,42 @@ function out_(obj) {
 }
 
 /*** ============================================================
+ * 📊 集計エリア再設置（1回だけ手動実行する関数）
+ *
+ * 【実行方法】エディタ上部の関数選択で「setupSummaryFormulas」を選び「実行」
+ * ※各セミナーシートの5〜6行目に自動集計の数式を設置し直します。
+ * ※デプロイ不要。何度実行しても作り直されるだけなので安全。
+ * ============================================================ */
+function setupSummaryFormulas() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  Object.keys(SEMINARS).forEach(function (key) {
+    var config = SEMINARS[key];
+    var sh = ss.getSheetByName(config.sheet);
+    if (!sh) return;
+
+    // 5行目：見出し（振込報告済みを追加した8列構成）
+    sh.getRange(5, 1, 1, 8).setValues([[
+      '申込総数', '確定', '決済案内中', '振込報告済み', 'キャンセル待ち', '期限切れ', 'キャンセル済', '残席'
+    ]]);
+    // 6行目：自動集計の数式
+    sh.getRange(6, 1, 1, 8).setFormulas([[
+      '=COUNTA(A10:A1000)',
+      '=COUNTIF(G10:G1000,"確定")',
+      '=COUNTIF(G10:G1000,"決済案内中")',
+      '=COUNTIF(G10:G1000,"振込報告済み")',
+      '=COUNTIF(G10:G1000,"キャンセル待ち")',
+      '=COUNTIF(G10:G1000,"期限切れ")',
+      '=COUNTIF(G10:G1000,"キャンセル済")',
+      '=' + config.capacity + '-B6-C6-D6'
+    ]]);
+    // 体裁
+    sh.getRange(5, 1, 1, 8).setFontWeight('bold').setBackground('#f8f4ea').setFontSize(10);
+    sh.getRange(6, 1, 1, 8).setFontWeight('bold').setFontSize(12).setHorizontalAlignment('center');
+  });
+  return '📊 集計エリアを4シートに再設置しました';
+}
+
+/*** ============================================================
  * 📖 操作マニュアルシート生成（1回だけ手動実行する関数）
  *
  * 【実行方法】エディタ上部の関数選択で「setupManualSheet」を選び「実行」
