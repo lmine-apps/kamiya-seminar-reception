@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=11">
+<link rel="stylesheet" href="css/style.css?v=12">
 </head>
 <body>
 <div class="container">
@@ -257,8 +257,8 @@
 
 </div>
 
-<script src="js/config.js?v=11"></script>
-<script src="js/common.js?v=11"></script>
+<script src="js/config.js?v=12"></script>
+<script src="js/common.js?v=12"></script>
 <script>
 const uid = getUid();
 let currentStatus = null;
@@ -344,11 +344,22 @@ function renderPayment(st, sem) {
     box.innerHTML = '<div class="note-box">' + esc(sem.paymentNote) + '</div>';
   } else {
     let html = '<h3>お支払い方法</h3>';
+    const prid = CONFIG.STRIPE_PRIDS[st.seminar];
     const stripeUrl = CONFIG.STRIPE_URLS[st.seminar];
-    if (stripeUrl) {
+    if (prid) {
+      // 埋め込み方式：アプリから直接Stripeのカード入力画面へ（POST送信）
+      html += '<form method="POST" action="' + CONFIG.STRIPE_CHECKOUT_ACTION + prid + '" style="margin:0;">' +
+        '<input type="hidden" name="uid" value="' + esc(uid) + '">' +
+        '<input type="hidden" name="prid" value="' + esc(prid) + '">' +
+        '<button type="submit" class="btn btn-primary">クレジットカードで支払う</button>' +
+        '</form>';
+      if (stripeUrl) {
+        html += '<a class="btn btn-text" style="font-size:12px;" href="' + stripeUrl +
+          '?uid=' + encodeURIComponent(uid) + '">うまく開かない場合はこちら</a>';
+      }
+    } else if (stripeUrl) {
       html += '<a class="btn btn-primary" href="' + stripeUrl +
-        (stripeUrl.indexOf('?') === -1 ? '?' : '&') + 'uid=' + encodeURIComponent(uid) +
-        '">クレジットカードで支払う</a>';
+        '?uid=' + encodeURIComponent(uid) + '">クレジットカードで支払う</a>';
     }
     html += '<h3>銀行振込をご希望の方</h3>' +
       '<div class="bank-box">' +

@@ -4,11 +4,20 @@ const CONFIG = {
   GAS_URL: 'https://script.google.com/macros/s/AKfycbwZvWsBLfbSGF3NW1brPZY1gO9Jm5-dDgYeyT_OVNxOo4_Apj5FQ9AgYdT4Cin0Glh-/exec',
   TOKEN: 'TOORU-kamiya-reception-hK8pL2',
 
-  // 決済エンドポイント（プロラインの決済ページ /pd/ 形式）
+  // Stripe決済（プロライン）
+  // prid: 埋め込みフォームPOST用（アプリから直接Stripeカード入力へ）
+  // STRIPE_URLS: 予備の決済ページ（/pd/・うまく開かない場合の逃げ道）
+  STRIPE_CHECKOUT_ACTION: 'https://gr8dq5cg.autosns.app/api/stripe/create-checkout-session/',
+  STRIPE_PRIDS: {
+    marke_priority: 'dZ7LuNr8e4',
+    marke_general:  'dZ7LuNr8e4',
+    self_priority:  '',   // 当日現金のため不要
+    self_general:   'o0KefDZWky'
+  },
   STRIPE_URLS: {
     marke_priority: 'https://gr8dq5cg.autosns.app/pd/dZ7LuNr8e4',
     marke_general:  'https://gr8dq5cg.autosns.app/pd/dZ7LuNr8e4',
-    self_priority:  '',   // 当日現金のため不要
+    self_priority:  '',
     self_general:   'https://gr8dq5cg.autosns.app/pd/o0KefDZWky'
   },
 
