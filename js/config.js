@@ -4,12 +4,12 @@ const CONFIG = {
   GAS_URL: 'https://script.google.com/macros/s/AKfycbwZvWsBLfbSGF3NW1brPZY1gO9Jm5-dDgYeyT_OVNxOo4_Apj5FQ9AgYdT4Cin0Glh-/exec',
   TOKEN: 'TOORU-kamiya-reception-hK8pL2',
 
-  // 決済エンドポイント（プロライン発行）
+  // 決済エンドポイント（プロラインの決済ページ /pd/ 形式）
   STRIPE_URLS: {
-    marke_priority: 'https://gr8dq5cg.autosns.app/api/stripe/create-checkout-session/dZ7LuNr8e4',
-    marke_general:  'https://gr8dq5cg.autosns.app/api/stripe/create-checkout-session/dZ7LuNr8e4',
+    marke_priority: 'https://gr8dq5cg.autosns.app/pd/dZ7LuNr8e4',
+    marke_general:  'https://gr8dq5cg.autosns.app/pd/dZ7LuNr8e4',
     self_priority:  '',   // 当日現金のため不要
-    self_general:   'https://gr8dq5cg.autosns.app/pd/o0KefDZWky'  // セルフイメージセミナー決済（2026-08-05発行）
+    self_general:   'https://gr8dq5cg.autosns.app/pd/o0KefDZWky'
   },
 
   // 銀行振込先
