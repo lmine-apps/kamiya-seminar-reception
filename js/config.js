@@ -9,7 +9,7 @@ const CONFIG = {
     marke_priority: 'https://gr8dq5cg.autosns.app/api/stripe/create-checkout-session/dZ7LuNr8e4',
     marke_general:  'https://gr8dq5cg.autosns.app/api/stripe/create-checkout-session/dZ7LuNr8e4',
     self_priority:  '',   // 当日現金のため不要
-    self_general:   ''    // ※未発行：発行後にここへ貼る
+    self_general:   'https://gr8dq5cg.autosns.app/pd/o0KefDZWky'  // セルフイメージセミナー決済（2026-08-05発行）
   },
 
   // 銀行振込先
