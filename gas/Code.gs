@@ -736,3 +736,80 @@ function out_(obj) {
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }
+
+/*** ============================================================
+ * 📖 操作マニュアルシート生成（1回だけ手動実行する関数）
+ *
+ * 【実行方法】エディタ上部の関数選択で「setupManualSheet」を選び「実行」
+ * ※デプロイ不要。何度実行しても作り直されるだけなので安全。
+ * ============================================================ */
+function setupManualSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var name = '📖 操作マニュアル';
+  var sh = ss.getSheetByName(name);
+  if (!sh) { sh = ss.insertSheet(name, 0); } else { sh.clear(); }
+
+  var C_TITLE = '#9c6f5f', C_HEAD = '#f8f4ea', C_IMPORTANT = '#fdf3ef', C_OK = '#e7f0e7', C_WARN = '#fff3b8';
+
+  var rows = [
+    ['神谷さんセミナー受付システム 操作マニュアル', ''],
+    ['最終更新：2026-08-05 ／ 詳しい版は「神谷さん受付システム_運用マニュアル.txt」参照', ''],
+    ['', ''],
+    ['★基本ルール', '申込・キャンセル待ち・繰上げ・3日期限切れは全部自動。状態を変えるとLINE通知も自動で飛びます。'],
+    ['★管理画面（推奨）', 'https://apps.l-mine.com/kamiya-seminar-reception/admin.html?key=kamiya-admin-Wq7xR3nT'],
+    ['', ''],
+    ['🏦 銀行振込の運用（一番大事な作業）', ''],
+    ['① お客さまが振込→アプリで報告', '状態が自動で「振込報告済み」になります（報告された振込名義・振込日は備考列に記録）'],
+    ['② 通帳/ネットバンクで入金確認', '⚠️振込名義が申込のお名前と違うことがあります。備考列の「名義:〜」と照合してください'],
+    ['③ 管理画面で「✔入金確認→確定」を押す', 'これだけで完了！確定LINEが自動で届きます（スプシでG列を「確定」にしてもOK）'],
+    ['⚠️ 振込が期限(3日)に間に合わず期限切れになったら', '入金があるのに「期限切れ」になっていたら：管理画面で「↩復帰させる」→「✔確定」の順に押す'],
+    ['⚠️ 入金がないまま3日過ぎたら', '何もしなくてOK。自動で期限切れ→本人へLINE通知→待機の方が繰上がります'],
+    ['', ''],
+    ['📝 スプシを直接さわる場合（G列＝状態 だけ変更）', ''],
+    ['「確定」と入力', '確定LINE通知が飛ぶ（入金確認したときなど）'],
+    ['「期限切れ」と入力', '期限切れLINE通知＋待機1番が自動繰上げ'],
+    ['「キャンセル済」と入力', '待機1番が自動繰上げ（※LINE通知は飛びません。通知も送るなら管理画面の✕キャンセルを使う）'],
+    ['⚠️ 文言は完全一致で！', '「確定 」(空白入り)や「かくてい」では反応しません。上の3つをそのままコピーして使うのが安全'],
+    ['', ''],
+    ['🚫 やってはいけないこと', ''],
+    ['行の削除・並べ替え・切り取り', '繰上げ順や自動処理が壊れます。消したい時はG列を「キャンセル済」にするだけ'],
+    ['G列以外のセルの編集', '期限・待機順・備考などは自動管理です（メモを書きたい時はK列の備考のみOK）'],
+    ['1〜9行目（見出しエリア）の変更', 'データは10行目からです'],
+    ['ファイル設定のタイムゾーン変更', '「東京」のまま変えない（期限計算がズレます）'],
+    ['', ''],
+    ['❓ 困ったら', 'とーるさんへ連絡（このシートは自動生成なので編集しても次回作り直されます）']
+  ];
+
+  sh.getRange(1, 1, rows.length, 2).setValues(rows);
+
+  // 体裁
+  sh.setColumnWidth(1, 340);
+  sh.setColumnWidth(2, 560);
+  sh.getRange(1, 1, rows.length, 2).setWrap(true).setVerticalAlignment('top').setFontSize(10);
+
+  // タイトル
+  sh.getRange(1, 1, 1, 2).merge().setFontSize(14).setFontWeight('bold')
+    .setFontColor('#ffffff').setBackground(C_TITLE).setHorizontalAlignment('center');
+  sh.getRange(2, 1, 1, 2).merge().setFontColor('#888888').setFontSize(9).setHorizontalAlignment('center');
+  sh.setRowHeight(1, 34);
+
+  // セクション見出しと重要行の色付け
+  for (var i = 0; i < rows.length; i++) {
+    var r = i + 1;
+    var a = String(rows[i][0]);
+    if (a.indexOf('🏦') === 0 || a.indexOf('📝') === 0 || a.indexOf('🚫') === 0) {
+      sh.getRange(r, 1, 1, 2).setBackground(C_HEAD).setFontWeight('bold').setFontSize(11);
+    }
+    if (a.indexOf('⚠️') === 0) {
+      sh.getRange(r, 1, 1, 2).setBackground(C_WARN);
+    }
+    if (a.indexOf('★') === 0) {
+      sh.getRange(r, 1, 1, 2).setBackground(C_OK).setFontWeight('bold');
+    }
+    if (a.indexOf('③') === 0) {
+      sh.getRange(r, 1, 1, 2).setBackground(C_IMPORTANT).setFontWeight('bold');
+    }
+  }
+
+  return '📖 操作マニュアルシートを作成しました';
+}
