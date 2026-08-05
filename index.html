@@ -47,11 +47,17 @@
     </div>
   </div>
 
-  <!-- 未登録：セミナー選択 -->
-  <div class="screen" id="screen-select">
+  <!-- 未登録：LINE入口へ誘導（セミナー選択は出さない） -->
+  <div class="screen" id="screen-noentry">
     <div class="card">
-      <h2>ご希望のセミナーをお選びください</h2>
-      <div id="seminar-list"></div>
+      <span class="icon-large">📱</span>
+      <h2>LINEのご案内からお進みください</h2>
+      <p class="message-center">
+        お申込み情報がまだ確認できませんでした。<br>
+        お手数ですが、LINEのトーク履歴にある<br>
+        <strong>「お申込みはこちら」ボタン</strong>から<br>
+        お進みくださいませ。
+      </p>
     </div>
   </div>
 
@@ -211,9 +217,9 @@ async function loadStatus() {
 }
 
 function render(st) {
-  // 未登録
+  // 未登録：セミナー選択は出さず、入口記憶があればその受付フォームへ
   if (!st.seminar || st.status === '未登録') {
-    renderSelect();
+    renderNoEntry();
     return;
   }
   const sem = CONFIG.SEMINARS[st.seminar] || {};
@@ -242,19 +248,15 @@ function render(st) {
   }
 }
 
-/** 未登録：セミナー選択 */
-function renderSelect() {
-  const list = document.getElementById('seminar-list');
-  // 一般受付のみ表示（先行はLINE入口URL経由のため）
-  const keys = ['self_general', 'marke_general'];
-  list.innerHTML = keys.map(k => {
-    const s = CONFIG.SEMINARS[k];
-    return '<a class="seminar-select-card" href="apply.html?seminar=' + k + '">' +
-      '<span class="arrow">›</span>' +
-      '<div class="t">' + esc(s.shortTitle) + '</div>' +
-      '<div class="d">' + esc(s.schedule) + '<br>' + esc(s.price) + '</div></a>';
-  }).join('');
-  showScreen('screen-select');
+/** 未登録：入口記憶があれば受付フォームへ転送、なければLINE誘導 */
+function renderNoEntry() {
+  let saved = null;
+  try { saved = localStorage.getItem('kamiya_seminar'); } catch (_) {}
+  if (saved && CONFIG.SEMINARS[saved]) {
+    location.replace('apply.html?seminar=' + encodeURIComponent(saved));
+    return;
+  }
+  showScreen('screen-noentry');
 }
 
 /** 決済案内中 */

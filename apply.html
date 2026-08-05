@@ -163,6 +163,9 @@ function init() {
   if (!uid) { showNoUid(); return; }
   if (!sem) { location.href = 'index.html'; return; }
 
+  // 入口のセミナーを記憶（トップに来ても正しい受付へ戻せるように）
+  try { localStorage.setItem('kamiya_seminar', seminarKey); } catch (_) {}
+
   document.getElementById('form-seminar-title').textContent = sem.title;
   document.getElementById('form-schedule').textContent = sem.schedule;
   document.getElementById('form-venue').textContent = CONFIG.VENUE.name;
