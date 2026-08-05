@@ -123,7 +123,10 @@
 
     <div class="refresh-bar">
       <span class="time" id="updated-at">-</span>
-      <button onclick="loadData()">🔄 更新</button>
+      <span>
+        <button onclick="showScreen('screen-manual')" style="margin-right:6px;">📖 使い方</button>
+        <button onclick="loadData()">🔄 更新</button>
+      </span>
     </div>
 
     <div class="tabs" id="tabs"></div>
@@ -138,6 +141,55 @@
       </table>
     </div>
     <button class="btn btn-text" onclick="logout()" style="margin-top:18px;">🔒 ログアウト（キーを削除）</button>
+  </div>
+
+  <!-- 使い方（操作マニュアル） -->
+  <div class="screen" id="screen-manual">
+    <div class="card">
+      <h2>📖 このページの使い方</h2>
+      <h3>基本ルール</h3>
+      <p style="font-size:13px;">申込・キャンセル待ち・繰上げ・3日期限切れは<strong>すべて自動</strong>です。ボタンで状態を変えると、お客さまへの<strong>LINE通知も自動で</strong>飛びます（手動でLINEを送る必要はありません）。</p>
+      <p style="font-size:13px;">お支払い期限は<strong>一人ひとり「申込（または繰上げ）から3日間」</strong>で個別に管理されています。</p>
+
+      <h3>🏦 銀行振込の運用（一番大事な作業）</h3>
+      <table class="info-table" style="font-size:13px;">
+        <tr><th>①</th><td>お客さまが振込→アプリで報告 → 状態が「<strong>振込報告済み</strong>」に</td></tr>
+        <tr><th>②</th><td>通帳/ネットバンクで入金確認。<strong style="color:var(--warn);">振込名義が申込のお名前と違うことがある</strong>ので、備考の「名義:〜」と照合</td></tr>
+        <tr><th>③</th><td>その方の行の「<strong>✔ 入金確認→確定</strong>」を押す → 確定LINEが自動送信。<strong>これで完了!</strong></td></tr>
+      </table>
+      <div class="note-box" style="font-size:12px;">
+        ⚠️ 入金があるのに「期限切れ」になってしまっていたら：「↩復帰させる」→「✔確定」の順に押せばOKです。<br>
+        ⚠️ 入金がないまま3日過ぎた場合は何もしなくてOK（自動で期限切れ→繰上げ）。
+      </div>
+
+      <h3>ボタンの意味</h3>
+      <table class="info-table" style="font-size:13px;">
+        <tr><th>✔ 確定にする</th><td>参加確定＋確定LINE通知</td></tr>
+        <tr><th>✕ キャンセル</th><td>キャンセル＋LINE通知＋待機1番が自動繰上げ</td></tr>
+        <tr><th>↩ 復帰させる</th><td>「決済案内中」に戻す（期限は押した時から3日・LINE通知なし）</td></tr>
+        <tr><th>⬆ 待機1番を繰上げる</th><td>空席があるのに繰上がっていない時の手動繰上げ（「あなたの番」LINE通知が飛ぶ）</td></tr>
+      </table>
+
+      <h3>状態の意味</h3>
+      <table class="info-table" style="font-size:13px;">
+        <tr><th><span class="st st-kessai">決済案内中</span></th><td>席は確保済み・お支払い待ち（期限3日）</td></tr>
+        <tr><th><span class="st st-furikomi">振込報告済み</span></th><td>お客さまが「振り込んだ」と報告済み → 入金確認してください</td></tr>
+        <tr><th><span class="st st-kakutei">確定</span></th><td>お支払い確認済み・参加確定</td></tr>
+        <tr><th><span class="st st-taiki">キャンセル待ち</span></th><td>満席のため待機中（番号順に自動繰上げ）</td></tr>
+        <tr><th><span class="st st-kigen">期限切れ</span></th><td>3日以内にお支払いがなかった方</td></tr>
+        <tr><th><span class="st st-cancel">キャンセル済</span></th><td>ご本人キャンセル or 運営キャンセル（アプリからの場合、理由はスプシ備考列に記録）</td></tr>
+      </table>
+
+      <h3>注意事項</h3>
+      <div class="note-box" style="font-size:12px;">
+        ・最新状況を見るときは右上の「🔄 更新」を押す（残席表示には時間差があります）<br>
+        ・このページのURL・管理キーはお客さまに絶対に送らない<br>
+        ・スプレッドシートを直接さわる場合は、スプシ内の「📖 操作マニュアル」シートの注意を確認<br>
+        ・確定済みの方のキャンセルは返金なしルールのため、必ず本人と合意してから
+      </div>
+
+      <button class="btn btn-primary" onclick="showScreen('screen-dash')" style="margin-top:8px;">← 管理画面に戻る</button>
+    </div>
   </div>
 
   <div class="footer">株式会社 Bonheur Lelien｜運営者専用ページ</div>
@@ -261,7 +313,7 @@ function switchFilter(f) { currentFilter = f; renderFilters(); renderRoster(); }
 const ACTION_DEFS = {
   '決済案内中':   [{ st: '確定', label: '✔ 確定にする', cls: 'abtn-ok', msg: '確定にします。本人に「確定」のLINE通知が届きます。よろしいですか？' },
                    { st: 'キャンセル済', label: '✕ キャンセル', cls: 'abtn-cancel', msg: 'キャンセルにします。本人に通知が届き、待機1番の方が自動で繰上がります。よろしいですか？' }],
-  '振込報告済み': [{ st: '確定', label: '✔ 入金確認→確定', cls: 'abtn-ok', msg: '入金を確認して確定にします。本人に「確定」のLINE通知が届きます。よろしいですか？' },
+  '振込報告済み': [{ st: '確定', label: '✔ 入金確認→確定', cls: 'abtn-ok', deposit: true },
                    { st: 'キャンセル済', label: '✕ キャンセル', cls: 'abtn-cancel', msg: 'キャンセルにします。本人に通知が届き、待機1番の方が自動で繰上がります。よろしいですか？' }],
   'キャンセル待ち': [{ st: 'キャンセル済', label: '✕ キャンセル', cls: 'abtn-cancel', msg: '待機からキャンセルにします。本人に通知が届きます。よろしいですか？' }],
   '期限切れ':     [{ st: '決済案内中', label: '↩ 復帰させる', cls: 'abtn-back', msg: '決済案内中に戻します（期限は今から3日）。LINE通知は飛びません。よろしいですか？' }],
@@ -269,8 +321,35 @@ const ACTION_DEFS = {
   '確定':         [{ st: 'キャンセル済', label: '✕ キャンセル', cls: 'abtn-cancel', msg: '【注意】確定済みの方をキャンセルにします。返金なしルールのため、事前に本人と合意のうえ実行してください。本人にキャンセル通知が届き、待機1番の方が繰上がります。本当によろしいですか？' }]
 };
 
+/** 振込確定専用：入金確認の呼びかけ＋名義照合＋2段階確認 */
+async function doConfirmDeposit(uid, name, memo) {
+  // 備考から報告名義を抽出（「名義:〜」の部分）
+  let reportedName = '（報告なし）';
+  const m = String(memo || '').match(/名義:([^\s/]+)/);
+  if (m) reportedName = m[1];
+
+  const check1 =
+    '【入金確認チェック】\n\n' +
+    '通帳またはネットバンキングで、実際の入金を確認しましたか？\n\n' +
+    '・申込者名：' + name + '\n' +
+    '・報告された振込名義：' + reportedName + '\n\n' +
+    '※振込名義が申込のお名前と違う場合があります。金額と名義を照合できている場合のみOKを押してください。';
+  if (!confirm(check1)) return;
+
+  const check2 =
+    name + ' さまを【確定】にします。\n' +
+    '本人に「確定」のLINE通知が自動で届きます。\n\nよろしいですか？';
+  if (!confirm(check2)) return;
+
+  await execUpdateStatus(uid, '確定');
+}
+
 async function doUpdateStatus(uid, newStatus, msg) {
   if (!confirm(msg)) return;
+  await execUpdateStatus(uid, newStatus);
+}
+
+async function execUpdateStatus(uid, newStatus) {
   showLoading(true);
   try {
     const url = new URL(CONFIG.GAS_URL);
@@ -350,12 +429,19 @@ function renderRoster() {
     const badge = '<span class="st ' + (STATUS_CLASS[r.status] || '') + '">' + esc(r.status) +
       (r.status === 'キャンセル待ち' && r.wait_num ? ' ' + esc(String(r.wait_num)) + '番' : '') + '</span>';
     const method = r.method ? '<div class="sub">' + esc(r.method) + '</div>' : '';
-    const actions = (ACTION_DEFS[r.status] || []).map(a =>
-      '<button class="abtn ' + a.cls + '" onclick=\'doUpdateStatus(' + JSON.stringify(r.uid) + ',' +
-      JSON.stringify(a.st) + ',' + JSON.stringify(a.msg) + ')\'>' + a.label + '</button>'
-    ).join('');
+    // 振込報告済みは報告名義も表示（入金照合用）
+    const memoLine = (r.status === '振込報告済み' && r.memo)
+      ? '<div class="sub" style="color:#4a6fa5;">' + esc(r.memo) + '</div>' : '';
+    const actions = (ACTION_DEFS[r.status] || []).map(a => {
+      if (a.deposit) {
+        return '<button class="abtn ' + a.cls + '" onclick=\'doConfirmDeposit(' + JSON.stringify(r.uid) + ',' +
+          JSON.stringify(r.name || '') + ',' + JSON.stringify(r.memo || '') + ')\'>' + a.label + '</button>';
+      }
+      return '<button class="abtn ' + a.cls + '" onclick=\'doUpdateStatus(' + JSON.stringify(r.uid) + ',' +
+        JSON.stringify(a.st) + ',' + JSON.stringify(a.msg) + ')\'>' + a.label + '</button>';
+    }).join('');
     return '<tr>' +
-      '<td><span class="nm">' + esc(r.name || '（無記名）') + '</span>' + method + '</td>' +
+      '<td><span class="nm">' + esc(r.name || '（無記名）') + '</span>' + method + memoLine + '</td>' +
       '<td>' + badge + '</td>' +
       '<td>' + daysLeftLabel(r.deadline, r.status) + (r.deadline && r.status === '決済案内中' ? '<div class="sub">' + shortDate(r.deadline) + 'まで</div>' : '') + '</td>' +
       '<td class="sub">' + shortDate(r.applied) + '</td>' +

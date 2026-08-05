@@ -132,7 +132,8 @@ function adminSummary_() {
             status:   status,
             wait_num: data[i][7] || '',
             paid_at:  data[i][8] ? formatDateValue_(data[i][8]) : '',
-            method:   data[i][9] || ''
+            method:   data[i][9] || '',
+            memo:     data[i][10] || ''
           });
         }
       }
