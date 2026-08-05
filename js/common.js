@@ -60,7 +60,7 @@ function showError(msg) {
   showScreen('screen-error');
 }
 
-/** 期限カウントダウン開始 */
+/** 期限カウントダウン開始（1秒刻み） */
 function startCountdown(deadlineStr, elId) {
   const el = document.getElementById(elId);
   if (!el || !deadlineStr) return;
@@ -75,8 +75,9 @@ function startCountdown(deadlineStr, elId) {
     const d = Math.floor(diff / 86400000);
     const h = Math.floor(diff % 86400000 / 3600000);
     const m = Math.floor(diff % 3600000 / 60000);
-    el.textContent = (d > 0 ? d + '日 ' : '') + h + '時間 ' + m + '分';
-    setTimeout(tick, 30000);
+    const s = Math.floor(diff % 60000 / 1000);
+    el.textContent = (d > 0 ? d + '日 ' : '') + h + '時間 ' + m + '分 ' + s + '秒';
+    setTimeout(tick, 1000);
   }
   tick();
 }
