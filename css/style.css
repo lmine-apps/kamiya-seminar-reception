@@ -289,6 +289,54 @@ body {
 .seminar-select-card .d { font-size: 13px; color: var(--text-light); margin-top: 4px; }
 .seminar-select-card .arrow { float: right; color: var(--accent); }
 
+/* ステップ表示（今どこ？迷子防止） */
+.steps-bar {
+  display: flex;
+  margin: 0 0 18px;
+  padding: 14px 6px 10px;
+  background: var(--card);
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(120, 90, 70, .07);
+}
+.step {
+  flex: 1;
+  text-align: center;
+  font-size: 11px;
+  color: #b8aca5;
+  position: relative;
+}
+.step .dot {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: #ece2da;
+  color: #8a7d76;
+  line-height: 28px;
+  margin: 0 auto 5px;
+  font-weight: 700;
+  font-size: 13px;
+  position: relative;
+  z-index: 1;
+}
+.step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 14px;
+  left: calc(50% + 17px);
+  width: calc(100% - 34px);
+  height: 2px;
+  background: #ece2da;
+}
+.step.done .dot { background: var(--success); color: #fff; }
+.step.done { color: var(--success); }
+.step.done:not(:last-child)::after { background: var(--success); }
+.step.active .dot {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(156, 111, 95, .4);
+}
+.step.active { color: var(--primary-dark); font-weight: 700; }
+.step.active .label::after { content: ' ◀ いまここ'; font-size: 10px; }
+
 /* フッター */
 .footer {
   text-align: center;

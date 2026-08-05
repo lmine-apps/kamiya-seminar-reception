@@ -91,6 +91,28 @@ function formatDeadline(str) {
     d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
 }
 
+/**
+ * ステップ表示を描画（迷子防止バー）
+ * @param {string} containerId 描画先要素ID
+ * @param {number} current いま何ステップ目か（1始まり）
+ * @param {boolean} isCash 当日現金（支払いステップなし）なら true
+ * @param {boolean} allDone 全ステップ完了表示にするなら true
+ */
+function renderSteps(containerId, current, isCash, allDone) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const labels = isCash ? ['お申込み', 'ご参加確定'] : ['お申込み', 'お支払い', 'ご参加確定'];
+  el.className = 'steps-bar';
+  el.innerHTML = labels.map((label, i) => {
+    const n = i + 1;
+    let cls = 'step';
+    if (allDone || n < current) cls += ' done';
+    else if (n === current) cls += ' active';
+    const mark = (allDone || n < current) ? '✓' : n;
+    return '<div class="' + cls + '"><div class="dot">' + mark + '</div><span class="label">' + esc(label) + '</span></div>';
+  }).join('');
+}
+
 /** HTMLエスケープ */
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({

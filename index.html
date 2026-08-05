@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=2">
 </head>
 <body>
 <div class="container">
@@ -63,6 +63,7 @@
 
   <!-- 決済案内中 -->
   <div class="screen" id="screen-payment">
+    <div id="steps-payment"></div>
     <div class="badge-wrap"><span class="badge info">お手続き中</span></div>
     <div class="card">
       <h2 id="pay-seminar-title"></h2>
@@ -89,6 +90,7 @@
 
   <!-- 振込報告フォーム -->
   <div class="screen" id="screen-bank-report">
+    <div id="steps-bank-report"></div>
     <div class="card">
       <h2>お振込のご報告</h2>
       <p class="message-center" style="font-size:13px;">お振込がお済みになりましたら、下記よりご報告くださいませ。</p>
@@ -109,6 +111,7 @@
 
   <!-- 振込報告済み -->
   <div class="screen" id="screen-bank-reported">
+    <div id="steps-bank-reported"></div>
     <div class="badge-wrap"><span class="badge info">確認中</span></div>
     <div class="card">
       <span class="icon-large">🕊</span>
@@ -140,6 +143,7 @@
 
   <!-- 参加確定 -->
   <div class="screen" id="screen-confirmed">
+    <div id="steps-confirmed"></div>
     <div class="badge-wrap"><span class="badge success">ご参加確定</span></div>
     <div class="card">
       <span class="icon-large">🌸</span>
@@ -196,8 +200,8 @@
 
 </div>
 
-<script src="js/config.js"></script>
-<script src="js/common.js"></script>
+<script src="js/config.js?v=2"></script>
+<script src="js/common.js?v=2"></script>
 <script>
 const uid = getUid();
 let currentStatus = null;
@@ -229,6 +233,7 @@ function render(st) {
       renderPayment(st, sem);
       break;
     case '振込報告済み':
+      renderSteps('steps-bank-reported', 2, false, false);
       showScreen('screen-bank-reported');
       break;
     case 'キャンセル待ち':
@@ -261,6 +266,8 @@ function renderNoEntry() {
 
 /** 決済案内中 */
 function renderPayment(st, sem) {
+  renderSteps('steps-payment', 2, false, false);
+  renderSteps('steps-bank-report', 2, false, false);
   document.getElementById('pay-seminar-title').textContent = sem.title || st.seminar;
   document.getElementById('pay-schedule').textContent = sem.schedule || '';
   document.getElementById('pay-venue').textContent = CONFIG.VENUE.name;
@@ -324,6 +331,7 @@ function renderWaiting(st, sem) {
 
 /** 参加確定 */
 function renderConfirmed(st, sem) {
+  renderSteps('steps-confirmed', 3, sem.payment === 'cash', true);
   document.getElementById('confirmed-name-line').textContent =
     st.name ? st.name + ' さま' : '';
   document.getElementById('conf-seminar').textContent = sem.title || st.seminar;
