@@ -673,10 +673,10 @@ body.page-photo-bg::before {
   z-index: -1;
   background:
     linear-gradient(180deg,
-      rgba(249, 245, 241, .78) 0%,
-      rgba(249, 245, 241, .90) 42%,
-      rgba(249, 245, 241, .985) 78%,
-      var(--bg) 100%),
+      rgba(249, 245, 241, .62) 0%,
+      rgba(249, 245, 241, .78) 45%,
+      rgba(249, 245, 241, .93) 82%,
+      rgba(249, 245, 241, .97) 100%),
     url('../assets/seminar-1.jpg') 12% 28% / cover no-repeat;
   /* 12% = 左寄せ（スマホの縦切り抜きでも左の登壇者が写る位置） */
   pointer-events: none;
@@ -685,9 +685,9 @@ body.page-photo-bg::before {
 /* 写真背景ページのカードは少し透かして、すりガラス風に背景を見せる */
 body.page-photo-bg .card,
 body.page-photo-bg .steps-bar {
-  background: rgba(255, 254, 253, .86);
-  backdrop-filter: blur(7px) saturate(1.05);
-  -webkit-backdrop-filter: blur(7px) saturate(1.05);
+  background: rgba(255, 254, 253, .72);
+  backdrop-filter: blur(4px) saturate(1.05);
+  -webkit-backdrop-filter: blur(4px) saturate(1.05);
 }
 
 /* 写真背景カード（確定画面など・カード内に薄く敷く） */
