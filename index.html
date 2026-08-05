@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=13">
+<link rel="stylesheet" href="css/style.css?v=14">
 </head>
 <body>
 <div class="container">
@@ -257,8 +257,8 @@
 
 </div>
 
-<script src="js/config.js?v=13"></script>
-<script src="js/common.js?v=13"></script>
+<script src="js/config.js?v=14"></script>
+<script src="js/common.js?v=14"></script>
 <script>
 const uid = getUid();
 let currentStatus = null;
@@ -339,16 +339,21 @@ function renderPayment(st, sem) {
   }
 
   // 支払い方法出し分け
+  const isGuest = uid && String(uid).indexOf('guest_') === 0;
   const box = document.getElementById('pay-methods');
   if (sem.payment === 'cash') {
     box.innerHTML = '<div class="note-box">' + esc(sem.paymentNote) + '</div>';
   } else {
     let html = '<h3>お支払い方法</h3>';
     // プロラインの決済ページ(/pd/)経由：動作確認済みの確実な方式
+    // ※ゲスト（LINE未登録の特別受付）はプロライン決済が使えないため銀行振込のみ
     const stripeUrl = CONFIG.STRIPE_URLS[st.seminar];
-    if (stripeUrl) {
+    if (stripeUrl && !isGuest) {
       html += '<a class="btn btn-primary" href="' + stripeUrl +
         '?uid=' + encodeURIComponent(uid) + '">クレジットカードで支払う</a>';
+    }
+    if (isGuest) {
+      html += '<p class="form-note">※特別受付のため、お支払いは銀行振込のみのご対応となります。</p>';
     }
     html += '<h3>銀行振込をご希望の方</h3>' +
       '<div class="bank-box">' +
@@ -358,6 +363,12 @@ function renderPayment(st, sem) {
       '<div class="row"><span class="k">名義</span><span>' + esc(CONFIG.BANK_INFO.holder) + '</span></div>' +
       '</div>' +
       '<button class="btn btn-outline" onclick="showScreen(\'screen-bank-report\')">振込を報告する</button>';
+    // ゲストにはLINEの代わりに専用URLの保存を案内
+    if (isGuest) {
+      html += '<div class="note-box" style="border-left-color:#c8a96b; background:#fdf9f4; font-size:12px;">' +
+        '📌 <strong>このページのURLを必ず保存（ブックマーク）してください。</strong><br>' +
+        'LINE未登録での特別受付のため、お手続き状況の確認はこのページからのみ行えます。</div>';
+    }
     box.innerHTML = html;
   }
   showScreen('screen-payment');

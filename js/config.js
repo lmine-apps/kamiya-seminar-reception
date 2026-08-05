@@ -106,5 +106,9 @@ const CONFIG = {
   },
 
   // 待機順ポーリング間隔（ミリ秒）
-  WAIT_POLL_INTERVAL: 15000
+  WAIT_POLL_INTERVAL: 15000,
+
+  // 特別枠（ゲスト受付）の合言葉キー
+  // 使い方: apply.html?seminar=◯◯&guest=azg-Kx7m2 のURLを運営が個別に渡す
+  GUEST_KEY: 'azg-Kx7m2'
 };
