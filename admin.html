@@ -251,29 +251,49 @@ function logout() {
   location.reload();
 }
 
-/* --- データ取得 --- */
+/* --- データ取得（自動リトライ付き・失敗してもキーは保持） --- */
 async function loadData() {
   showLoading(true);
-  try {
-    const url = new URL(CONFIG.GAS_URL);
-    url.searchParams.set('action', 'admin_summary');
-    url.searchParams.set('token', adminKey);
-    const res = await fetch(url.toString());
-    const data = await res.json();
-    if (!data.ok) {
-      if (data.error === 'unauthorized') {
-        try { localStorage.removeItem('kamiya_admin_key'); } catch (_) {}
-        showKeyGate('管理キーが正しくありません');
-        return;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const url = new URL(CONFIG.GAS_URL);
+      url.searchParams.set('action', 'admin_summary');
+      url.searchParams.set('token', adminKey);
+      const res = await fetch(url.toString());
+      const data = await res.json();
+      if (!data.ok) {
+        if (data.error === 'unauthorized') {
+          // キーが本当に間違っている時だけ削除
+          try { localStorage.removeItem('kamiya_admin_key'); } catch (_) {}
+          adminKey = null;
+          showKeyGate('管理キーが正しくありません');
+          return;
+        }
+        throw new Error(data.error || 'error');
       }
-      throw new Error(data.error || 'error');
+      summaryData = data;
+      document.getElementById('updated-at').textContent = '最終更新：' + (data.generated_at || '');
+      renderAll();
+      showScreen('screen-dash');
+      return;
+    } catch (err) {
+      if (attempt >= 2) handleLoadFailure_();
+      // 1回目の失敗は少し待って自動リトライ
+      else await new Promise(r => setTimeout(r, 1500));
     }
-    summaryData = data;
-    document.getElementById('updated-at').textContent = '最終更新：' + (data.generated_at || '');
-    renderAll();
+  }
+}
+
+/** 通信失敗時：キーは保持したまま復帰しやすく */
+function handleLoadFailure_() {
+  if (summaryData) {
+    // 前のデータがあるならそのまま表示を維持
     showScreen('screen-dash');
-  } catch (err) {
-    showKeyGate('読み込みに失敗しました。通信環境をご確認ください。');
+    alert('通信に失敗しました（電波状況やスリープ明けはよく起きます）。\nもう一度「🔄 更新」を押してください。');
+  } else {
+    showKeyGate('通信に失敗しました。そのまま「開く」でもう一度お試しください。');
+    // キーを再入力しなくて済むように入力欄へ復元
+    if (adminKey) document.getElementById('key-input').value = adminKey;
   }
 }
 
