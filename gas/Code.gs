@@ -886,6 +886,65 @@ function out_(obj) {
 }
 
 /*** ============================================================
+ * 👥💎 総合リストシート生成（1回だけ手動実行する関数）
+ *
+ * 【実行方法】エディタ上部の関数選択で「setupMasterLists」を選び「実行」
+ * ・「👥 総参加者一覧」…全セミナーの確定者を横断表示（リアルタイム数式）
+ * ・「💎 準見込みリスト」…期限切れ/キャンセルの方＝再アプローチ先（同上）
+ * ※デプロイ不要。何度実行しても作り直されるだけなので安全。
+ * ============================================================ */
+function setupMasterLists() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // 4シートを縦に積んだデータの束（B〜K列＋セミナー名ラベル列）
+  var parts = Object.keys(SEMINARS).map(function (key) {
+    var s = SEMINARS[key].sheet;
+    var label = s.replace('📋 ', '');
+    return "{'" + s + "'!B10:K1000, ARRAYFORMULA(IF(LEN('" + s + "'!A10:A1000),\"" + label + "\",\"\"))}";
+  });
+  var stack = '{' + parts.join(';') + '}';
+  // 列対応: Col1=名前 Col2=メール Col3=電話 Col4=申込日時 Col5=期限
+  //         Col6=状態 Col7=待機順 Col8=決済完了 Col9=決済方法 Col10=備考 Col11=セミナー名
+
+  var C_TITLE = '#9c6f5f', C_HEAD = '#f8f4ea';
+
+  function buildSheet(name, title, note, headers, formula) {
+    var sh = ss.getSheetByName(name);
+    if (!sh) { sh = ss.insertSheet(name); } else { sh.clear(); }
+    sh.getRange(1, 1, 1, headers.length).merge().setValue(title)
+      .setFontSize(13).setFontWeight('bold').setFontColor('#fff')
+      .setBackground(C_TITLE).setHorizontalAlignment('center');
+    sh.getRange(2, 1, 1, headers.length).merge().setValue(note)
+      .setFontSize(9).setFontColor('#888').setHorizontalAlignment('center');
+    sh.getRange(4, 1, 1, headers.length).setValues([headers])
+      .setFontWeight('bold').setBackground(C_HEAD).setFontSize(10);
+    sh.getRange(5, 1).setFormula(formula);
+    sh.setColumnWidth(1, 140);
+    sh.setColumnWidth(2, 130);
+    for (var c = 3; c <= headers.length; c++) sh.setColumnWidth(c, 150);
+    sh.setFrozenRows(4);
+  }
+
+  buildSheet(
+    '👥 総参加者一覧',
+    '👥 総参加者一覧（全セミナー横断・確定者）',
+    '※受付シートから自動反映（さわらない）。複数セミナー参加の方は複数行で表示されます',
+    ['お名前', '参加セミナー', 'メール', '電話', '決済方法', '申込日時'],
+    '=IFERROR(QUERY(' + stack + ',"select Col1, Col11, Col2, Col3, Col9, Col4 where Col6=\'確定\' and Col1 is not null order by Col11, Col4",0),"まだ確定の方はいません")'
+  );
+
+  buildSheet(
+    '💎 準見込みリスト',
+    '💎 準見込みリスト（申込意思あり・参加に至らなかった方）',
+    '※期限切れ/キャンセル済の方が自動で並びます。次回セミナーの再アプローチ候補！（さわらない）',
+    ['お名前', '対象セミナー', '状態', 'メール', '電話', '申込日時'],
+    '=IFERROR(QUERY(' + stack + ',"select Col1, Col11, Col6, Col2, Col3, Col4 where (Col6=\'期限切れ\' or Col6=\'キャンセル済\') and Col1 is not null order by Col4 desc",0),"まだ該当の方はいません")'
+  );
+
+  return '👥💎 総合リスト2シートを作成しました';
+}
+
+/*** ============================================================
  * 📊 集計エリア再設置（1回だけ手動実行する関数）
  *
  * 【実行方法】エディタ上部の関数選択で「setupSummaryFormulas」を選び「実行」
