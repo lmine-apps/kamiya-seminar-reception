@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=21">
+<link rel="stylesheet" href="css/style.css?v=22">
 </head>
 <body>
 <div class="container">
@@ -122,8 +122,8 @@
   <div class="screen" id="screen-bank-report">
     <div id="steps-bank-report"></div>
     <div class="card">
-      <h2>お振込のご報告</h2>
-      <p class="message-center" style="font-size:13px;">お振込がお済みになりましたら、下記よりご報告くださいませ。</p>
+      <h2>振込完了のご連絡</h2>
+      <p class="message-center" style="font-size:13px;">お振込がお済みになりましたら、下記よりご連絡くださいませ。<br>入金の照会が完了しましたら、ご連絡させていただきます。</p>
       <form id="bank-report-form">
         <div class="form-group">
           <label>お振込名義<span class="req">必須</span></label>
@@ -133,7 +133,7 @@
           <label>お振込日</label>
           <input type="date" name="transfer_date">
         </div>
-        <button type="submit" class="btn btn-primary" id="btn-bank-submit">報告する</button>
+        <button type="submit" class="btn btn-primary" id="btn-bank-submit">振込完了を連絡する</button>
         <button type="button" class="btn btn-text" onclick="showScreen('screen-payment')">戻る</button>
       </form>
     </div>
@@ -257,8 +257,8 @@
 
 </div>
 
-<script src="js/config.js?v=21"></script>
-<script src="js/common.js?v=21"></script>
+<script src="js/config.js?v=22"></script>
+<script src="js/common.js?v=22"></script>
 <script>
 const uid = getUid();
 let currentStatus = null;
@@ -349,20 +349,27 @@ function renderPayment(st, sem) {
     // ※ゲスト（LINE未登録の特別受付）はプロライン決済が使えないため銀行振込のみ
     const stripeUrl = CONFIG.STRIPE_URLS[st.seminar];
     if (stripeUrl && !isGuest) {
-      html += '<a class="btn btn-primary" href="' + stripeUrl +
+      html += '<p style="font-size:13px; font-weight:700; color:var(--primary-dark); margin:14px 0 8px;">💳 カードでのお支払いの方はこちら</p>' +
+        '<a class="btn btn-primary" href="' + stripeUrl +
         '?uid=' + encodeURIComponent(uid) + '">クレジットカードで支払う</a>';
     }
     if (isGuest) {
       html += '<p class="form-note">※特別受付のため、お支払いは銀行振込のみのご対応となります。</p>';
     }
-    html += '<h3>銀行振込をご希望の方</h3>' +
+    html += '<p style="font-size:13px; font-weight:700; color:var(--primary-dark); margin:22px 0 8px;">🏦 銀行振込ご希望の方はこちら</p>' +
+      '<div class="note-box" style="margin:8px 0 10px; font-size:13px; color:var(--text);">' +
+      '<strong>お振込の手順</strong><br>' +
+      '<span style="display:block; margin-top:4px;">① 下記の口座へお振込みください</span>' +
+      '<span style="display:block;">② お振込み後、下のボタンから<strong>振込完了のご連絡</strong>をお願いします</span>' +
+      '<span style="display:block;">③ 入金の照会が完了しましたら、ご連絡させていただきます</span>' +
+      '</div>' +
       '<div class="bank-box">' +
       '<div class="row"><span class="k">銀行</span><span>' + esc(CONFIG.BANK_INFO.bank) + '</span></div>' +
       '<div class="row"><span class="k">支店</span><span>' + esc(CONFIG.BANK_INFO.branch) + '</span></div>' +
       '<div class="row"><span class="k">口座</span><span>' + esc(CONFIG.BANK_INFO.type) + ' ' + esc(CONFIG.BANK_INFO.number) + '</span></div>' +
       '<div class="row"><span class="k">名義</span><span>' + esc(CONFIG.BANK_INFO.holder) + '</span></div>' +
       '</div>' +
-      '<button class="btn btn-outline" onclick="showScreen(\'screen-bank-report\')">振込を報告する</button>';
+      '<button class="btn btn-outline" onclick="showScreen(\'screen-bank-report\')">振込完了のご連絡はこちら</button>';
     // ゲストにはLINEの代わりに専用URLの保存を案内
     if (isGuest) {
       html += '<div class="note-box" style="border-left-color:#c8a96b; background:#fdf9f4; font-size:12px;">' +
