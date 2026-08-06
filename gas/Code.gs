@@ -664,6 +664,24 @@ function onEdit(e) {
     var sh = range.getSheet();
     var sheetName = sh.getName();
 
+    // 🏦支払い状況シートの☑ → 確定処理
+    if (sheetName === PAYMENT_VIEW_SHEET) {
+      if (range.getColumn() === 1 && range.getRow() >= 5 && range.getValue() === true) {
+        var vRow = range.getRow();
+        var vUid = String(sh.getRange(vRow, 8).getValue());
+        var vLabel = String(sh.getRange(vRow, 3).getValue());
+        var vKey = null;
+        Object.keys(SEMINARS).forEach(function (k) {
+          if (SEMINARS[k].sheet === '📋 ' + vLabel) vKey = k;
+        });
+        if (vUid && vKey) {
+          confirmFromPaymentView_(vUid, vKey);
+          setupPaymentStatusSheet();  // 確定した行が消えた最新リストに再構築
+        }
+      }
+      return;
+    }
+
     var seminarKey = findSeminarBySheetName_(sheetName);
     if (!seminarKey) return;
 
@@ -734,6 +752,9 @@ function checkExpired() {
     notifyOps_('⏰ 期限切れ処理を行いました',
       expiredCount + '件のお申込みが期限切れになりました。待機の方がいる場合は自動で繰上げています。');
   }
+
+  // 🏦支払い状況シートも最新化（1時間ごとに自動更新される）
+  try { setupPaymentStatusSheet(); } catch (_) {}
 
   return out_({ ok: true, expiredCount: expiredCount });
 }
@@ -883,6 +904,115 @@ function out_(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+/*** ============================================================
+ * 🏦 支払い状況シート（全セミナー横断・☑で確定できるアクションビュー）
+ *
+ * 【初回】関数選択で「setupPaymentStatusSheet」を実行
+ * 【日常】スプシのメニュー「🌸受付管理」→「🏦支払い状況を更新」で最新化
+ *        （1時間ごとの自動チェック時にも自動更新されます）
+ * 【使い方】入金確認できた方の A列の☑ を入れる → 自動で「確定」＋LINE通知
+ * ============================================================ */
+var PAYMENT_VIEW_SHEET = '🏦 支払い状況';
+
+function setupPaymentStatusSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(PAYMENT_VIEW_SHEET);
+  if (!sh) { sh = ss.insertSheet(PAYMENT_VIEW_SHEET, 1); }
+  sh.getRange(1, 1, sh.getMaxRows(), 8).clearDataValidations();
+  sh.clear();
+
+  var HEAD = ['✔入金確認→確定', 'お名前', 'セミナー', '状態', '振込名義など（備考）', '支払期限', '申込日時', 'uid（触らない）'];
+  sh.getRange(1, 1, 1, HEAD.length).merge().setValue('🏦 支払い状況（全セミナー横断）')
+    .setFontSize(13).setFontWeight('bold').setFontColor('#fff')
+    .setBackground('#4a6fa5').setHorizontalAlignment('center');
+  sh.getRange(2, 1, 1, HEAD.length).merge()
+    .setValue('入金を確認したら A列の☑を入れる → 自動で「確定」＋本人へLINE通知が飛びます（青い行＝振込報告済み・最優先で確認）')
+    .setFontSize(9).setFontColor('#888').setHorizontalAlignment('center');
+  sh.getRange(4, 1, 1, HEAD.length).setValues([HEAD])
+    .setFontWeight('bold').setBackground('#eef3f9').setFontSize(10);
+  sh.setFrozenRows(4);
+  sh.setColumnWidth(1, 120); sh.setColumnWidth(2, 130); sh.setColumnWidth(3, 110);
+  sh.setColumnWidth(4, 100); sh.setColumnWidth(5, 220); sh.setColumnWidth(6, 130);
+  sh.setColumnWidth(7, 130); sh.setColumnWidth(8, 110);
+
+  // 全セミナーから「支払い進行中」の人を集める
+  var rows = [];
+  Object.keys(SEMINARS).forEach(function (key) {
+    var config = SEMINARS[key];
+    var src = ss.getSheetByName(config.sheet);
+    if (!src) return;
+    var lastRow = src.getLastRow();
+    if (lastRow < DATA_START_ROW) return;
+    var data = src.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, LAST_COL).getValues();
+    var label = config.sheet.replace('📋 ', '');
+    for (var i = 0; i < data.length; i++) {
+      if (!data[i][0]) continue;
+      var status = String(data[i][6] || '');
+      if (status !== '振込報告済み' && status !== '決済案内中') continue;
+      rows.push([
+        false, data[i][1] || '', label, status,
+        String(data[i][10] || ''),
+        data[i][5] ? formatDateValue_(data[i][5]) : '',
+        data[i][4] ? formatDateValue_(data[i][4]) : '',
+        String(data[i][0])
+      ]);
+    }
+  });
+  // 振込報告済みを先頭に、次に期限が近い順
+  rows.sort(function (a, b) {
+    if (a[3] !== b[3]) return a[3] === '振込報告済み' ? -1 : 1;
+    return String(a[5]).localeCompare(String(b[5]));
+  });
+
+  if (!rows.length) {
+    sh.getRange(5, 1, 1, HEAD.length).merge()
+      .setValue('現在、お支払い手続き中の方はいません 🌿')
+      .setHorizontalAlignment('center').setFontColor('#888');
+    return '🏦 支払い状況シートを更新しました（該当0件）';
+  }
+
+  sh.getRange(5, 1, rows.length, HEAD.length).setValues(rows).setFontSize(10);
+  sh.getRange(5, 1, rows.length, 1).insertCheckboxes();
+  // 振込報告済みの行を青系でハイライト
+  for (var r = 0; r < rows.length; r++) {
+    if (rows[r][3] === '振込報告済み') {
+      sh.getRange(5 + r, 1, 1, HEAD.length).setBackground('#e5edf7');
+      sh.getRange(5 + r, 4).setFontWeight('bold').setFontColor('#4a6fa5');
+    }
+  }
+  return '🏦 支払い状況シートを更新しました（' + rows.length + '件）';
+}
+
+/** ☑からの確定処理（支払い状況シート用） */
+function confirmFromPaymentView_(uid, seminarKey) {
+  var config = SEMINARS[seminarKey];
+  if (!config) return;
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(config.sheet);
+  var row = findRowByUid_(sh, uid);
+  if (!row) return;
+  if (String(sh.getRange(row, 7).getValue()) === '確定') return;
+  sh.getRange(row, 6).setValue('');
+  sh.getRange(row, 7).setValue('確定');
+  sh.getRange(row, 8).setValue('');
+  sh.getRange(row, 9).setValue(formatDate_(new Date()));
+  if (!sh.getRange(row, 10).getValue()) sh.getRange(row, 10).setValue('手動確認');
+  moveScenario_(uid, '確定');
+  logAction_('confirm_from_payment_view', uid, config.sheet, '→ 確定', '🏦支払い状況シートの☑から');
+}
+
+/** スプシを開いた時に運営メニューを追加 */
+function onOpen() {
+  try {
+    SpreadsheetApp.getUi()
+      .createMenu('🌸 受付管理')
+      .addItem('🏦 支払い状況を更新', 'setupPaymentStatusSheet')
+      .addItem('👥💎 総合リストを再生成', 'setupMasterLists')
+      .addItem('📊 集計エリアを再設置', 'setupSummaryFormulas')
+      .addItem('📖 操作マニュアルを再生成', 'setupManualSheet')
+      .addToUi();
+  } catch (_) {}
 }
 
 /*** ============================================================
