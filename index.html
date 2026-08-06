@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=20">
+<link rel="stylesheet" href="css/style.css?v=21">
 </head>
 <body>
 <div class="container">
@@ -257,8 +257,8 @@
 
 </div>
 
-<script src="js/config.js?v=20"></script>
-<script src="js/common.js?v=20"></script>
+<script src="js/config.js?v=21"></script>
+<script src="js/common.js?v=21"></script>
 <script>
 const uid = getUid();
 let currentStatus = null;
@@ -546,7 +546,10 @@ function demoInit_() {
     }
   }, true);
 
-  demoShow_('payment');
+  // ?state=payment/waiting/confirmed/expired で初期表示を指定可能（受付ページのメニューから遷移用）
+  var initState = new URLSearchParams(location.search).get('state');
+  if (['payment', 'waiting', 'confirmed', 'expired'].indexOf(initState) === -1) initState = 'payment';
+  demoShow_(initState);
 }
 
 if (IS_DEMO) {
