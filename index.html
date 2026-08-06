@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=23">
+<link rel="stylesheet" href="css/style.css?v=24">
 </head>
 <body>
 <div class="container">
@@ -257,8 +257,8 @@
 
 </div>
 
-<script src="js/config.js?v=23"></script>
-<script src="js/common.js?v=23"></script>
+<script src="js/config.js?v=24"></script>
+<script src="js/common.js?v=24"></script>
 <script>
 const uid = getUid();
 let currentStatus = null;
@@ -347,10 +347,15 @@ function renderPayment(st, sem) {
     let html = '<h3>お支払い方法</h3>';
     // プロラインの決済ページ(/pd/)経由：動作確認済みの確実な方式
     // ※ゲスト（LINE未登録の特別受付）はプロライン決済が使えないため銀行振込のみ
-    const stripeUrl = CONFIG.STRIPE_URLS[st.seminar];
+    // テスト決済モード（管理画面スイッチON時のみテスト用決済ページに切替）
+    const useTestPay = st.test_pay && CONFIG.STRIPE_URLS_TEST[st.seminar];
+    const stripeUrl = useTestPay ? CONFIG.STRIPE_URLS_TEST[st.seminar] : CONFIG.STRIPE_URLS[st.seminar];
     if (stripeUrl && !isGuest) {
-      html += '<p style="font-size:16px; font-weight:700; color:var(--primary-dark); margin:16px 0 8px; padding-bottom:6px; border-bottom:2px solid var(--accent);">💳 カードでのお支払いの方はこちら</p>' +
-        '<a class="btn btn-primary" href="' + stripeUrl +
+      html += '<p style="font-size:16px; font-weight:700; color:var(--primary-dark); margin:16px 0 8px; padding-bottom:6px; border-bottom:2px solid var(--accent);">💳 カードでのお支払いの方はこちら</p>';
+      if (useTestPay) {
+        html += '<p style="font-size:12px; font-weight:700; color:#8a5ca5; margin:0 0 6px;">🧪 テスト決済モード中（本番の請求は発生しません）</p>';
+      }
+      html += '<a class="btn btn-primary" href="' + stripeUrl +
         '?uid=' + encodeURIComponent(uid) + '">クレジットカードで支払う</a>';
     }
     if (isGuest) {

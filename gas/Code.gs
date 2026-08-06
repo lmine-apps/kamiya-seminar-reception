@@ -69,7 +69,7 @@ function handleRequest_(e) {
 
     // 管理者専用アクション（名簿閲覧・状態操作は管理キー必須）
     var ADMIN_ACTIONS = ['admin_summary', 'read_sheet', 'admin_update_status', 'admin_promote',
-                         'admin_save_push_token', 'admin_test_push'];
+                         'admin_save_push_token', 'admin_test_push', 'admin_set_test_pay'];
     if (ADMIN_ACTIONS.indexOf(action) !== -1) {
       if (String(p.token) !== String(ADMIN_TOKEN)) {
         return out_({ ok: false, error: 'unauthorized' });
@@ -80,6 +80,7 @@ function handleRequest_(e) {
       if (action === 'admin_promote')         return manualPromote_(p);
       if (action === 'admin_save_push_token') return adminSavePushToken_(p);
       if (action === 'admin_test_push')       return adminTestPush_(p);
+      if (action === 'admin_set_test_pay')    return adminSetTestPay_(p);
     }
 
     // トークン認証（一般）
@@ -229,7 +230,7 @@ function getFcmAccessToken_() {
 // ========== 【v4】管理者用サマリー（全セミナーの受付状況＋名簿） ==========
 function adminSummary_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var result = { ok: true, generated_at: formatDate_(new Date()), seminars: {} };
+  var result = { ok: true, generated_at: formatDate_(new Date()), seminars: {}, test_pay: isTestPayOn_() };
 
   Object.keys(SEMINARS).forEach(function (key) {
     var config = SEMINARS[key];
@@ -357,8 +358,24 @@ function getStatus_(p) {
     wait_number: row[7] || null,
     name: row[1] || '',
     payment_completed: row[6] === '確定',
-    payment_method: row[9] || ''
+    payment_method: row[9] || '',
+    test_pay: isTestPayOn_()
   });
+}
+
+// ========== 【v6.5】テスト決済モード（マーケ一般） ==========
+// ONの間、マーケ一般の決済画面がテスト用Stripe決済ページに切り替わる
+function isTestPayOn_() {
+  try {
+    return PropertiesService.getScriptProperties().getProperty('TEST_PAY_MARKE_GENERAL') === '1';
+  } catch (_) { return false; }
+}
+
+function adminSetTestPay_(p) {
+  var v = String(p.value) === '1' ? '1' : '0';
+  PropertiesService.getScriptProperties().setProperty('TEST_PAY_MARKE_GENERAL', v);
+  logAction_('test_pay_mode', '', '', v === '1' ? 'ON' : 'OFF', '管理画面から切替');
+  return out_({ ok: true, test_pay: v === '1' });
 }
 
 // ========== 【v2】Webアプリからの申込受信 ==========

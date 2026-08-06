@@ -20,6 +20,10 @@ const CONFIG = {
     self_priority:  '',
     self_general:   'https://gr8dq5cg.autosns.app/pd/o0KefDZWky'
   },
+  // テスト決済（管理画面のスイッチがONの時だけこちらに切替・prod_V1MdxTyHZWljfk）
+  STRIPE_URLS_TEST: {
+    marke_general: 'https://gr8dq5cg.autosns.app/pd/qALE9e5Q18'
+  },
 
   // 銀行振込先
   BANK_INFO: {

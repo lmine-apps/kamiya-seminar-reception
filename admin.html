@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="受付管理">
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=23">
+<link rel="stylesheet" href="css/style.css?v=24">
 <style>
   .container { max-width: 720px; }
   /* タブ */
@@ -170,6 +170,15 @@
       </span>
     </div>
 
+    <!-- テスト決済モードの警告バナー＆スイッチ -->
+    <div id="test-pay-banner" style="display:none; background:#8a5ca5; color:#fff; border-radius:12px; padding:12px 14px; margin-bottom:14px; font-size:13px; font-weight:700; text-align:center; animation:testPayBlink 1.6s ease-in-out infinite;">
+      🧪 マーケ一般が<u>テスト決済モード</u>です！本番運用前に必ずOFFにしてください
+    </div>
+    <div style="text-align:right; margin-bottom:10px;">
+      <button id="test-pay-btn" onclick="toggleTestPay()" style="padding:6px 14px; border-radius:14px; border:1.5px solid var(--line); background:#f5f0eb; color:var(--text-light); font-size:11px; font-weight:700; cursor:pointer; font-family:inherit;">🧪 テスト決済：OFF</button>
+    </div>
+    <style>@keyframes testPayBlink { 0%,100%{opacity:1;} 50%{opacity:.72;} }</style>
+
     <div class="tabs" id="tabs"></div>
     <div class="summary-row" id="summary"></div>
     <div class="filters" id="filters"></div>
@@ -245,8 +254,8 @@
   <div class="footer">株式会社 Bonheur Lelien｜運営者専用ページ</div>
 </div>
 
-<script src="js/config.js?v=23"></script>
-<script src="js/common.js?v=23"></script>
+<script src="js/config.js?v=24"></script>
+<script src="js/common.js?v=24"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script>
@@ -306,6 +315,7 @@ async function loadData() {
       summaryData = data;
       document.getElementById('updated-at').textContent = '最終更新：' + (data.generated_at || '');
       renderAll();
+      updateTestPayUI_();
       showScreen('screen-dash');
       return;
     } catch (err) {
@@ -380,6 +390,50 @@ function renderFilters() {
   document.getElementById('filters').innerHTML = html;
 }
 function switchFilter(f) { currentFilter = f; renderFilters(); renderRoster(); }
+
+/* --- テスト決済モード（マーケ一般・デフォルトOFF） --- */
+let testPayAlerted_ = false;
+
+function updateTestPayUI_() {
+  const on = !!(summaryData && summaryData.test_pay);
+  const banner = document.getElementById('test-pay-banner');
+  const btn = document.getElementById('test-pay-btn');
+  if (banner) banner.style.display = on ? '' : 'none';
+  if (btn) {
+    btn.textContent = on ? '🧪 テスト決済：ON' : '🧪 テスト決済：OFF';
+    btn.style.background = on ? '#8a5ca5' : '#f5f0eb';
+    btn.style.color = on ? '#fff' : 'var(--text-light)';
+    btn.style.borderColor = on ? '#8a5ca5' : 'var(--line)';
+  }
+  // 起動時（初回表示時）にONなら強めの確認アラート
+  if (on && !testPayAlerted_) {
+    testPayAlerted_ = true;
+    alert('⚠️ テスト決済モードがONです！\n\nマーケ一般の決済ページがテスト用に切り替わっています。\n本番のお客さまが決済すると「テスト商品」で決済されてしまいます。\n\nテストが終わったら必ず「🧪テスト決済」ボタンからOFFに戻してください。');
+  }
+}
+
+async function toggleTestPay() {
+  const on = !!(summaryData && summaryData.test_pay);
+  if (!on) {
+    if (!confirm('🧪 テスト決済モードをONにしますか？\n\n【注意】ONの間、マーケ一般の決済ページは全員テスト用Stripeに切り替わります。\n本番のお客さまがいる期間は絶対にONにしないでください。')) return;
+  } else {
+    if (!confirm('テスト決済モードをOFFにして、本番決済に戻しますか？')) return;
+  }
+  showLoading(true);
+  try {
+    const url = new URL(CONFIG.GAS_URL);
+    url.searchParams.set('action', 'admin_set_test_pay');
+    url.searchParams.set('token', adminKey);
+    url.searchParams.set('value', on ? '0' : '1');
+    const res = await fetch(url.toString());
+    const data = await res.json();
+    if (!data.ok) alert('切替に失敗しました：' + (data.error || ''));
+  } catch (err) {
+    alert('通信エラーです。もう一度お試しください。');
+  }
+  testPayAlerted_ = true;  // 自分で切り替えた直後はアラート不要
+  loadData();
+}
 
 /* --- 管理操作（状態変更→通知も自動で飛ぶ） --- */
 const ACTION_DEFS = {
