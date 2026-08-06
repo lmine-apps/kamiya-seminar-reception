@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=22">
+<link rel="stylesheet" href="css/style.css?v=23">
 </head>
 <body>
 <div class="container">
@@ -257,8 +257,8 @@
 
 </div>
 
-<script src="js/config.js?v=22"></script>
-<script src="js/common.js?v=22"></script>
+<script src="js/config.js?v=23"></script>
+<script src="js/common.js?v=23"></script>
 <script>
 const uid = getUid();
 let currentStatus = null;
@@ -349,14 +349,14 @@ function renderPayment(st, sem) {
     // ※ゲスト（LINE未登録の特別受付）はプロライン決済が使えないため銀行振込のみ
     const stripeUrl = CONFIG.STRIPE_URLS[st.seminar];
     if (stripeUrl && !isGuest) {
-      html += '<p style="font-size:13px; font-weight:700; color:var(--primary-dark); margin:14px 0 8px;">💳 カードでのお支払いの方はこちら</p>' +
+      html += '<p style="font-size:16px; font-weight:700; color:var(--primary-dark); margin:16px 0 8px; padding-bottom:6px; border-bottom:2px solid var(--accent);">💳 カードでのお支払いの方はこちら</p>' +
         '<a class="btn btn-primary" href="' + stripeUrl +
         '?uid=' + encodeURIComponent(uid) + '">クレジットカードで支払う</a>';
     }
     if (isGuest) {
       html += '<p class="form-note">※特別受付のため、お支払いは銀行振込のみのご対応となります。</p>';
     }
-    html += '<p style="font-size:13px; font-weight:700; color:var(--primary-dark); margin:22px 0 8px;">🏦 銀行振込ご希望の方はこちら</p>' +
+    html += '<p style="font-size:16px; font-weight:700; color:var(--primary-dark); margin:26px 0 8px; padding-bottom:6px; border-bottom:2px solid var(--accent);">🏦 銀行振込ご希望の方はこちら</p>' +
       '<div class="note-box" style="margin:8px 0 10px; font-size:13px; color:var(--text);">' +
       '<strong>お振込の手順</strong><br>' +
       '<span style="display:block; margin-top:4px;">① 下記の口座へお振込みください</span>' +
