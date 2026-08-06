@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=19">
+<link rel="stylesheet" href="css/style.css?v=20">
 </head>
 <body>
 <div class="container">
@@ -257,8 +257,8 @@
 
 </div>
 
-<script src="js/config.js?v=19"></script>
-<script src="js/common.js?v=19"></script>
+<script src="js/config.js?v=20"></script>
+<script src="js/common.js?v=20"></script>
 <script>
 const uid = getUid();
 let currentStatus = null;
@@ -486,7 +486,74 @@ document.getElementById('bank-report-form').addEventListener('submit', async (e)
   }
 });
 
-loadStatus();
+/* --- デモモード（?demo=1）: 実データに触れない見本表示＋状態切替ツールバー --- */
+const IS_DEMO = new URLSearchParams(location.search).get('demo') === '1';
+let demoState_ = null;
+
+function demoShow_(kind) {
+  if (waitPollTimer) clearInterval(waitPollTimer);
+  const pad = n => String(n).padStart(2, '0');
+  const d = new Date(Date.now() + 2 * 86400000 + 3 * 3600000 + 15 * 60000);
+  const dl = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' +
+    pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  const base = { ok: true, uid: 'DEMO', name: 'デモ 花子' };
+  let st;
+  if (kind === 'payment')        st = Object.assign(base, { status: '決済案内中', seminar: 'marke_general', deadline: dl });
+  else if (kind === 'waiting')   st = Object.assign(base, { status: 'キャンセル待ち', seminar: 'self_general', wait_number: 2 });
+  else if (kind === 'confirmed') st = Object.assign(base, { status: '確定', seminar: 'self_priority' });
+  else if (kind === 'expired')   st = Object.assign(base, { status: '期限切れ', seminar: 'marke_general' });
+  demoState_ = st;
+  render(st);
+}
+
+function demoInit_() {
+  // API呼び出しをすべて偽装（スプシ・LINEには何も起きない）
+  apiGet = async function (action) {
+    if (action === 'get_status') return demoState_ || { ok: true, status: '未登録' };
+    return { ok: true };
+  };
+  apiPost = async function () { return { ok: true }; };
+
+  // 上部バナー
+  const b = document.createElement('div');
+  b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999;background:#8a5ca5;color:#fff;text-align:center;font-size:12px;padding:6px;font-weight:600;letter-spacing:.05em;';
+  b.textContent = '👀 デモ表示中（実際のデータ・LINE通知は発生しません）';
+  document.body.appendChild(b);
+  document.body.style.paddingTop = '30px';
+
+  // 下部の状態切替ツールバー
+  const tb = document.createElement('div');
+  tb.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:999;background:rgba(138,92,165,.96);padding:8px 6px calc(8px + env(safe-area-inset-bottom));display:flex;gap:6px;justify-content:center;flex-wrap:wrap;';
+  [['📝 受付', null], ['💳 決済', 'payment'], ['🕊 待機', 'waiting'], ['🌸 確定', 'confirmed'], ['⏰ 期限切れ', 'expired']].forEach(function (item) {
+    const btn = document.createElement('button');
+    btn.textContent = item[0];
+    btn.style.cssText = 'background:#fff;color:#8a5ca5;border:none;border-radius:16px;padding:8px 12px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;';
+    btn.onclick = function () {
+      if (item[1] === null) location.href = 'apply.html?seminar=marke_general&demo=1';
+      else demoShow_(item[1]);
+    };
+    tb.appendChild(btn);
+  });
+  document.body.appendChild(tb);
+  document.body.style.paddingBottom = '64px';
+
+  // 外部リンク（決済ページ等）はデモでは移動させない
+  document.addEventListener('click', function (e) {
+    const a = e.target.closest('a');
+    if (a && a.href && a.href.indexOf('autosns') !== -1) {
+      e.preventDefault();
+      alert('（デモのため、リンク先へは移動しません）');
+    }
+  }, true);
+
+  demoShow_('payment');
+}
+
+if (IS_DEMO) {
+  demoInit_();
+} else {
+  loadStatus();
+}
 </script>
 </body>
 </html>

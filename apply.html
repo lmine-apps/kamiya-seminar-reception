@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex">
 <title>受付フォーム｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=19">
+<link rel="stylesheet" href="css/style.css?v=20">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -166,8 +166,8 @@
 
 </div>
 
-<script src="js/config.js?v=19"></script>
-<script src="js/common.js?v=19"></script>
+<script src="js/config.js?v=20"></script>
+<script src="js/common.js?v=20"></script>
 <script>
 let uid = getUid();
 const seminarKey = new URLSearchParams(location.search).get('seminar');
@@ -181,6 +181,29 @@ if (!uid && guestParam && guestParam === CONFIG.GUEST_KEY) {
   uid = 'guest_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   try { localStorage.setItem('kamiya_uid', uid); } catch (_) {}
   isGuest = true;
+}
+
+// デモモード（?demo=1）: 実データに一切触れない見本表示
+const IS_DEMO = new URLSearchParams(location.search).get('demo') === '1';
+if (IS_DEMO) {
+  uid = 'DEMO';
+  isGuest = false;
+  // API呼び出しをすべて偽装（スプシ・LINEには何も起きない）
+  apiGet = async function (action) {
+    if (action === 'get_capacity') return { ok: true, available: 8 };
+    return { ok: true, status: '未登録' };
+  };
+  apiPost = async function () { return { ok: true, status: '決済案内中' }; };
+  addDemoBanner_();
+  var toPay = document.getElementById('btn-to-payment');
+  if (toPay) toPay.href = 'index.html?demo=1';
+}
+function addDemoBanner_() {
+  var b = document.createElement('div');
+  b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999;background:#8a5ca5;color:#fff;text-align:center;font-size:12px;padding:6px;font-weight:600;letter-spacing:.05em;';
+  b.textContent = '👀 デモ表示中（実際のお申込み・LINE通知は発生しません）';
+  document.body.appendChild(b);
+  document.body.style.paddingTop = '30px';
 }
 
 /** ゲスト用：状態確認ページの専用URL */
