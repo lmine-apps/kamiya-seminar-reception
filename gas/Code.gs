@@ -1009,10 +1009,100 @@ function onOpen() {
       .createMenu('🌸 受付管理')
       .addItem('🏦 支払い状況を更新', 'setupPaymentStatusSheet')
       .addItem('👥💎 総合リストを再生成', 'setupMasterLists')
+      .addItem('📦 終了セミナーを台帳へ保存', 'archiveSeminarPrompt')
+      .addSeparator()
       .addItem('📊 集計エリアを再設置', 'setupSummaryFormulas')
       .addItem('📖 操作マニュアルを再生成', 'setupManualSheet')
       .addToUi();
   } catch (_) {}
+}
+
+/*** ============================================================
+ * 📦 参加履歴台帳（累積・永久保存）
+ *
+ * セミナー終了時にメニュー「📦 終了セミナーを台帳へ保存」を実行すると、
+ * そのシートの全員分（確定もキャンセルも）が台帳に値として焼き付けられる。
+ * → 以後、受付シートを削除しても記録は台帳に永久に残る。
+ * ============================================================ */
+var LEDGER_SHEET = '📦 参加履歴台帳';
+
+function ledgerSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(LEDGER_SHEET);
+  if (!sh) {
+    sh = ss.insertSheet(LEDGER_SHEET);
+    var HEAD = ['保存日', 'セミナー', 'お名前', 'メール', '電話', '最終状態', '決済方法', '申込日時', '備考', 'uid'];
+    sh.getRange(1, 1, 1, HEAD.length).merge().setValue('📦 参加履歴台帳（全セミナー累積・永久保存）')
+      .setFontSize(13).setFontWeight('bold').setFontColor('#fff')
+      .setBackground('#8a5ca5').setHorizontalAlignment('center');
+    sh.getRange(2, 1, 1, HEAD.length).merge()
+      .setValue('※終了セミナーの記録がここに蓄積されます。受付シートを削除しても、ここの記録は消えません')
+      .setFontSize(9).setFontColor('#888').setHorizontalAlignment('center');
+    sh.getRange(4, 1, 1, HEAD.length).setValues([HEAD])
+      .setFontWeight('bold').setBackground('#f3eef7').setFontSize(10);
+    sh.setFrozenRows(4);
+    sh.setColumnWidth(3, 130); sh.setColumnWidth(4, 170); sh.setColumnWidth(9, 220);
+  }
+  return sh;
+}
+
+/** メニューから：シート名を聞いて台帳へ保存 */
+function archiveSeminarPrompt() {
+  var ui = SpreadsheetApp.getUi();
+  var res = ui.prompt('📦 終了セミナーを台帳へ保存',
+    '保存するシート名を正確に入力してください（例：📋 セルフ先行）\n' +
+    '※全員分（確定・キャンセル含む）が台帳に永久保存されます。\n' +
+    '※保存後、そのシートは削除しても記録は残ります。',
+    ui.ButtonSet.OK_CANCEL);
+  if (res.getSelectedButton() !== ui.Button.OK) return;
+  var name = String(res.getResponseText() || '').trim();
+  var count = archiveSeminarSheet_(name);
+  if (count < 0) {
+    ui.alert('シートが見つかりませんでした：' + name + '\n（📋を含むシート名を正確にコピーして入力してください）');
+  } else {
+    ui.alert('📦 「' + name + '」の ' + count + '件を台帳に保存しました。\n\n' +
+      'このシートは削除してOKです（記録は台帳に残ります）。\n' +
+      '⚠️ シートを削除した後は、あかり（開発担当）へ「セミナー入替」を連絡してください。\n' +
+      '（受付システム側の設定更新と、総合リストの数式再生成が必要なため）');
+  }
+}
+
+/** 指定シートの全データを台帳へ追記（重複保存はスキップ） */
+function archiveSeminarSheet_(sheetName) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var src = ss.getSheetByName(sheetName);
+  if (!src) return -1;
+  var lastRow = src.getLastRow();
+  var ledger = ledgerSheet_();
+  if (lastRow < DATA_START_ROW) return 0;
+
+  // 既に台帳にある（セミナー×uid）はスキップして二重保存を防ぐ
+  var existing = {};
+  var lv = ledger.getDataRange().getValues();
+  for (var r = 4; r < lv.length; r++) {
+    existing[String(lv[r][1]) + '|' + String(lv[r][9])] = 1;
+  }
+
+  var label = sheetName.replace('📋 ', '');
+  var today = formatDate_(new Date());
+  var data = src.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, LAST_COL).getValues();
+  var out = [];
+  for (var i = 0; i < data.length; i++) {
+    if (!data[i][0]) continue;
+    if (existing[label + '|' + String(data[i][0])]) continue;
+    out.push([
+      today, label,
+      data[i][1] || '', data[i][2] || '', data[i][3] || '',
+      String(data[i][6] || ''), data[i][9] || '',
+      data[i][4] ? formatDateValue_(data[i][4]) : '',
+      String(data[i][10] || ''), String(data[i][0])
+    ]);
+  }
+  if (out.length) {
+    ledger.getRange(ledger.getLastRow() + 1, 1, out.length, out[0].length)
+      .setValues(out).setFontSize(10);
+  }
+  return out.length;
 }
 
 /*** ============================================================
