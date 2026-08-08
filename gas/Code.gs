@@ -1,4 +1,9 @@
-/*** 神谷梓さん 受付管理システム GAS v6.6 ****************************
+/*** 神谷梓さん 受付管理システム GAS v6.7 ****************************
+ * 【v6.7 追加 2026-08-08】受付開始ゲート
+ *   募集開始日時（SEMINARSのopen_at）より前は申込を受け付けない。
+ *   管理画面の「⏳受付開始ゲート」スイッチでON/OFF切替（デフォルトON）。
+ *   セルフ＝8/24 21:00／マーケ＝9/5 21:00（先行・一般とも同時刻で設定）
+ *
  * 【v6.6 修正 2026-08-08】毎時トリガーのcheckExpiredがエラーメールを
  *   出していた問題を修正（ContentServiceの戻り値をトリガーに返さない）
  ***********************************************************/
@@ -44,11 +49,14 @@ var PROLINE_URLS = {
 };
 
 // セミナー定義（シート名と定員）
+// open_at = 募集開始日時（この時刻より前は申し込めない／'YYYY-MM-DD HH:mm' 日本時間）
+// ※効くのは「受付開始ゲート」がONのときだけ。管理画面のスイッチでOFFにすればテスト申込ができる
+// ※先行と一般で開始時刻を分けたい場合は、この行の日時を個別に変えるだけでOK
 var SEMINARS = {
-  'self_priority':   { sheet: '📋 セルフ先行',  capacity: 20, payment: 'cash' },
-  'self_general':    { sheet: '📋 セルフ一般',  capacity: 30, payment: 'prepaid' },
-  'marke_priority':  { sheet: '📋 マーケ先行',  capacity: 5,  payment: 'prepaid' },
-  'marke_general':   { sheet: '📋 マーケ一般',  capacity: 10, payment: 'prepaid' }
+  'self_priority':   { sheet: '📋 セルフ先行',  capacity: 20, payment: 'cash',    open_at: '2026-08-24 21:00' },
+  'self_general':    { sheet: '📋 セルフ一般',  capacity: 30, payment: 'prepaid', open_at: '2026-08-24 21:00' },
+  'marke_priority':  { sheet: '📋 マーケ先行',  capacity: 5,  payment: 'prepaid', open_at: '2026-09-05 21:00' },
+  'marke_general':   { sheet: '📋 マーケ一般',  capacity: 10, payment: 'prepaid', open_at: '2026-09-05 21:00' }
 };
 
 var DEADLINE_DAYS = 3;   // 決済期限（日数）
@@ -73,7 +81,8 @@ function handleRequest_(e) {
 
     // 管理者専用アクション（名簿閲覧・状態操作は管理キー必須）
     var ADMIN_ACTIONS = ['admin_summary', 'read_sheet', 'admin_update_status', 'admin_promote',
-                         'admin_save_push_token', 'admin_test_push', 'admin_set_test_pay'];
+                         'admin_save_push_token', 'admin_test_push', 'admin_set_test_pay',
+                         'admin_set_gate'];
     if (ADMIN_ACTIONS.indexOf(action) !== -1) {
       if (String(p.token) !== String(ADMIN_TOKEN)) {
         return out_({ ok: false, error: 'unauthorized' });
@@ -85,6 +94,7 @@ function handleRequest_(e) {
       if (action === 'admin_save_push_token') return adminSavePushToken_(p);
       if (action === 'admin_test_push')       return adminTestPush_(p);
       if (action === 'admin_set_test_pay')    return adminSetTestPay_(p);
+      if (action === 'admin_set_gate')        return adminSetGate_(p);
     }
 
     // トークン認証（一般）
@@ -234,7 +244,8 @@ function getFcmAccessToken_() {
 // ========== 【v4】管理者用サマリー（全セミナーの受付状況＋名簿） ==========
 function adminSummary_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var result = { ok: true, generated_at: formatDate_(new Date()), seminars: {}, test_pay: isTestPayOn_() };
+  var result = { ok: true, generated_at: formatDate_(new Date()), seminars: {},
+                 test_pay: isTestPayOn_(), gate_on: isGateOn_() };
 
   Object.keys(SEMINARS).forEach(function (key) {
     var config = SEMINARS[key];
@@ -382,12 +393,55 @@ function adminSetTestPay_(p) {
   return out_({ ok: true, test_pay: v === '1' });
 }
 
+// ========== 【v6.7】受付開始ゲート（募集開始前は申し込めないようにする） ==========
+// デフォルトはON。ONの間、SEMINARSのopen_atより前は受付フォームがカウントダウン画面になる。
+// 事前テストのときだけ管理画面のスイッチでOFFにする（OFFでも動作に支障はないが、フライング申込が可能になる）
+function isGateOn_() {
+  try {
+    return PropertiesService.getScriptProperties().getProperty('RECEPTION_GATE') !== '0';
+  } catch (_) { return true; }
+}
+
+function adminSetGate_(p) {
+  var v = String(p.value) === '0' ? '0' : '1';
+  PropertiesService.getScriptProperties().setProperty('RECEPTION_GATE', v);
+  logAction_('reception_gate', '', '', v === '1' ? 'ON' : 'OFF', '管理画面から切替');
+  return out_({ ok: true, gate_on: v === '1' });
+}
+
+/** 募集開始日時をDateで返す（未設定・不正ならnull） */
+function openAtDate_(config) {
+  if (!config || !config.open_at) return null;
+  var s = String(config.open_at).trim().replace(' ', 'T');
+  if (s.length === 16) s += ':00';
+  var d = new Date(s + '+09:00');   // 日本時間として確定させる
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/** そのセミナーの受付が開いているか（ゲートOFF・open_at未設定なら常に開いている扱い） */
+function gateInfo_(seminarKey) {
+  var config = SEMINARS[seminarKey];
+  var openAt = openAtDate_(config);
+  var gateOn = isGateOn_();
+  return {
+    gate_on: gateOn,
+    is_open: (!gateOn || !openAt || new Date().getTime() >= openAt.getTime()),
+    open_at: (config && config.open_at) ? String(config.open_at) : ''
+  };
+}
+
 // ========== 【v2】Webアプリからの申込受信 ==========
 function submitApplication_(p) {
   var seminarKey = p.seminar;
   var config = SEMINARS[seminarKey];
   if (!config) return out_({ ok: false, error: 'unknown seminar: ' + seminarKey });
   if (!p.uid)  return out_({ ok: false, error: 'uid required' });
+
+  // 受付開始ゲート：募集開始前は受け付けない（URLが漏れてもフライング申込を防ぐ）
+  var gate = gateInfo_(seminarKey);
+  if (!gate.is_open) {
+    return out_({ ok: false, error: 'not_open_yet', open_at: gate.open_at });
+  }
 
   // 同時申込対策のロック
   var lock = LockService.getScriptLock();
@@ -492,6 +546,7 @@ function getCapacity_(p) {
 
   var confirmed = countByStatuses_(sh, ['確定', '決済案内中', '振込報告済み']);
   var waiting = countByStatuses_(sh, ['キャンセル待ち']);
+  var gate = gateInfo_(p.seminar);
 
   return out_({
     ok: true,
@@ -499,7 +554,10 @@ function getCapacity_(p) {
     capacity: config.capacity,
     confirmed: confirmed,
     waiting: waiting,
-    available: Math.max(0, config.capacity - confirmed)
+    available: Math.max(0, config.capacity - confirmed),
+    is_open: gate.is_open,     // false なら受付開始前（カウントダウン画面を出す）
+    open_at: gate.open_at,
+    gate_on: gate.gate_on
   });
 }
 

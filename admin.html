@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="受付管理">
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=25">
+<link rel="stylesheet" href="css/style.css?v=26">
 <style>
   .container { max-width: 720px; }
   /* タブ */
@@ -179,7 +179,12 @@
     <div id="test-pay-banner" style="display:none; background:#8a5ca5; color:#fff; border-radius:12px; padding:12px 14px; margin-bottom:14px; font-size:13px; font-weight:700; text-align:center; animation:testPayBlink 1.6s ease-in-out infinite;">
       🧪 マーケ一般が<u>テスト決済モード</u>です！本番運用前に必ずOFFにしてください
     </div>
-    <div style="text-align:right; margin-bottom:10px;">
+    <!-- 受付開始ゲートの警告バナー（OFFのときだけ表示） -->
+    <div id="gate-banner" style="display:none; background:#b5761f; color:#fff; border-radius:12px; padding:12px 14px; margin-bottom:14px; font-size:13px; font-weight:700; text-align:center; animation:testPayBlink 1.6s ease-in-out infinite;">
+      ⏳ <u>受付開始ゲートがOFF</u>です！募集開始前でもお申込みができてしまいます
+    </div>
+    <div style="text-align:right; margin-bottom:10px; display:flex; gap:6px; justify-content:flex-end; flex-wrap:wrap;">
+      <button id="gate-btn" onclick="toggleGate()" style="padding:6px 14px; border-radius:14px; border:1.5px solid var(--line); background:#f5f0eb; color:var(--text-light); font-size:11px; font-weight:700; cursor:pointer; font-family:inherit;">⏳ 受付開始ゲート：ON</button>
       <button id="test-pay-btn" onclick="toggleTestPay()" style="padding:6px 14px; border-radius:14px; border:1.5px solid var(--line); background:#f5f0eb; color:var(--text-light); font-size:11px; font-weight:700; cursor:pointer; font-family:inherit;">🧪 テスト決済：OFF</button>
     </div>
     <style>@keyframes testPayBlink { 0%,100%{opacity:1;} 50%{opacity:.72;} }</style>
@@ -259,8 +264,8 @@
   <div class="footer">株式会社 Bonheur Lelien｜運営者専用ページ</div>
 </div>
 
-<script src="js/config.js?v=25"></script>
-<script src="js/common.js?v=25"></script>
+<script src="js/config.js?v=26"></script>
+<script src="js/common.js?v=26"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script>
@@ -321,6 +326,7 @@ async function loadData() {
       document.getElementById('updated-at').textContent = '最終更新：' + (data.generated_at || '');
       renderAll();
       updateTestPayUI_();
+      updateGateUI_();
       showScreen('screen-dash');
       return;
     } catch (err) {
@@ -415,6 +421,51 @@ function updateTestPayUI_() {
     testPayAlerted_ = true;
     alert('⚠️ テスト決済モードがONです！\n\nマーケ一般の決済ページがテスト用に切り替わっています。\n本番のお客さまが決済すると「テスト商品」で決済されてしまいます。\n\nテストが終わったら必ず「🧪テスト決済」ボタンからOFFに戻してください。');
   }
+}
+
+/* --- 受付開始ゲート（デフォルトON／OFFの間はフライング申込ができてしまう） --- */
+let gateAlerted_ = false;
+
+function updateGateUI_() {
+  // gate_on が未定義（旧GAS）の場合はONとみなす
+  const on = !(summaryData && summaryData.gate_on === false);
+  const banner = document.getElementById('gate-banner');
+  const btn = document.getElementById('gate-btn');
+  if (banner) banner.style.display = on ? 'none' : '';
+  if (btn) {
+    btn.textContent = on ? '⏳ 受付開始ゲート：ON' : '⏳ 受付開始ゲート：OFF';
+    btn.style.background = on ? '#f5f0eb' : '#b5761f';
+    btn.style.color = on ? 'var(--text-light)' : '#fff';
+    btn.style.borderColor = on ? 'var(--line)' : '#b5761f';
+  }
+  // 起動時にOFFなら強めの確認アラート
+  if (!on && !gateAlerted_) {
+    gateAlerted_ = true;
+    alert('⚠️ 受付開始ゲートがOFFです！\n\n募集開始の日時より前でも、URLを開いた方が申し込めてしまう状態です。\n先行枠が早い者勝ちで埋まってしまう可能性があります。\n\nテストが終わったら必ず「⏳受付開始ゲート」ボタンからONに戻してください。');
+  }
+}
+
+async function toggleGate() {
+  const on = !(summaryData && summaryData.gate_on === false);
+  if (on) {
+    if (!confirm('⏳ 受付開始ゲートをOFFにしますか？\n\n【注意】OFFの間は、募集開始日時より前でも誰でも申し込めるようになります。\nテストや動作確認のときだけOFFにして、終わったらONに戻してください。')) return;
+  } else {
+    if (!confirm('受付開始ゲートをONに戻しますか？\n\n募集開始日時までは、受付フォームがカウントダウン画面になります。')) return;
+  }
+  showLoading(true);
+  try {
+    const url = new URL(CONFIG.GAS_URL);
+    url.searchParams.set('action', 'admin_set_gate');
+    url.searchParams.set('token', adminKey);
+    url.searchParams.set('value', on ? '0' : '1');
+    const res = await fetch(url.toString());
+    const data = await res.json();
+    if (!data.ok) alert('切替に失敗しました：' + (data.error || ''));
+  } catch (err) {
+    alert('通信エラーです。もう一度お試しください。');
+  }
+  gateAlerted_ = true;  // 自分で切り替えた直後はアラート不要
+  loadData();
 }
 
 async function toggleTestPay() {

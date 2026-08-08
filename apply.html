@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex">
 <title>受付フォーム｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=25">
+<link rel="stylesheet" href="css/style.css?v=26">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -44,6 +44,52 @@
       <p class="message-center">通信状況をご確認のうえ、<br>もう一度お試しくださいませ。</p>
       <p class="form-note" id="error-detail" style="text-align:center;"></p>
       <button class="btn btn-outline" onclick="showScreen('screen-form')" style="margin-top:16px;">フォームに戻る</button>
+    </div>
+  </div>
+
+  <!-- 受付開始前（募集開始までのカウントダウン） -->
+  <div class="screen" id="screen-notopen">
+    <div class="card">
+      <span class="icon-large">⏳</span>
+      <h2>受付開始までお待ちください</h2>
+      <p class="message-center">
+        <strong id="notopen-seminar"></strong><br>
+        <span id="notopen-schedule" style="font-size:13px; color:#8a7d76;"></span>
+      </p>
+
+      <div class="luxury-countdown" id="notopen-countdown">
+        <div class="luxury-countdown__eyebrow">RESERVATION OPENS</div>
+        <div class="luxury-countdown__title">受付開始まで</div>
+        <div class="luxury-countdown__grid">
+          <div class="luxury-countdown__unit">
+            <div class="luxury-countdown__digits" data-unit="days"></div>
+            <div class="luxury-countdown__unit-label">DAYS</div>
+          </div>
+          <div class="luxury-countdown__separator">:</div>
+          <div class="luxury-countdown__unit">
+            <div class="luxury-countdown__digits" data-unit="hours"></div>
+            <div class="luxury-countdown__unit-label">HOURS</div>
+          </div>
+          <div class="luxury-countdown__separator">:</div>
+          <div class="luxury-countdown__unit">
+            <div class="luxury-countdown__digits" data-unit="minutes"></div>
+            <div class="luxury-countdown__unit-label">MINUTES</div>
+          </div>
+          <div class="luxury-countdown__separator">:</div>
+          <div class="luxury-countdown__unit">
+            <div class="luxury-countdown__digits" data-unit="seconds"></div>
+            <div class="luxury-countdown__unit-label">SECONDS</div>
+          </div>
+        </div>
+        <div class="luxury-countdown__expired">受付を開始いたしました</div>
+        <div class="luxury-countdown__deadline">受付開始：<strong id="notopen-openat"></strong></div>
+      </div>
+
+      <div class="note-box" style="border-left-color:#7da87d; background:#f4f8f4;">
+        💡 <strong style="font-size:15px; color:#5c8a5c;">この画面は閉じても大丈夫です</strong><br>
+        お時間になりましたら、LINEのトーク履歴にあるボタンをもう一度タップしてお進みください。<br>
+        この画面を開いたままにしておくと、受付開始とともに自動でフォームに切り替わります。
+      </div>
     </div>
   </div>
 
@@ -166,8 +212,8 @@
 
 </div>
 
-<script src="js/config.js?v=25"></script>
-<script src="js/common.js?v=25"></script>
+<script src="js/config.js?v=26"></script>
+<script src="js/common.js?v=26"></script>
 <script>
 let uid = getUid();
 const seminarKey = new URLSearchParams(location.search).get('seminar');
@@ -190,7 +236,7 @@ if (IS_DEMO) {
   isGuest = false;
   // API呼び出しをすべて偽装（スプシ・LINEには何も起きない）
   apiGet = async function (action) {
-    if (action === 'get_capacity') return { ok: true, available: 8 };
+    if (action === 'get_capacity') return { ok: true, available: 8, is_open: true };
     return { ok: true, status: '未登録' };
   };
   apiPost = async function () { return { ok: true, status: '決済案内中' }; };
@@ -273,6 +319,17 @@ function init() {
 
   showScreen('screen-form');
 
+  // 受付開始前かどうかの確認が済むまでは送信ボタンを押せないようにする
+  const submitBtn = document.getElementById('btn-submit');
+  const submitLabel = submitBtn.textContent;
+  submitBtn.disabled = true;
+  submitBtn.textContent = '確認中…';
+  const releaseSubmit = () => {
+    if (submitBtn.textContent !== '確認中…') return;  // 満席モード等で既に書き換わっていれば触らない
+    submitBtn.disabled = false;
+    submitBtn.textContent = submitLabel;
+  };
+
   // すでに申込済みならフォームではなく状態画面（決済/待機/確定など）へ転送
   apiGet('get_status', { uid: uid }).then(res => {
     if (res.ok && res.seminar === seminarKey && res.status && res.status !== '未登録') {
@@ -282,6 +339,9 @@ function init() {
 
   // 残席表示（取得できなくても申込は可能）
   apiGet('get_capacity', { seminar: seminarKey }).then(res => {
+    // 募集開始前 → カウントダウン画面へ
+    if (res.ok && res.is_open === false) { renderNotOpen_(res.open_at); return; }
+    releaseSubmit();
     if (res.ok) {
       const note = document.getElementById('capacity-note');
       if (res.available > 0) {
@@ -293,7 +353,24 @@ function init() {
         enterWaitlistMode();
       }
     }
-  }).catch(() => {});
+  }).catch(() => { releaseSubmit(); });  // 通信できなくても申込は止めない（サーバー側で最終判定）
+}
+
+/** 受付開始前：カウントダウンを出し、開始時刻になったら自動でフォームへ切り替える */
+let notOpenTimer_ = null;
+function renderNotOpen_(openAt) {
+  if (!openAt) return;
+  document.getElementById('notopen-seminar').textContent = sem.title;
+  document.getElementById('notopen-schedule').textContent = sem.schedule;
+  document.getElementById('notopen-openat').textContent = formatDeadline(openAt);
+  showScreen('screen-notopen');
+  startFlipCountdown(openAt, 'notopen-countdown');
+
+  const ms = new Date(String(openAt).replace(/-/g, '/')).getTime() - Date.now();
+  clearTimeout(notOpenTimer_);
+  if (ms > 0 && ms < 86400000 * 20) {   // setTimeoutの上限（約24日）を超えない範囲だけ予約
+    notOpenTimer_ = setTimeout(() => { location.reload(); }, ms + 1500);
+  }
 }
 
 /** 満席時：キャンセル待ちモード（ユーザーが認識した上で送信できるように） */
@@ -328,7 +405,11 @@ document.getElementById('apply-form').addEventListener('submit', async (e) => {
       worries: fd.get('worries')
     });
     showLoading(false);
-    if (!res.ok) { showError(res.error || ''); return; }
+    if (!res.ok) {
+      // 受付開始前（URL直打ち等）→ カウントダウン画面へ
+      if (res.error === 'not_open_yet') { renderNotOpen_(res.open_at); return; }
+      showError(res.error || ''); return;
+    }
 
     if (res.already) {
       showScreen('screen-already');
