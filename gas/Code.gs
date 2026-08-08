@@ -1,4 +1,8 @@
-/*** 神谷梓さん 受付管理システム GAS v2（Webアプリ対応版） ************
+/*** 神谷梓さん 受付管理システム GAS v6.6 ****************************
+ * 【v6.6 修正 2026-08-08】毎時トリガーのcheckExpiredがエラーメールを
+ *   出していた問題を修正（ContentServiceの戻り値をトリガーに返さない）
+ ***********************************************************/
+/*** （以下v2からの説明） ******************************************
  * スプシ「神谷さん受付管理」に紐付けて動作する統合GAS。
  *
  * 【v2で追加した機能（Webアプリ用API）】
@@ -93,7 +97,7 @@ function handleRequest_(e) {
     if (action === 'form_submitted')       return handleFormSubmit_(p);
     if (action === 'payment_completed')    return handlePaymentComplete_(p);
     if (action === 'manual_promote')       return manualPromote_(p);
-    if (action === 'check_expired')        return checkExpired();
+    if (action === 'check_expired')        return out_(checkExpired());
     // --- v2（Webアプリ用） ---
     if (action === 'get_status')           return getStatus_(p);
     if (action === 'submit_application')   return submitApplication_(p);
@@ -773,7 +777,8 @@ function checkExpired() {
   // 🏦支払い状況シートも最新化（1時間ごとに自動更新される）
   try { setupPaymentStatusSheet(); } catch (_) {}
 
-  return out_({ ok: true, expiredCount: expiredCount });
+  // 毎時トリガーからも呼ばれるので ContentService は返さない（返すとGASがエラーメールを送る）
+  return { ok: true, expiredCount: expiredCount };
 }
 
 // ========== 手動繰上げ（管理用API） ==========
