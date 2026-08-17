@@ -91,13 +91,14 @@ const CONFIG = {
         mapUrl: 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('沖縄県総合福祉センター')
       }
     },
+    // 2026-08-09 変更: マーケは先行枠なしの一般募集のみ（15名）。名称からも【一般受付】を外した
     marke_general: {
-      title: 'マーケティングセミナー【一般受付】',
+      title: 'マーケティングセミナー',
       shortTitle: 'マーケティングセミナー',
       schedule: '9/29(火)・10/29(木)・11/25(水) 全3回 11:00〜15:00',
       dates: ['2026-09-29', '2026-10-29', '2026-11-25'],
       price: '98,000円（税込・全3回分）',
-      capacity: 10,
+      capacity: 15,
       payment: 'prepaid',
       paymentNote: 'クレジットカード決済または銀行振込にてお支払いください。',
       items: '筆記用具',

@@ -56,7 +56,8 @@ var SEMINARS = {
   'self_priority':   { sheet: '📋 セルフ先行',  capacity: 20, payment: 'cash',    open_at: '2026-08-24 21:00' },
   'self_general':    { sheet: '📋 セルフ一般',  capacity: 30, payment: 'prepaid', open_at: '2026-08-24 21:00' },
   'marke_priority':  { sheet: '📋 マーケ先行',  capacity: 5,  payment: 'prepaid', open_at: '2026-09-05 21:00' },
-  'marke_general':   { sheet: '📋 マーケ一般',  capacity: 10, payment: 'prepaid', open_at: '2026-09-05 21:00' }
+  // マーケは先行枠なしの一般募集のみ（2026-08-09変更・15名）。先行枠は使わないが定義は温存
+  'marke_general':   { sheet: '📋 マーケ一般',  capacity: 15, payment: 'prepaid', open_at: '2026-09-05 21:00' }
 };
 
 var DEADLINE_DAYS = 3;   // 決済期限（日数）
