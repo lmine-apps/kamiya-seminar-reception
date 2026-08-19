@@ -91,7 +91,7 @@ const CONFIG = {
         mapUrl: 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('沖縄県総合福祉センター')
       }
     },
-    // 2026-08-09 変更: マーケは先行枠なしの一般募集のみ（15名）。名称からも【一般受付】を外した
+    // 2026-08-17 変更: マーケは先行枠なしの一般募集のみ（15名）。名称からも【一般受付】を外した
     marke_general: {
       title: 'マーケティングセミナー',
       shortTitle: 'マーケティングセミナー',
