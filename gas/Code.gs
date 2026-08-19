@@ -1,3 +1,8 @@
+/*** 神谷梓さん 受付管理システム GAS v7.2 ****************************
+ * 【v7.2 改善 2026-08-19】アプリの読み込みを速く
+ *   名簿の検索でシート全列を読んでいたのをA列(uid)だけに変更し、
+ *   一致した1行だけを読むようにした。複数セミナーを横断する場面で効く。
+ *
 /*** 神谷梓さん 受付管理システム GAS v7.1 ****************************
  * 【v7.1 修正 2026-08-19】複数セミナーに申し込んだ方の状態が正しく出ない問題
  *   セルフとマーケの両方に申込があると、シート順で最初のもの（セルフ）が
@@ -660,10 +665,16 @@ function findUserInSeminar_(uid, seminarKey) {
   if (!sh) return null;
   var lastRow = sh.getLastRow();
   if (lastRow < DATA_START_ROW) return null;
-  var data = sh.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, LAST_COL).getValues();
-  for (var i = data.length - 1; i >= 0; i--) {
-    if (String(data[i][0]) === uid) {
-      return { seminarKey: seminarKey, sheet: sh, row: DATA_START_ROW + i, data: data[i] };
+  var n = lastRow - DATA_START_ROW + 1;
+  // v7.2: まずA列(uid)だけを読む。全列を読むと重く、表示が遅くなるため
+  var uids = sh.getRange(DATA_START_ROW, 1, n, 1).getValues();
+  for (var i = n - 1; i >= 0; i--) {   // 同uidが複数あれば下の行＝最新
+    if (String(uids[i][0]) === uid) {
+      var row = DATA_START_ROW + i;
+      return {
+        seminarKey: seminarKey, sheet: sh, row: row,
+        data: sh.getRange(row, 1, 1, LAST_COL).getValues()[0]
+      };
     }
   }
   return null;
