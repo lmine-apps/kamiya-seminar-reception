@@ -1,3 +1,7 @@
+/*** 神谷梓さん 受付管理システム GAS v7.4 ****************************
+ * 【v7.4 追加 2026-08-19】総合リストに「LINE ID（uid）」列を追加
+ *   ※メニュー「🌸受付管理 → 👥💎総合リストを再生成」で反映（デプロイ不要）
+ *
 /*** 神谷梓さん 受付管理システム GAS v7.3 ****************************
  * 【v7.3 追加 2026-08-19】カード決済完了のご連絡（お客さま申告）
  *   プロラインの「決済成功→⑦へ移動→外部プログラム」が届かない場合でも、
@@ -1315,11 +1319,12 @@ function setupMasterLists() {
   var parts = Object.keys(SEMINARS).map(function (key) {
     var s = SEMINARS[key].sheet;
     var label = s.replace('📋 ', '');
-    return "{'" + s + "'!B10:K1000, ARRAYFORMULA(IF(LEN('" + s + "'!A10:A1000),\"" + label + "\",\"\"))}";
+    return "{'" + s + "'!A10:K1000, ARRAYFORMULA(IF(LEN('" + s + "'!A10:A1000),\"" + label + "\",\"\"))}";
   });
   var stack = '{' + parts.join(';') + '}';
-  // 列対応: Col1=名前 Col2=メール Col3=電話 Col4=申込日時 Col5=期限
-  //         Col6=状態 Col7=待機順 Col8=決済完了 Col9=決済方法 Col10=備考 Col11=セミナー名
+  // 列対応（v7.4でA列=uidを追加したため、1つずつ後ろにずれています）:
+  //   Col1=uid Col2=名前 Col3=メール Col4=電話 Col5=申込日時 Col6=期限
+  //   Col7=状態 Col8=待機順 Col9=決済完了日時 Col10=決済方法 Col11=備考 Col12=セミナー名
 
   var C_TITLE = '#9c6f5f', C_HEAD = '#f8f4ea';
 
@@ -1344,16 +1349,16 @@ function setupMasterLists() {
     '👥 総参加者一覧',
     '👥 総参加者一覧（全セミナー横断・確定者）',
     '※受付シートから自動反映（さわらない）。複数セミナー参加の方は複数行で表示されます',
-    ['お名前', '参加セミナー', 'メール', '電話', '決済方法', '申込日時'],
-    '=IFERROR(QUERY(' + stack + ',"select Col1, Col11, Col2, Col3, Col9, Col4 where Col6=\'確定\' and Col1 is not null order by Col11, Col4",0),"まだ確定の方はいません")'
+    ['お名前', '参加セミナー', 'メール', '電話', '決済方法', '申込日時', 'LINE ID（uid）'],
+    '=IFERROR(QUERY(' + stack + ',"select Col2, Col12, Col3, Col4, Col10, Col5, Col1 where Col7=\'確定\' and Col2 is not null order by Col12, Col5",0),"まだ確定の方はいません")'
   );
 
   buildSheet(
     '💎 準見込みリスト',
     '💎 準見込みリスト（申込意思あり・参加に至らなかった方）',
     '※期限切れ/キャンセル済の方が自動で並びます。次回セミナーの再アプローチ候補！（さわらない）',
-    ['お名前', '対象セミナー', '状態', 'メール', '電話', '申込日時'],
-    '=IFERROR(QUERY(' + stack + ',"select Col1, Col11, Col6, Col2, Col3, Col4 where (Col6=\'期限切れ\' or Col6=\'キャンセル済\') and Col1 is not null order by Col4 desc",0),"まだ該当の方はいません")'
+    ['お名前', '対象セミナー', '状態', 'メール', '電話', '申込日時', 'LINE ID（uid）'],
+    '=IFERROR(QUERY(' + stack + ',"select Col2, Col12, Col7, Col3, Col4, Col5, Col1 where (Col7=\'期限切れ\' or Col7=\'キャンセル済\') and Col2 is not null order by Col5 desc",0),"まだ該当の方はいません")'
   );
 
   return '👥💎 総合リスト2シートを作成しました';
