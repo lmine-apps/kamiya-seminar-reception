@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex">
 <title>受付フォーム｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=27">
+<link rel="stylesheet" href="css/style.css?v=28">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -212,8 +212,8 @@
 
 </div>
 
-<script src="js/config.js?v=27"></script>
-<script src="js/common.js?v=27"></script>
+<script src="js/config.js?v=28"></script>
+<script src="js/common.js?v=28"></script>
 <script>
 let uid = getUid();
 const seminarKey = new URLSearchParams(location.search).get('seminar');
@@ -331,7 +331,7 @@ function init() {
   };
 
   // すでに申込済みならフォームではなく状態画面（決済/待機/確定など）へ転送
-  apiGet('get_status', { uid: uid }).then(res => {
+  apiGet('get_status', { uid: uid, seminar: seminarKey }).then(res => {
     if (res.ok && res.seminar === seminarKey && res.status && res.status !== '未登録') {
       location.replace('index.html');
     }

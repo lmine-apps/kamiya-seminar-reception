@@ -1,3 +1,12 @@
+/*** 神谷梓さん 受付管理システム GAS v7.1 ****************************
+ * 【v7.1 修正 2026-08-19】複数セミナーに申し込んだ方の状態が正しく出ない問題
+ *   セルフとマーケの両方に申込があると、シート順で最初のもの（セルフ）が
+ *   常に返り、マーケの入口から入っても別セミナーの画面が出ていた。
+ *   ・入口セミナーの指定があればそれを優先
+ *   ・指定がなければ「申込日時が最新」のものを返す
+ *   ・決済完了時は「お支払い待ちの行」を優先して確定する
+ *
+ *  （以下 v7.0 以前の履歴）
 /*** 神谷梓さん 受付管理システム GAS v7.0 ****************************
  * 【v7.0 修正 2026-08-19】カード決済で確定メッセージが2通届く不具合を修正
  *   プロラインが「決済成功→⑦へ移動」でメッセージを送った後、
@@ -373,7 +382,10 @@ function getStatus_(p) {
   var uid = String(p.uid || '');
   if (!uid) return out_({ ok: false, error: 'uid required' });
 
-  var found = findUserAcrossSeminars_(uid);
+  // 入口セミナーの指定があれば、そのセミナーの申込を優先して返す（複数申込対策・v7.1）
+  var found = null;
+  if (p.seminar && SEMINARS[p.seminar]) found = findUserInSeminar_(uid, p.seminar);
+  if (!found) found = findUserAcrossSeminars_(uid);
   if (!found) {
     return out_({ ok: true, uid: uid, seminar: null, status: '未登録' });
   }
@@ -640,28 +652,60 @@ function renumberWaiting_(sh, removedNum) {
 }
 
 /** 全セミナーシートからuidを検索 */
-function findUserAcrossSeminars_(uid) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var keys = Object.keys(SEMINARS);
-  for (var k = 0; k < keys.length; k++) {
-    var sh = ss.getSheetByName(SEMINARS[keys[k]].sheet);
-    if (!sh) continue;
-    var lastRow = sh.getLastRow();
-    if (lastRow < DATA_START_ROW) continue;
-    var data = sh.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, LAST_COL).getValues();
-    // 後勝ち：同uidが複数あれば最新（下の行）を返す
-    for (var i = data.length - 1; i >= 0; i--) {
-      if (String(data[i][0]) === uid) {
-        return {
-          seminarKey: keys[k],
-          sheet: sh,
-          row: DATA_START_ROW + i,
-          data: data[i]
-        };
-      }
+/** 指定セミナーの中から uid の行を探す（同uidが複数あれば下の行＝最新） */
+function findUserInSeminar_(uid, seminarKey) {
+  var config = SEMINARS[seminarKey];
+  if (!config) return null;
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(config.sheet);
+  if (!sh) return null;
+  var lastRow = sh.getLastRow();
+  if (lastRow < DATA_START_ROW) return null;
+  var data = sh.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, LAST_COL).getValues();
+  for (var i = data.length - 1; i >= 0; i--) {
+    if (String(data[i][0]) === uid) {
+      return { seminarKey: seminarKey, sheet: sh, row: DATA_START_ROW + i, data: data[i] };
     }
   }
   return null;
+}
+
+/**
+ * 全セミナーから uid を探す。
+ * 【v7.1】複数セミナーに申込がある場合は「申込日時がいちばん新しい」ものを返す。
+ * （以前はシート順で最初に見つかったものを返していたため、
+ *   セルフとマーケの両方に申し込んだ方が常にセルフ側の画面になってしまっていた）
+ */
+function findUserAcrossSeminars_(uid) {
+  var keys = Object.keys(SEMINARS);
+  var best = null, bestTime = -1;
+  for (var k = 0; k < keys.length; k++) {
+    var hit = findUserInSeminar_(uid, keys[k]);
+    if (!hit) continue;
+    var t = hit.data[4] ? new Date(hit.data[4]).getTime() : 0;
+    if (isNaN(t)) t = 0;
+    if (t >= bestTime) { bestTime = t; best = hit; }
+  }
+  return best;
+}
+
+/**
+ * 決済の宛先を探す（お支払い待ちの行を優先）。
+ * すでに確定済みの行に決済が吸い込まれるのを防ぐため、
+ * 「決済案内中／振込報告済み」の中でいちばん新しいものを返す。
+ */
+function findPayableAcrossSeminars_(uid) {
+  var keys = Object.keys(SEMINARS);
+  var best = null, bestTime = -1;
+  for (var k = 0; k < keys.length; k++) {
+    var hit = findUserInSeminar_(uid, keys[k]);
+    if (!hit) continue;
+    var st = String(hit.data[6] || '');
+    if (st !== '決済案内中' && st !== '振込報告済み') continue;
+    var t = hit.data[4] ? new Date(hit.data[4]).getTime() : 0;
+    if (isNaN(t)) t = 0;
+    if (t >= bestTime) { bestTime = t; best = hit; }
+  }
+  return best;
 }
 
 // ========== ①フォーム送信受信（v1：プロライン経由） ==========
@@ -727,7 +771,10 @@ function handlePaymentComplete_(p) {
     row = findRowByUid_(sh, p.uid);
   } else {
     // seminar未指定でも uid だけで探せるように（v2改良）
-    var found = findUserAcrossSeminars_(String(p.uid || ''));
+    // v7.1: 複数申込があるとき、すでに確定済みの行ではなく
+    //       「お支払い待ちの行」を優先する（決済が別セミナーに吸い込まれるのを防ぐ）
+    var found = findPayableAcrossSeminars_(String(p.uid || '')) ||
+                findUserAcrossSeminars_(String(p.uid || ''));
     if (found) { sh = found.sheet; row = found.row; }
   }
   if (!sh || !row) return out_({ ok: false, error: 'user not found' });

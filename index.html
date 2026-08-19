@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=27">
+<link rel="stylesheet" href="css/style.css?v=28">
 </head>
 <body>
 <div class="container">
@@ -257,18 +257,23 @@
 
 </div>
 
-<script src="js/config.js?v=27"></script>
-<script src="js/common.js?v=27"></script>
+<script src="js/config.js?v=28"></script>
+<script src="js/common.js?v=28"></script>
 <script>
 const uid = getUid();
 let currentStatus = null;
 let waitPollTimer = null;
 
+/** 入口で記憶したセミナー（複数セミナーに申込がある方の出し分け用・v7.1） */
+function savedSeminar() {
+  try { return localStorage.getItem('kamiya_seminar') || ''; } catch (_) { return ''; }
+}
+
 /** 状態取得→画面出し分け */
 async function loadStatus() {
   if (!uid) { showNoUid(); return; }
   try {
-    const res = await apiGet('get_status', { uid: uid });
+    const res = await apiGet('get_status', { uid: uid, seminar: savedSeminar() });
     if (!res.ok) { showError(res.error || ''); return; }
     currentStatus = res;
     render(res);
@@ -348,9 +353,19 @@ function renderPayment(st, sem) {
     // プロラインの決済ページ(/pd/)経由：動作確認済みの確実な方式
     // ※ゲスト（LINE未登録の特別受付）はプロライン決済が使えないため銀行振込のみ
     // テスト決済モード（管理画面スイッチON時のみテスト用決済ページに切替）
-    const useTestPay = st.test_pay && CONFIG.STRIPE_URLS_TEST[st.seminar];
-    const stripeUrl = useTestPay ? CONFIG.STRIPE_URLS_TEST[st.seminar] : CONFIG.STRIPE_URLS[st.seminar];
-    if (stripeUrl && !isGuest) {
+    const testPayOn = !!st.test_pay;
+    const testUrl = CONFIG.STRIPE_URLS_TEST[st.seminar];
+    const useTestPay = testPayOn && testUrl;
+    // テスト決済モード中なのに、このセミナー用のテスト商品が無い場合はカード決済を止める。
+    // （本番Stripeが開いてしまい「ライブモードにテストカード」で弾かれるため・v7.1）
+    const blockedByTestMode = testPayOn && !testUrl;
+    const stripeUrl = useTestPay ? testUrl : CONFIG.STRIPE_URLS[st.seminar];
+    if (blockedByTestMode) {
+      html += '<p style="font-size:13px; font-weight:700; color:#8a5ca5; margin:16px 0 8px;">' +
+        '🧪 テスト決済モード中のため、このセミナーのカードでのお支払いは一時停止しています。' +
+        '<br><span style="font-weight:400; color:#8a7d76;">動作確認は銀行振込の手順でお願いします。</span></p>';
+    }
+    if (stripeUrl && !isGuest && !blockedByTestMode) {
       html += '<p style="font-size:16px; font-weight:700; color:var(--primary-dark); margin:16px 0 8px; padding-bottom:6px; border-bottom:2px solid var(--accent);">💳 カードでのお支払いの方はこちら</p>';
       if (useTestPay) {
         html += '<p style="font-size:12px; font-weight:700; color:#8a5ca5; margin:0 0 6px;">🧪 テスト決済モード中（本番の請求は発生しません）</p>';
@@ -396,7 +411,7 @@ function renderWaiting(st, sem) {
   if (waitPollTimer) clearInterval(waitPollTimer);
   waitPollTimer = setInterval(async () => {
     try {
-      const res = await apiGet('get_status', { uid: uid });
+      const res = await apiGet('get_status', { uid: uid, seminar: savedSeminar() });
       if (res.ok) {
         if (res.status !== 'キャンセル待ち') {
           clearInterval(waitPollTimer);
