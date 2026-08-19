@@ -113,6 +113,10 @@ const CONFIG = {
   // 待機順ポーリング間隔（ミリ秒）
   WAIT_POLL_INTERVAL: 15000,
 
+  // カード決済完了の「お客さま申告」機能を使うか（GAS v7.3以降で true にする）
+  // false の間は、決済画面のボタンも ?paid=1 の自動報告も動かない＝従来どおりの動き
+  CARD_SELF_REPORT: false,
+
   // 特別枠（ゲスト受付）の合言葉キー
   // 使い方: apply.html?seminar=◯◯&guest=azg-Kx7m2 のURLを運営が個別に渡す
   GUEST_KEY: 'azg-Kx7m2'

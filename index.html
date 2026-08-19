@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=29">
+<link rel="stylesheet" href="css/style.css?v=30">
 </head>
 <body>
 <div class="container">
@@ -260,8 +260,8 @@
 
 </div>
 
-<script src="js/config.js?v=29"></script>
-<script src="js/common.js?v=29"></script>
+<script src="js/config.js?v=30"></script>
+<script src="js/common.js?v=30"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -283,7 +283,7 @@ async function loadStatus() {
     if (!res.ok) { showError(res.error || ''); return; }
 
     // 決済完了のボタンから来た方は、自動でお支払いのご連絡を送る（1回だけ）
-    if (paidFlag && !cardReported_ && res.status === '決済案内中') {
+    if (CONFIG.CARD_SELF_REPORT && paidFlag && !cardReported_ && res.status === '決済案内中') {
       cardReported_ = true;
       try {
         await apiPost('report_card_payment', { uid: uid, seminar: res.seminar || savedSeminar() });
@@ -398,7 +398,7 @@ function renderPayment(st, sem) {
         '?uid=' + encodeURIComponent(uid) + '">クレジットカードで支払う</a>';
     }
     // カード決済は外部サイトで完了するため、戻ってきた方がご連絡できる受け皿を置く
-    if (!isGuest && sem.payment !== 'cash') {
+    if (CONFIG.CARD_SELF_REPORT && !isGuest && sem.payment !== 'cash') {
       html += '<button type="button" class="btn btn-outline" onclick="reportCardPaid()" ' +
         'style="margin-top:10px;">カードでのお支払いが済んだ方はこちら</button>' +
         '<p class="form-note" style="text-align:center; margin-top:4px;">' +
