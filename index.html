@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=30">
+<link rel="stylesheet" href="css/style.css?v=31">
 </head>
 <body>
 <div class="container">
@@ -260,8 +260,8 @@
 
 </div>
 
-<script src="js/config.js?v=30"></script>
-<script src="js/common.js?v=30"></script>
+<script src="js/config.js?v=31"></script>
+<script src="js/common.js?v=31"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -523,8 +523,7 @@ document.getElementById('cancel-confirm-form').addEventListener('submit', async 
 
 /** カード決済完了のご連絡（お客さま申告） */
 async function reportCardPaid() {
-  if (!confirm('カードでのお支払いが完了したことを、主催者へご連絡します。
-よろしいですか？')) return;
+  if (!confirm('カードでのお支払いが完了したことを、主催者へご連絡します。よろしいですか？')) return;
   showLoading(true);
   try {
     const res = await apiPost('report_card_payment', {
