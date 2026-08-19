@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=28">
+<link rel="stylesheet" href="css/style.css?v=29">
 </head>
 <body>
 <div class="container">
@@ -149,7 +149,7 @@
     <div class="card">
       <span class="icon-large">🕊</span>
       <h2>ご報告ありがとうございます</h2>
-      <p class="message-center">
+      <p class="message-center" id="bank-reported-text">
         お振込のご報告を承りました。<br>
         入金の確認が取れましたら、<br>LINEにてご連絡いたします。<br>
         今しばらくお待ちくださいませ。
@@ -260,10 +260,13 @@
 
 </div>
 
-<script src="js/config.js?v=28"></script>
-<script src="js/common.js?v=28"></script>
+<script src="js/config.js?v=29"></script>
+<script src="js/common.js?v=29"></script>
 <script>
 const uid = getUid();
+// 決済完了メッセージのボタンから来た印（?paid=1）
+const paidFlag = new URLSearchParams(location.search).get('paid') === '1';
+let cardReported_ = false;
 let currentStatus = null;
 let waitPollTimer = null;
 
@@ -278,6 +281,16 @@ async function loadStatus() {
   try {
     const res = await apiGet('get_status', { uid: uid, seminar: savedSeminar() });
     if (!res.ok) { showError(res.error || ''); return; }
+
+    // 決済完了のボタンから来た方は、自動でお支払いのご連絡を送る（1回だけ）
+    if (paidFlag && !cardReported_ && res.status === '決済案内中') {
+      cardReported_ = true;
+      try {
+        await apiPost('report_card_payment', { uid: uid, seminar: res.seminar || savedSeminar() });
+        return loadStatus();
+      } catch (_) { /* 失敗しても決済画面は出せるので握りつぶす */ }
+    }
+
     currentStatus = res;
     render(res);
   } catch (err) {
@@ -297,10 +310,18 @@ function render(st) {
     case '決済案内中':
       renderPayment(st, sem);
       break;
-    case '振込報告済み':
+    case '振込報告済み': {
       renderSteps('steps-bank-reported', 2, false, false);
+      const byCard = String(st.payment_method || '').indexOf('カード') === 0;
+      const el = document.getElementById('bank-reported-text');
+      if (el) {
+        el.innerHTML = byCard
+          ? 'お支払いのご連絡を承りました。<br>確認が取れましたら、<br>LINEにて確定のご案内をお送りします。<br>今しばらくお待ちくださいませ。'
+          : 'お振込のご報告を承りました。<br>入金の確認が取れましたら、<br>LINEにてご連絡いたします。<br>今しばらくお待ちくださいませ。';
+      }
       showScreen('screen-bank-reported');
       break;
+    }
     case 'キャンセル待ち':
       renderWaiting(st, sem);
       break;
@@ -375,6 +396,13 @@ function renderPayment(st, sem) {
       }
       html += '<a class="btn btn-primary" href="' + stripeUrl +
         '?uid=' + encodeURIComponent(uid) + '">クレジットカードで支払う</a>';
+    }
+    // カード決済は外部サイトで完了するため、戻ってきた方がご連絡できる受け皿を置く
+    if (!isGuest && sem.payment !== 'cash') {
+      html += '<button type="button" class="btn btn-outline" onclick="reportCardPaid()" ' +
+        'style="margin-top:10px;">カードでのお支払いが済んだ方はこちら</button>' +
+        '<p class="form-note" style="text-align:center; margin-top:4px;">' +
+        'お支払い後にこの画面へ戻られた場合は、こちらから完了のご連絡をお願いいたします。</p>';
     }
     if (isGuest) {
       html += '<p class="form-note">※特別受付のため、お支払いは銀行振込のみのご対応となります。</p>';
@@ -493,6 +521,25 @@ document.getElementById('cancel-confirm-form').addEventListener('submit', async 
   }
 });
 
+/** カード決済完了のご連絡（お客さま申告） */
+async function reportCardPaid() {
+  if (!confirm('カードでのお支払いが完了したことを、主催者へご連絡します。
+よろしいですか？')) return;
+  showLoading(true);
+  try {
+    const res = await apiPost('report_card_payment', {
+      uid: uid,
+      seminar: (currentStatus && currentStatus.seminar) || savedSeminar()
+    });
+    showLoading(false);
+    if (!res.ok) { showError(res.error || ''); return; }
+    await loadStatus();
+  } catch (err) {
+    showLoading(false);
+    showError(String(err));
+  }
+}
+
 /** 振込報告 */
 document.getElementById('bank-report-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -540,6 +587,7 @@ function demoInit_() {
   // API呼び出しをすべて偽装（スプシ・LINEには何も起きない）
   apiGet = async function (action) {
     if (action === 'get_status') return demoState_ || { ok: true, status: '未登録' };
+    if (action === 'report_card_payment') return { ok: true, status: '振込報告済み' };
     return { ok: true };
   };
   apiPost = async function () { return { ok: true }; };

@@ -1,3 +1,10 @@
+/*** 神谷梓さん 受付管理システム GAS v7.3 ****************************
+ * 【v7.3 追加 2026-08-19】カード決済完了のご連絡（お客さま申告）
+ *   プロラインの「決済成功→⑦へ移動→外部プログラム」が届かない場合でも、
+ *   お客さまが決済画面で止まらないようにするための受け皿。
+ *   action=report_card_payment で「振込報告済み」に変え、
+ *   運営が管理画面で確認して確定する流れ（銀行振込と同じ手順）に合流させる。
+ *
 /*** 神谷梓さん 受付管理システム GAS v7.2 ****************************
  * 【v7.2 改善 2026-08-19】アプリの読み込みを速く
  *   名簿の検索でシート全列を読んでいたのをA列(uid)だけに変更し、
@@ -141,6 +148,7 @@ function handleRequest_(e) {
     if (action === 'get_status')           return getStatus_(p);
     if (action === 'submit_application')   return submitApplication_(p);
     if (action === 'report_bank_transfer') return reportBankTransfer_(p);
+    if (action === 'report_card_payment')  return reportCardPayment_(p);
     if (action === 'get_capacity')         return getCapacity_(p);
     if (action === 'cancel_application')   return cancelApplication_(p);
 
@@ -566,6 +574,37 @@ function reportBankTransfer_(p) {
     (found.data[1] || 'どなたか') + 'さんから振込のご報告がありました。入金確認をお願いします。');
 
   return out_({ ok: true });
+}
+
+// ========== 【v7.3】カード決済完了のご連絡（お客さま申告） ==========
+// プロラインの「決済成功→シナリオ移動→外部プログラム」が届かなくても
+// お客さまが止まらないようにするための、こちら側の受け皿。
+// 状態は銀行振込と同じ「振込報告済み」にして、運営が確認して確定する流れに合流させる。
+function reportCardPayment_(p) {
+  var uid = String(p.uid || '');
+  if (!uid) return out_({ ok: false, error: 'uid required' });
+
+  var found = null;
+  if (p.seminar && SEMINARS[p.seminar]) found = findUserInSeminar_(uid, p.seminar);
+  if (!found) found = findPayableAcrossSeminars_(uid) || findUserAcrossSeminars_(uid);
+  if (!found) return out_({ ok: false, error: 'user not found' });
+
+  var sh = found.sheet, row = found.row;
+  var current = String(sh.getRange(row, 7).getValue());
+  // 二重報告・確定済みへの上書きを防ぐ
+  if (current !== '決済案内中') {
+    return out_({ ok: true, already: true, status: current });
+  }
+
+  sh.getRange(row, 7).setValue('振込報告済み');
+  if (!sh.getRange(row, 10).getValue()) sh.getRange(row, 10).setValue('カード（要確認）');
+  sh.getRange(row, 11).setValue('カード決済完了のご連絡 ' + formatDate_(new Date()));
+
+  logAction_('card_payment_reported', uid, sh.getName(), '→ 振込報告済み', 'カード決済完了の申告');
+  notifyOps_('💳 カード決済のご連絡が届きました',
+    (found.data[1] || 'どなたか') + 'さんがカード決済を完了されました。Stripeで入金をご確認のうえ、確定の操作をお願いします。');
+
+  return out_({ ok: true, status: '振込報告済み' });
 }
 
 // ========== 【v2】残席照会 ==========
