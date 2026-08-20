@@ -1,3 +1,9 @@
+/*** 神谷梓さん 受付管理システム GAS v7.8 ****************************
+ * 【v7.8 改良 2026-08-20】お知らせの入力と編集をもっと簡単に
+ *   ・予約日はカレンダーから選択、時刻は30分きざみのプルダウンに分離
+ *   ・管理アプリからお知らせを作成・編集・送信できるAPIを追加
+ *     （admin_news_list / save / send / count / delete）
+ *
 /*** 神谷梓さん 受付管理システム GAS v7.7 ****************************
  * 【v7.7 追加 2026-08-20】📣 お知らせ機能
  *   スプシの「📣 お知らせ」シートに本文を書くとアプリに表示され、
@@ -148,7 +154,9 @@ function handleRequest_(e) {
     // 管理者専用アクション（名簿閲覧・状態操作は管理キー必須）
     var ADMIN_ACTIONS = ['admin_summary', 'read_sheet', 'admin_update_status', 'admin_promote',
                          'admin_save_push_token', 'admin_test_push', 'admin_set_test_pay',
-                         'admin_set_gate'];
+                         'admin_set_gate',
+                         'admin_news_list', 'admin_news_save', 'admin_news_send',
+                         'admin_news_count', 'admin_news_delete'];
     if (ADMIN_ACTIONS.indexOf(action) !== -1) {
       if (String(p.token) !== String(ADMIN_TOKEN)) {
         return out_({ ok: false, error: 'unauthorized' });
@@ -161,6 +169,11 @@ function handleRequest_(e) {
       if (action === 'admin_test_push')       return adminTestPush_(p);
       if (action === 'admin_set_test_pay')    return adminSetTestPay_(p);
       if (action === 'admin_set_gate')        return adminSetGate_(p);
+      if (action === 'admin_news_list')       return adminNewsList_();
+      if (action === 'admin_news_save')       return adminNewsSave_(p);
+      if (action === 'admin_news_send')       return adminNewsSend_(p);
+      if (action === 'admin_news_count')      return adminNewsCount_(p);
+      if (action === 'admin_news_delete')     return adminNewsDelete_(p);
     }
 
     // トークン認証（一般）
@@ -1591,26 +1604,46 @@ function setupManualSheet() {
  * 📣 お知らせ（アプリ表示＋LINEでのお知らせ）
  *
  * 「アプリに本文を置き、LINEは"見てください"の合図だけ送る」仕組み。
- * これによりシナリオ枠を消費せず、送信後も本文を直せる。
+ * シナリオ枠を消費せず、送信後も本文を直せる。
+ * スプレッドシートからも、管理アプリからも編集できる。
  *
  * 【シートの列】
  *  A 表示（公開／下書き／通常）  B 対象セミナー  C 対象の状態
  *  D タイトル  E 本文  F LINE通知（送らない／すぐ送る／予約／送信済み）
- *  G 予約日時  H 送信済み日時  I 送信人数
+ *  G 予約日（カレンダー）  H 予約時刻（プルダウン）
+ *  I 送信済み日時  J 送信人数
  *
  * 「通常」＝臨時のお知らせが無いときに出る定常メッセージ。
  *          公開の行があればそちらが優先され、下書きに戻すと通常に戻る。
  * ============================================================ */
 var NEWS_SHEET = '📣 お知らせ';
 var NEWS_START_ROW = 5;
+var NEWS_COLS = 10;
 var NEWS_SEM_ALL = 'すべて';
+var NEWS_SHOW_LIST   = ['公開', '下書き', '通常'];
+var NEWS_TARGET_LIST = ['すべて', '確定', 'お支払い待ち', 'キャンセル待ち'];
+var NEWS_NOTIFY_LIST = ['送らない', 'すぐ送る', '予約', '送信済み'];
 
-/** 対象セミナーの表示名 */
+/** 予約時刻の候補（30分きざみ） */
+function newsTimeList_() {
+  var list = [];
+  for (var h = 0; h < 24; h++) {
+    list.push(('0' + h).slice(-2) + ':00');
+    list.push(('0' + h).slice(-2) + ':30');
+  }
+  return list;
+}
+
+function newsSeminarList_() {
+  var list = [NEWS_SEM_ALL];
+  Object.keys(SEMINARS).forEach(function (k) { list.push(newsSeminarLabel_(k)); });
+  return list;
+}
+
 function newsSeminarLabel_(key) {
   return SEMINARS[key] ? SEMINARS[key].sheet.replace('📋 ', '') : '';
 }
 
-/** 状態が「対象の状態」に当てはまるか */
 function newsStatusMatch_(target, status) {
   if (!target || target === 'すべて') return true;
   if (target === '確定') return status === '確定';
@@ -1619,7 +1652,32 @@ function newsStatusMatch_(target, status) {
   return false;
 }
 
-/** お知らせシートの全行を読む（60秒キャッシュ・表示を重くしないため） */
+/** 日付セルを yyyy-MM-dd の文字列に */
+function newsDateStr_(v) {
+  if (!v) return '';
+  if (Object.prototype.toString.call(v) === '[object Date]') {
+    return Utilities.formatDate(v, 'Asia/Tokyo', 'yyyy-MM-dd');
+  }
+  return String(v).trim();
+}
+
+/** 時刻セルを HH:mm の文字列に（Dateで入っても拾えるように） */
+function newsTimeStr_(v) {
+  if (!v && v !== 0) return '';
+  if (Object.prototype.toString.call(v) === '[object Date]') {
+    return Utilities.formatDate(v, 'Asia/Tokyo', 'HH:mm');
+  }
+  return String(v).trim();
+}
+
+/** シートが無ければ作る */
+function ensureNewsSheet_() {
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(NEWS_SHEET);
+  if (!sh) { setupNewsSheet(); sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(NEWS_SHEET); }
+  return sh;
+}
+
+/** お知らせシートの全行（60秒キャッシュ・表示を重くしないため） */
 function newsRows_(useCache) {
   var cache = CacheService.getScriptCache();
   if (useCache !== false) {
@@ -1631,7 +1689,7 @@ function newsRows_(useCache) {
   if (sh) {
     var lastRow = sh.getLastRow();
     if (lastRow >= NEWS_START_ROW) {
-      var data = sh.getRange(NEWS_START_ROW, 1, lastRow - NEWS_START_ROW + 1, 9).getValues();
+      var data = sh.getRange(NEWS_START_ROW, 1, lastRow - NEWS_START_ROW + 1, NEWS_COLS).getValues();
       for (var i = 0; i < data.length; i++) {
         var r = data[i];
         if (!String(r[3]).trim() && !String(r[4]).trim()) continue;
@@ -1643,9 +1701,10 @@ function newsRows_(useCache) {
           title: String(r[3] || '').trim(),
           body: String(r[4] || '').trim(),
           notify: String(r[5] || '').trim(),
-          at: r[6] ? formatDateValue_(r[6]) : '',
-          sent: r[7] ? formatDateValue_(r[7]) : '',
-          count: r[8] || ''
+          date: newsDateStr_(r[6]),
+          time: newsTimeStr_(r[7]),
+          sent: r[8] ? formatDateValue_(r[8]) : '',
+          count: r[9] || ''
         });
       }
     }
@@ -1653,6 +1712,8 @@ function newsRows_(useCache) {
   try { cache.put('news_rows', JSON.stringify(rows), 60); } catch (_) {}
   return rows;
 }
+
+function newsCacheClear_() { try { CacheService.getScriptCache().remove('news_rows'); } catch (_) {} }
 
 /** その人に出すお知らせを1件選ぶ（公開が優先、無ければ通常） */
 function pickNews_(seminarKey, status) {
@@ -1699,12 +1760,12 @@ function sendNewsRow_(n) {
     moveScenario_(uids[i], '前日リマインド');   // ⑧を「お知らせの合図」として使う
     Utilities.sleep(150);
   }
-  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(NEWS_SHEET);
+  var sh = ensureNewsSheet_();
   sh.getRange(n.row, 6).setValue('送信済み');
-  sh.getRange(n.row, 8).setValue(formatDate_(new Date()));
-  sh.getRange(n.row, 9).setValue(uids.length);
+  sh.getRange(n.row, 9).setValue(formatDate_(new Date()));
+  sh.getRange(n.row, 10).setValue(uids.length);
   logAction_('news_sent', '', n.seminar + '/' + n.target, n.title, uids.length + '名へ送信');
-  try { CacheService.getScriptCache().remove('news_rows'); } catch (_) {}
+  newsCacheClear_();
   return uids.length;
 }
 
@@ -1734,14 +1795,75 @@ function sendNewsNow() {
 function sendScheduledNews_() {
   var now = new Date();
   var rows = newsRows_(false).filter(function (n) {
-    if (n.notify !== '予約' || !n.at) return false;
-    var t = new Date(String(n.at).replace(/-/g, '/'));
+    if (n.notify !== '予約' || !n.date) return false;
+    var t = new Date(String(n.date).replace(/-/g, '/') + ' ' + (n.time || '00:00'));
     return !isNaN(t.getTime()) && t.getTime() <= now.getTime();
   });
   var total = 0;
   rows.forEach(function (n) { total += sendNewsRow_(n); });
   if (total) notifyOps_('📣 予約したお知らせを送りました', total + '名へLINEでお知らせしました。');
   return total;
+}
+
+/* ---------- 管理アプリ用API ---------- */
+
+function adminNewsList_() {
+  return out_({
+    ok: true,
+    rows: newsRows_(false),
+    seminars: newsSeminarList_(),
+    targets: NEWS_TARGET_LIST,
+    times: newsTimeList_()
+  });
+}
+
+/** 新規追加 or 上書き保存 */
+function adminNewsSave_(p) {
+  var sh = ensureNewsSheet_();
+  var row = Number(p.row || 0);
+  if (!row || row < NEWS_START_ROW) {
+    row = Math.max(sh.getLastRow(), NEWS_START_ROW - 1) + 1;
+  }
+  sh.getRange(row, 1, 1, 8).setValues([[
+    p.show || '下書き',
+    p.seminar || NEWS_SEM_ALL,
+    p.target || 'すべて',
+    String(p.title || ''),
+    String(p.body || ''),
+    p.notify || '送らない',
+    p.date || '',
+    p.time || ''
+  ]]);
+  newsCacheClear_();
+  logAction_('news_saved', '', p.seminar + '/' + p.target, String(p.title || ''), '管理アプリから保存');
+  return out_({ ok: true, row: row });
+}
+
+/** 指定行をいま送信する */
+function adminNewsSend_(p) {
+  var row = Number(p.row || 0);
+  var target = null;
+  newsRows_(false).forEach(function (n) { if (n.row === row) target = n; });
+  if (!target) return out_({ ok: false, error: 'row not found' });
+  var count = sendNewsRow_(target);
+  notifyOps_('📣 お知らせを送りました', count + '名へLINEでお知らせしました。');
+  return out_({ ok: true, count: count });
+}
+
+/** 送信対象の人数だけ数える（送信前の確認用） */
+function adminNewsCount_(p) {
+  return out_({ ok: true, count: newsTargets_(p.seminar || NEWS_SEM_ALL, p.target || 'すべて').length });
+}
+
+/** 行を削除 */
+function adminNewsDelete_(p) {
+  var row = Number(p.row || 0);
+  if (!row || row < NEWS_START_ROW) return out_({ ok: false, error: 'bad row' });
+  var sh = ensureNewsSheet_();
+  sh.deleteRow(row);
+  newsCacheClear_();
+  logAction_('news_deleted', '', '', '行' + row, '管理アプリから削除');
+  return out_({ ok: true });
 }
 
 /** 📣 お知らせシートを用意する（メニューから実行・何度押しても安全） */
@@ -1751,43 +1873,50 @@ function setupNewsSheet() {
   var keep = [];
   if (sh) {
     var lastRow = sh.getLastRow();
-    if (lastRow >= NEWS_START_ROW) keep = sh.getRange(NEWS_START_ROW, 1, lastRow - NEWS_START_ROW + 1, 9).getValues();
+    if (lastRow >= NEWS_START_ROW) keep = sh.getRange(NEWS_START_ROW, 1, lastRow - NEWS_START_ROW + 1, NEWS_COLS).getValues();
     sh.clear();
-    sh.getRange(1, 1, sh.getMaxRows(), 9).clearDataValidations();
+    sh.getRange(1, 1, sh.getMaxRows(), NEWS_COLS).clearDataValidations();
   } else {
     sh = ss.insertSheet(NEWS_SHEET, 2);
   }
 
-  var HEAD = ['表示', '対象セミナー', '対象の状態', 'タイトル', '本文', 'LINE通知', '予約日時', '送信済み日時', '送信人数'];
-  sh.getRange(1, 1, 1, 9).merge().setValue('📣 お知らせ（アプリに表示／LINEでお知らせ）')
+  var HEAD = ['表示', '対象セミナー', '対象の状態', 'タイトル', '本文', 'LINE通知', '予約日', '予約時刻', '送信済み日時', '送信人数'];
+  sh.getRange(1, 1, 1, NEWS_COLS).merge().setValue('📣 お知らせ（アプリに表示／LINEでお知らせ）')
     .setFontSize(13).setFontWeight('bold').setFontColor('#fff')
     .setBackground('#b18474').setHorizontalAlignment('center');
-  sh.getRange(2, 1, 1, 9).merge()
-    .setValue('「表示」を公開にするとアプリに出ます。臨時のお知らせを下書きに戻すと、通常のメッセージに戻ります。'
-            + ' ／ LINEでも知らせたい時は「LINE通知」を すぐ送る（→メニューから実行）か 予約（日時を入れる）に。')
+  sh.getRange(2, 1, 1, NEWS_COLS).merge()
+    .setValue('「表示」を公開にするとアプリに出ます。臨時のお知らせを下書きに戻すと通常のメッセージに戻ります。'
+            + ' ／ LINEでも知らせたい時は「LINE通知」を すぐ送る（→メニューから実行）か 予約（日付と時刻を入れる）に。'
+            + ' ／ 管理アプリの「📣 お知らせ」からも編集できます。')
     .setFontSize(9).setFontColor('#888').setHorizontalAlignment('center').setWrap(true);
-  sh.getRange(4, 1, 1, 9).setValues([HEAD])
+  sh.getRange(4, 1, 1, NEWS_COLS).setValues([HEAD])
     .setFontWeight('bold').setBackground('#f8f4ea').setFontSize(10);
   sh.setFrozenRows(4);
-  var widths = [80, 110, 110, 190, 380, 100, 140, 140, 80];
+  var widths = [80, 110, 110, 190, 360, 100, 110, 90, 140, 80];
   for (var c = 0; c < widths.length; c++) sh.setColumnWidth(c + 1, widths[c]);
 
-  var semList = [NEWS_SEM_ALL];
-  Object.keys(SEMINARS).forEach(function (k) { semList.push(newsSeminarLabel_(k)); });
-  var rules = [
-    { col: 1, list: ['公開', '下書き', '通常'] },
-    { col: 2, list: semList },
-    { col: 3, list: ['すべて', '確定', 'お支払い待ち', 'キャンセル待ち'] },
-    { col: 6, list: ['送らない', 'すぐ送る', '予約', '送信済み'] }
+  // プルダウン
+  var lists = [
+    { col: 1, list: NEWS_SHOW_LIST },
+    { col: 2, list: newsSeminarList_() },
+    { col: 3, list: NEWS_TARGET_LIST },
+    { col: 6, list: NEWS_NOTIFY_LIST },
+    { col: 8, list: newsTimeList_() }
   ];
-  rules.forEach(function (r) {
+  lists.forEach(function (r) {
     var rule = SpreadsheetApp.newDataValidation().requireValueInList(r.list, true).setAllowInvalid(false).build();
     sh.getRange(NEWS_START_ROW, r.col, 200, 1).setDataValidation(rule);
   });
+
+  // 予約日はカレンダーから選べるように（日付の入力規則＋日付表示形式）
+  var dateRule = SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(true)
+    .setHelpText('カレンダーから日付を選んでください').build();
+  sh.getRange(NEWS_START_ROW, 7, 200, 1).setDataValidation(dateRule).setNumberFormat('yyyy-mm-dd');
+  sh.getRange(NEWS_START_ROW, 8, 200, 1).setNumberFormat('@');   // 時刻は文字列扱い
   sh.getRange(NEWS_START_ROW, 5, 200, 1).setWrap(true);
 
   if (keep.length) {
-    sh.getRange(NEWS_START_ROW, 1, keep.length, 9).setValues(keep);
+    sh.getRange(NEWS_START_ROW, 1, keep.length, NEWS_COLS).setValues(keep);
   } else {
     sh.getRange(NEWS_START_ROW, 1, 1, 6).setValues([[
       '通常', NEWS_SEM_ALL, '確定',
@@ -1796,7 +1925,6 @@ function setupNewsSheet() {
       '送らない'
     ]]);
   }
-  try { CacheService.getScriptCache().remove('news_rows'); } catch (_) {}
+  newsCacheClear_();
   return '📣 お知らせシートを用意しました';
 }
-

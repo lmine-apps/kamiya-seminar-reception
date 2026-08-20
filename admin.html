@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="受付管理">
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=32">
+<link rel="stylesheet" href="css/style.css?v=33">
 <style>
   .container { max-width: 720px; }
   /* タブ */
@@ -111,6 +111,29 @@
     .empty-row { display: block; }
   }
 
+  /* 📣 お知らせ */
+  .news-item { background:var(--card); border-radius:12px; padding:12px 13px; margin-bottom:9px; box-shadow:0 2px 8px rgba(120,90,70,.06); }
+  .news-item .nh { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:4px; }
+  .news-item .nt { font-size:14px; font-weight:700; flex:1 1 auto; min-width:0; }
+  .news-item .nb { font-size:12px; color:var(--text-light); white-space:pre-line; line-height:1.8; }
+  .news-item .nmeta { font-size:10px; color:var(--text-light); margin-top:5px; }
+  .news-item .nacts { display:flex; gap:6px; margin-top:9px; }
+  .ntag { font-size:10px; font-weight:700; padding:2px 8px; border-radius:9px; white-space:nowrap; }
+  .ntag-open { background:#e7f0e7; color:#5c8a5c; }
+  .ntag-draft{ background:#eeeae7; color:#9a8f88; }
+  .ntag-normal{ background:#e9eff7; color:#4a6fa5; }
+  .ntag-sem  { background:#f3e7e1; color:#9c6f5f; }
+  .news-form { background:var(--card); border-radius:12px; padding:14px; box-shadow:0 2px 8px rgba(120,90,70,.06); }
+  .news-form label { display:block; font-size:11px; color:var(--text-light); font-weight:600; margin:10px 0 3px; }
+  .news-form select, .news-form input, .news-form textarea {
+    width:100%; padding:9px 10px; border:1.5px solid var(--line); border-radius:9px;
+    font-family:inherit; font-size:14px; background:#fff; color:var(--text);
+  }
+  .news-form textarea { min-height:110px; resize:vertical; line-height:1.8; }
+  .news-form .two { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .news-form .acts { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
+  .news-form .acts .btn { flex:1 1 auto; margin:0; }
+
   /* PC最適化（管理画面：広い名簿テーブル） */
   @media (min-width: 1100px) {
     .container { max-width: 980px; }
@@ -168,6 +191,7 @@
       <span class="time" id="updated-at">-</span>
       <span>
         <button id="push-btn" onclick="togglePush()" style="margin-right:6px;">🔔 通知</button>
+        <button onclick="openNews()" style="margin-right:6px;">📣 お知らせ</button>
         <button onclick="showScreen('screen-manual')" style="margin-right:6px;">📖 使い方</button>
         <button onclick="loadData()">🔄 更新</button>
       </span>
@@ -264,11 +288,30 @@
     </div>
   </div>
 
+  <!-- 📣 お知らせ -->
+  <div class="screen" id="screen-news">
+    <div class="refresh-bar">
+      <span class="time">📣 お知らせ</span>
+      <span>
+        <button onclick="newNews()" style="margin-right:6px;">＋ 新規</button>
+        <button onclick="showScreen('screen-dash')">← 戻る</button>
+      </span>
+    </div>
+
+    <p class="form-note" style="margin-bottom:10px;">
+      ここに書いた内容が、対象のお客さまのアプリに表示されます。<br>
+      「通常」にした行は、臨時のお知らせが無いときに出る文面です。
+    </p>
+
+    <div id="news-form-wrap" style="display:none;"></div>
+    <div id="news-list"></div>
+  </div>
+
   <div class="footer">株式会社 Bonheur Lelien｜運営者専用ページ</div>
 </div>
 
-<script src="js/config.js?v=32"></script>
-<script src="js/common.js?v=32"></script>
+<script src="js/config.js?v=33"></script>
+<script src="js/common.js?v=33"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script>
@@ -423,6 +466,210 @@ function updateTestPayUI_() {
   if (on && !testPayAlerted_) {
     testPayAlerted_ = true;
     alert('⚠️ テスト決済モードがONです！\n\nマーケ一般の決済ページがテスト用に切り替わっています。\n本番のお客さまが決済すると「テスト商品」で決済されてしまいます。\n\nテストが終わったら必ず「🧪テスト決済」ボタンからOFFに戻してください。');
+  }
+}
+
+/* --- 📣 お知らせ --- */
+let newsData = null;
+let newsEditRow = 0;
+
+function newsApi_(action, params) {
+  const url = new URL(CONFIG.GAS_URL);
+  url.searchParams.set('action', action);
+  url.searchParams.set('token', adminKey);
+  for (const k in (params || {})) url.searchParams.set(k, params[k]);
+  return fetch(url.toString()).then(r => r.json());
+}
+
+function newsPost_(action, body) {
+  const payload = Object.assign({ action: action, token: adminKey }, body || {});
+  return fetch(CONFIG.GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  }).then(r => r.json());
+}
+
+async function openNews() {
+  showLoading(true);
+  try {
+    newsData = await newsApi_('admin_news_list');
+    if (!newsData.ok) { alert('読み込みに失敗しました：' + (newsData.error || '')); showLoading(false); return; }
+    document.getElementById('news-form-wrap').style.display = 'none';
+    renderNewsList();
+    showScreen('screen-news');
+  } catch (err) {
+    alert('通信に失敗しました。もう一度お試しください。');
+  }
+  showLoading(false);
+}
+
+function newsTagClass_(show) {
+  if (show === '公開') return 'ntag-open';
+  if (show === '通常') return 'ntag-normal';
+  return 'ntag-draft';
+}
+
+function renderNewsList() {
+  const el = document.getElementById('news-list');
+  const rows = (newsData && newsData.rows) || [];
+  if (!rows.length) {
+    el.innerHTML = '<p class="form-note" style="text-align:center; padding:24px;">まだお知らせがありません。<br>「＋ 新規」から作成してください。</p>';
+    return;
+  }
+  el.innerHTML = rows.map(n => {
+    const sched = (n.notify === '予約' && n.date) ? '予約：' + esc(n.date) + ' ' + esc(n.time || '') : '';
+    const sent = n.sent ? '送信済み：' + esc(n.sent) + '（' + esc(String(n.count || 0)) + '名）' : '';
+    return '<div class="news-item">' +
+      '<div class="nh">' +
+        '<span class="ntag ' + newsTagClass_(n.show) + '">' + esc(n.show || '下書き') + '</span>' +
+        '<span class="ntag ntag-sem">' + esc(n.seminar || 'すべて') + ' / ' + esc(n.target || 'すべて') + '</span>' +
+      '</div>' +
+      '<div class="nt">' + esc(n.title || '（タイトルなし）') + '</div>' +
+      (n.body ? '<div class="nb">' + esc(n.body) + '</div>' : '') +
+      ((sched || sent) ? '<div class="nmeta">' + [sched, sent].filter(Boolean).join(' ／ ') + '</div>' : '') +
+      '<div class="nacts">' +
+        '<button class="abtn abtn-back" onclick="editNews(' + n.row + ')">✎ 編集</button>' +
+        '<button class="abtn abtn-ok" onclick="sendNewsRow(' + n.row + ')">📣 LINEで送る</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function newsSelect_(id, list, val) {
+  return '<select id="' + id + '">' + list.map(v =>
+    '<option value="' + esc(v) + '"' + (v === val ? ' selected' : '') + '>' + esc(v) + '</option>'
+  ).join('') + '</select>';
+}
+
+function showNewsForm_(n) {
+  newsEditRow = n.row || 0;
+  const wrap = document.getElementById('news-form-wrap');
+  wrap.style.display = '';
+  wrap.innerHTML =
+    '<div class="news-form">' +
+      '<label>表示</label>' + newsSelect_('nf-show', ['公開', '下書き', '通常'], n.show || '下書き') +
+      '<div class="two">' +
+        '<div><label>対象セミナー</label>' + newsSelect_('nf-sem', newsData.seminars, n.seminar || 'すべて') + '</div>' +
+        '<div><label>対象の状態</label>' + newsSelect_('nf-target', newsData.targets, n.target || 'すべて') + '</div>' +
+      '</div>' +
+      '<label>タイトル</label><input type="text" id="nf-title" value="' + esc(n.title || '') + '" placeholder="当日のお持ち物について">' +
+      '<label>本文</label><textarea id="nf-body" placeholder="お客さまの画面に表示される文章です">' + esc(n.body || '') + '</textarea>' +
+      '<label>LINEでのお知らせ</label>' + newsSelect_('nf-notify', ['送らない', 'すぐ送る', '予約'], (n.notify === '送信済み' ? '送らない' : (n.notify || '送らない'))) +
+      '<div class="two">' +
+        '<div><label>予約日</label><input type="date" id="nf-date" value="' + esc(n.date || '') + '"></div>' +
+        '<div><label>予約時刻</label>' + newsSelect_('nf-time', newsData.times, n.time || '10:00') + '</div>' +
+      '</div>' +
+      '<div class="acts">' +
+        '<button class="btn btn-primary" onclick="saveNews(false)">保存する</button>' +
+        '<button class="btn btn-outline" onclick="saveNews(true)">保存してLINEで送る</button>' +
+      '</div>' +
+      '<div class="acts">' +
+        (newsEditRow ? '<button class="btn btn-text" onclick="deleteNews()" style="color:var(--warn);">🗑 このお知らせを削除</button>' : '') +
+        '<button class="btn btn-text" onclick="closeNewsForm()">閉じる</button>' +
+      '</div>' +
+    '</div>';
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function newNews() { showNewsForm_({}); }
+
+function editNews(row) {
+  const n = (newsData.rows || []).find(x => x.row === row);
+  if (n) showNewsForm_(n);
+}
+
+function closeNewsForm() {
+  document.getElementById('news-form-wrap').style.display = 'none';
+  newsEditRow = 0;
+}
+
+function newsFormValues_() {
+  const v = id => (document.getElementById(id) || {}).value || '';
+  return {
+    row: newsEditRow,
+    show: v('nf-show'),
+    seminar: v('nf-sem'),
+    target: v('nf-target'),
+    title: v('nf-title'),
+    body: v('nf-body'),
+    notify: v('nf-notify'),
+    date: v('nf-date'),
+    time: v('nf-time')
+  };
+}
+
+async function saveNews(sendAfter) {
+  const data = newsFormValues_();
+  if (!data.title && !data.body) { alert('タイトルか本文のどちらかは入力してください。'); return; }
+  if (data.notify === '予約' && !data.date) { alert('予約日を選んでください。'); return; }
+
+  showLoading(true);
+  try {
+    const res = await newsPost_('admin_news_save', data);
+    if (!res.ok) { showLoading(false); alert('保存に失敗しました：' + (res.error || '')); return; }
+    const savedRow = res.row;
+
+    if (sendAfter) {
+      const c = await newsApi_('admin_news_count', { seminar: data.seminar, target: data.target });
+      showLoading(false);
+      const n = (c && c.count) || 0;
+      if (n === 0) { alert('対象の方がいません。条件を見直してください。'); await openNews(); return; }
+      if (!confirm('「' + data.seminar + ' / ' + data.target + '」の ' + n + '名にLINEでお知らせします。\n送信後は取り消せません。よろしいですか？')) {
+        await openNews(); return;
+      }
+      showLoading(true);
+      const sent = await newsPost_('admin_news_send', { row: savedRow });
+      showLoading(false);
+      if (!sent.ok) { alert('送信に失敗しました：' + (sent.error || '')); }
+      else { alert('送信しました（' + sent.count + '名）'); }
+    } else {
+      showLoading(false);
+      alert(data.show === '公開' ? '保存しました。アプリに表示されます。' : '保存しました。');
+    }
+    closeNewsForm();
+    await openNews();
+  } catch (err) {
+    showLoading(false);
+    alert('通信に失敗しました。もう一度お試しください。');
+  }
+}
+
+async function sendNewsRow(row) {
+  const n = (newsData.rows || []).find(x => x.row === row);
+  if (!n) return;
+  showLoading(true);
+  const c = await newsApi_('admin_news_count', { seminar: n.seminar, target: n.target });
+  showLoading(false);
+  const cnt = (c && c.count) || 0;
+  if (cnt === 0) { alert('対象の方がいません。条件を見直してください。'); return; }
+  if (!confirm('「' + n.seminar + ' / ' + n.target + '」の ' + cnt + '名にLINEでお知らせします。\n送信後は取り消せません。よろしいですか？')) return;
+
+  showLoading(true);
+  try {
+    const sent = await newsPost_('admin_news_send', { row: row });
+    showLoading(false);
+    if (!sent.ok) alert('送信に失敗しました：' + (sent.error || ''));
+    else alert('送信しました（' + sent.count + '名）');
+    await openNews();
+  } catch (err) {
+    showLoading(false);
+    alert('通信に失敗しました。');
+  }
+}
+
+async function deleteNews() {
+  if (!newsEditRow) return;
+  if (!confirm('このお知らせを削除します。よろしいですか？')) return;
+  showLoading(true);
+  try {
+    await newsApi_('admin_news_delete', { row: newsEditRow });
+    showLoading(false);
+    closeNewsForm();
+    await openNews();
+  } catch (err) {
+    showLoading(false);
+    alert('削除に失敗しました。');
   }
 }
 
