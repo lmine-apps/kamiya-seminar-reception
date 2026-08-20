@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>セルフイメージセミナー 受付の流れ｜Bonheur Lelien</title>
+<link rel="icon" type="image/png" href="assets/favicon-32.png">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+</style>
+<style>
+  :root {
+    --ground:      #f6f1ec;
+    --card:        #fffdfb;
+    --card-soft:   #fdf8f4;
+    --ink:         #453a35;
+    --ink-soft:    #8b7d75;
+    --ink-faint:   #b0a29a;
+    --line:        #e8ded6;
+    --primary:     #b18474;
+    --primary-dk:  #8e6255;
+    --gold:        #bd9a58;
+    --green:       #5c8a5c;
+    --green-soft:  #eef4ee;
+    --warn:        #c96f5e;
+    --purple:      #8a5ca5;
+    --line-bg:     #8fa9bf;
+    --line-bubble: #86e05a;
+    --bezel:       #2f2724;
+    --serif: "Yu Mincho", YuMincho, "Hiragino Mincho ProN", "MS PMincho", serif;
+    --sans: "Yu Gothic UI", "Yu Gothic", YuGothic, "Hiragino Kaku Gothic ProN", Meiryo, system-ui, sans-serif;
+    --mono: Consolas, "Cascadia Mono", ui-monospace, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:     #1d1815;
+      --card:       #272019;
+      --card-soft:  #2e251e;
+      --ink:        #ece2da;
+      --ink-soft:   #a89890;
+      --ink-faint:  #7a6a62;
+      --line:       #3a2f28;
+      --primary:    #cd9c8a;
+      --primary-dk: #e0b6a5;
+      --gold:       #d6b477;
+      --green:      #86bf86;
+      --green-soft: #242c24;
+      --warn:       #e0917f;
+      --purple:     #b48ccb;
+      --line-bg:    #3b4a57;
+      --bezel:      #0f0c0a;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:     #1d1815;
+    --card:       #272019;
+    --card-soft:  #2e251e;
+    --ink:        #ece2da;
+    --ink-soft:   #a89890;
+    --ink-faint:  #7a6a62;
+    --line:       #3a2f28;
+    --primary:    #cd9c8a;
+    --primary-dk: #e0b6a5;
+    --gold:       #d6b477;
+    --green:      #86bf86;
+    --green-soft: #242c24;
+    --warn:       #e0917f;
+    --purple:     #b48ccb;
+    --line-bg:    #3b4a57;
+    --bezel:      #0f0c0a;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 3.5rem 1.4rem 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3.5rem;
+  }
+
+  /* ---------- header ---------- */
+  .masthead { text-align: center; display: flex; flex-direction: column; align-items: center; gap: .5rem; }
+  .masthead img { width: 74px; height: auto; }
+  .brand {
+    font-family: var(--serif);
+    font-size: .78rem;
+    letter-spacing: .32em;
+    color: var(--gold);
+    padding-left: .32em;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-size: clamp(1.55rem, 4.2vw, 2.15rem);
+    font-weight: 600;
+    line-height: 1.45;
+    text-wrap: balance;
+    margin: .2rem 0 0;
+  }
+  .masthead p { color: var(--ink-soft); font-size: .93rem; max-width: 34em; margin: 0; }
+  .rule { width: 46px; height: 1px; background: var(--gold); opacity: .7; }
+
+  /* ---------- section ---------- */
+  section { display: flex; flex-direction: column; gap: 1.6rem; }
+  .sec-head { display: flex; flex-direction: column; gap: .35rem; border-top: 2px solid var(--primary); padding-top: 1.1rem; }
+  .sec-tag {
+    font-size: .72rem; letter-spacing: .16em; font-weight: 700;
+    color: var(--primary-dk); text-transform: uppercase;
+  }
+  .sec-head h2 { font-family: var(--serif); font-size: 1.5rem; font-weight: 600; margin: 0; line-height: 1.4; }
+  .sec-head .meta { font-size: .9rem; color: var(--ink-soft); }
+  .sec-head .meta b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- step ---------- */
+  .step {
+    display: grid;
+    grid-template-columns: 2.2rem 1fr 320px;
+    gap: 0 1.5rem;
+    align-items: start;
+  }
+  .step + .step { border-top: 1px dashed var(--line); padding-top: 1.6rem; }
+  .num {
+    grid-row: 1 / span 2;
+    width: 2.2rem; height: 2.2rem; border-radius: 50%;
+    background: var(--primary); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: .9rem; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .num.auto { background: var(--green-soft); color: var(--green); border: 1.5px solid var(--green); }
+  .step-body { display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
+  .step-body h3 { font-size: 1.02rem; font-weight: 700; margin: 0; line-height: 1.5; }
+  .step-body p { margin: 0; font-size: .93rem; color: var(--ink-soft); }
+  .step-body p b { color: var(--ink); }
+  .who {
+    display: inline-flex; align-items: center; gap: .35rem;
+    align-self: flex-start;
+    font-size: .72rem; font-weight: 700; letter-spacing: .04em;
+    padding: .18rem .6rem; border-radius: 999px;
+  }
+  .who.guest { background: #f3e7e1; color: #9c6f5f; }
+  .who.staff { background: #e5edf7; color: #4a6fa5; }
+  .who.auto  { background: var(--green-soft); color: var(--green); }
+  :root:not([data-theme="light"]) .who.guest, :root[data-theme="dark"] .who.guest { background: #3a2b25; color: #d7a893; }
+  :root:not([data-theme="light"]) .who.staff, :root[data-theme="dark"] .who.staff { background: #23303d; color: #9dbde4; }
+  .visual { min-width: 0; }
+  @media (max-width: 820px) {
+    .step { grid-template-columns: 2.2rem 1fr; }
+    .num { grid-row: auto; }
+    .visual { grid-column: 2; margin-top: .9rem; }
+  }
+
+  /* ---------- phone mock ---------- */
+  .phone {
+    width: 100%; max-width: 320px;
+    border: 7px solid var(--bezel);
+    border-radius: 26px;
+    background: var(--card-soft);
+    overflow: hidden;
+    box-shadow: 0 8px 26px rgba(90,64,50,.16);
+  }
+  :root:not([data-theme="light"]) .phone, :root[data-theme="dark"] .phone { box-shadow: 0 8px 26px rgba(0,0,0,.45); }
+  .scr { padding: 14px 13px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .scr-head { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .scr-head img { width: 30px; }
+  .scr-head .b { font-family: var(--serif); font-size: 7px; letter-spacing: .26em; color: var(--gold); padding-left: .26em; }
+  .scr-head .t { font-family: var(--serif); font-size: 13px; color: var(--primary-dk); }
+
+  .bar { display: flex; align-items: center; gap: 4px; background: var(--card); border-radius: 9px; padding: 8px 9px; }
+  .bar .dot {
+    width: 17px; height: 17px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700; color: #fff; background: var(--ink-faint);
+  }
+  .bar .dot.on { background: var(--primary-dk); }
+  .bar .dot.ok { background: var(--green); }
+  .bar .ln { flex: 1; height: 1.5px; background: var(--line); }
+  .bar .ln.ok { background: var(--green); }
+  .bar .lb { font-size: 7px; color: var(--ink-soft); white-space: nowrap; }
+
+  .mcard { background: var(--card); border-radius: 11px; padding: 12px 12px; display: flex; flex-direction: column; gap: 7px; }
+  .mcard h4 { font-family: var(--serif); font-size: 12px; font-weight: 600; color: var(--primary-dk); margin: 0; text-align: center; line-height: 1.5; }
+  .mrow { display: flex; gap: 8px; font-size: 9.5px; border-bottom: 1px solid var(--line); padding-bottom: 5px; }
+  .mrow:last-of-type { border-bottom: 0; padding-bottom: 0; }
+  .mrow .k { color: var(--ink-soft); width: 42px; flex-shrink: 0; }
+  .mrow .v { color: var(--ink); }
+  .seats { text-align: center; font-size: 11px; font-weight: 700; color: var(--primary-dk); }
+  .seats span { display: block; font-size: 8px; font-weight: 400; color: var(--ink-faint); }
+  .field { display: flex; flex-direction: column; gap: 3px; }
+  .field .lb { font-size: 8.5px; color: var(--ink-soft); }
+  .field .box { height: 20px; border: 1px solid var(--line); border-radius: 6px; background: var(--card-soft); }
+  .field .box.tall { height: 36px; }
+  .btn {
+    border-radius: 999px; text-align: center; font-size: 10.5px; font-weight: 700;
+    padding: 9px 8px; color: #fff;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dk));
+  }
+  .btn.ghost { background: transparent; color: var(--primary-dk); border: 1.5px solid var(--primary); }
+  .icon { text-align: center; font-size: 22px; line-height: 1; }
+  .msg { font-size: 9.5px; text-align: center; color: var(--ink-soft); line-height: 1.75; }
+  .msg b { color: var(--ink); }
+  .badge {
+    align-self: center; font-size: 8.5px; font-weight: 700; padding: 3px 11px; border-radius: 999px;
+    background: var(--green-soft); color: var(--green);
+  }
+  .badge.warn { background: #f7ece8; color: var(--warn); }
+  .badge.info { background: #e9eff7; color: #4a6fa5; }
+  :root:not([data-theme="light"]) .badge.warn, :root[data-theme="dark"] .badge.warn { background: #3b2723; }
+  :root:not([data-theme="light"]) .badge.info, :root[data-theme="dark"] .badge.info { background: #232d38; }
+  .note {
+    font-size: 8.5px; line-height: 1.7; color: var(--ink-soft);
+    background: var(--card); border-left: 2.5px solid var(--gold); border-radius: 5px; padding: 7px 8px;
+  }
+  .note.green { border-left-color: var(--green); }
+
+  /* countdown */
+  .cd { background: var(--card); border-radius: 10px; padding: 10px 8px; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .cd .ttl { font-family: var(--serif); font-size: 9.5px; color: var(--primary-dk); }
+  .cd .eb { font-size: 6.5px; letter-spacing: .2em; color: var(--gold); }
+  .cd .digits { display: flex; align-items: center; gap: 3px; }
+  .cd .d {
+    background: linear-gradient(160deg, var(--primary), var(--primary-dk));
+    color: #fff; font-family: var(--mono); font-size: 13px; font-weight: 700;
+    border-radius: 4px; padding: 4px 5px; line-height: 1;
+  }
+  .cd .sep { color: var(--ink-faint); font-size: 10px; }
+  .cd .u { font-size: 6px; letter-spacing: .1em; color: var(--ink-faint); text-align: center; }
+  .cd .unit { display: flex; flex-direction: column; gap: 2px; align-items: center; }
+
+  .pay-h { font-size: 10px; font-weight: 700; color: var(--primary-dk); border-bottom: 1.5px solid var(--gold); padding-bottom: 3px; }
+  .bank { background: var(--card); border-radius: 8px; padding: 8px; font-size: 9px; display: flex; flex-direction: column; gap: 3px; }
+  .bank .r { display: flex; gap: 6px; }
+  .bank .r .k { color: var(--ink-soft); width: 34px; }
+
+  /* ---------- LINE bubble ---------- */
+  .talk {
+    background: var(--line-bg);
+    border-radius: 14px;
+    padding: 13px 12px;
+    display: flex; flex-direction: column; gap: 8px;
+    max-width: 320px;
+  }
+  .talk .who-lb { font-size: 9px; color: rgba(255,255,255,.9); font-weight: 700; letter-spacing: .05em; }
+  .bubble {
+    background: var(--line-bubble);
+    color: #17300a;
+    border-radius: 14px;
+    padding: 9px 11px;
+    font-size: 10.5px;
+    line-height: 1.85;
+    white-space: pre-line;
+    align-self: flex-start;
+  }
+  .bubble.btn-b {
+    background: #fff; color: var(--primary-dk); font-weight: 700;
+    text-align: center; align-self: stretch; font-size: 10.5px; padding: 10px;
+    border-radius: 12px;
+  }
+
+  /* ---------- ops table ---------- */
+  .tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+  table { border-collapse: collapse; width: 100%; font-size: .87rem; min-width: 520px; }
+  th, td { padding: .62rem .8rem; text-align: left; border-bottom: 1px solid var(--line); }
+  th { background: var(--card-soft); font-size: .78rem; color: var(--ink-soft); font-weight: 700; white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; padding: .12rem .55rem; border-radius: 999px; }
+  .pill.ok { background: var(--green-soft); color: var(--green); }
+  .pill.pay { background: #fdeee3; color: #c97b3d; }
+  .pill.bank { background: #e5edf7; color: #4a6fa5; }
+  .pill.wait { background: #efe5f5; color: var(--purple); }
+  :root:not([data-theme="light"]) .pill.pay, :root[data-theme="dark"] .pill.pay { background: #3a2b1e; color: #e3a978; }
+  :root:not([data-theme="light"]) .pill.bank, :root[data-theme="dark"] .pill.bank { background: #23303d; color: #9dbde4; }
+  :root:not([data-theme="light"]) .pill.wait, :root[data-theme="dark"] .pill.wait { background: #302640; color: #c4a3d8; }
+  .mini-btn { display:inline-block; font-size:.7rem; font-weight:700; padding:.2rem .6rem; border-radius:8px; background:var(--green-soft); color:var(--green); }
+
+  /* ---------- callout ---------- */
+  .call {
+    background: var(--card); border: 1px solid var(--line);
+    border-left: 3px solid var(--gold);
+    border-radius: 10px; padding: 1rem 1.2rem;
+    display: flex; flex-direction: column; gap: .35rem;
+  }
+  .call h3 { font-family: var(--serif); font-size: 1.02rem; margin: 0; font-weight: 600; }
+  .call p { margin: 0; font-size: .9rem; color: var(--ink-soft); }
+  .call.calm { border-left-color: var(--green); }
+
+  .try {
+    display: inline-flex; align-items: center; gap: .4rem;
+    font-size: .84rem; font-weight: 700; color: var(--primary-dk);
+    text-decoration: none; border: 1.5px solid var(--primary);
+    border-radius: 999px; padding: .38rem 1rem;
+    align-self: flex-start;
+  }
+  .try:hover { background: var(--primary); color: #fff; }
+  .try:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  footer { border-top: 1px solid var(--line); padding-top: 1.4rem; font-size: .84rem; color: var(--ink-soft); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <img src="assets/logo.png" alt="A'z">
+    <div class="brand">BONHEUR LELIEN</div>
+    <h1>セルフイメージセミナー<br>受付の流れ</h1>
+    <div class="rule"></div>
+    <p>お客さまがどんな画面を見て、どんなLINEを受け取るのか。<br>先行受付と一般受付、それぞれの流れを画面付きでご説明します。</p>
+  </header>
+
+  <div class="call calm">
+    <h3>まず、いちばん大事なこと</h3>
+    <p>お申込みからご参加確定まで、<b>ほとんどが自動</b>で進みます。神谷さんチームの手作業は、<b>お振込の入金を確認して「確定」を押す</b>——基本これだけです。</p>
+  </div>
+
+  <!-- ===================== 先行 ===================== -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag">Flow 01</div>
+      <h2>先行受付（20名・当日現金）</h2>
+      <div class="meta">9月18日（金）11:00〜15:00 ／ 受講料 10,000円 ／ <b>お支払いは当日、会場にて現金</b></div>
+    </div>
+
+    <div class="step">
+      <div class="num">1</div>
+      <div class="step-body">
+        <span class="who guest">お客さま</span>
+        <h3>先行のご案内URLから、LINEを友だち追加</h3>
+        <p>Instagramなどでお配りするURLです。追加した瞬間に、<b>先行受付のご案内が自動で届きます</b>。</p>
+      </div>
+      <div class="visual">
+        <div class="talk">
+          <div class="who-lb">LINE ／ 友だち追加した直後</div>
+          <div class="bubble">先行のご案内から
+お越しくださり、
+本当にありがとうございます。
+
+こちらは20名限定の先行受付です。
+下記より、お早めに
+お手続きくださいませ。
+
+【セルフイメージセミナー】
+・9月18日（金）11:00〜15:00
+・沖縄県総合福祉センター 402号室
+・受講料 10,000円
+・当日 会場にて現金でお支払い
+
+▼ お申込みはこちらから</div>
+          <div class="bubble btn-b">お申込みはこちら</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">2</div>
+      <div class="step-body">
+        <span class="who guest">お客さま</span>
+        <h3>ボタンをタップすると、受付フォームが開きます</h3>
+        <p>セミナーの内容と<b>残席</b>が表示されます。お名前・お電話番号・生年月日・メールアドレス・ご職業・お悩みをご記入いただきます。</p>
+        <p>先行受付は当日現金なので、<b>進み方は「お申込み → ご参加確定」の2ステップ</b>です。</p>
+      </div>
+      <div class="visual">
+        <div class="phone"><div class="scr">
+          <div class="scr-head">
+            <img src="assets/logo.png" alt="">
+            <div class="b">BONHEUR LELIEN</div>
+            <div class="t">受付フォーム</div>
+          </div>
+          <div class="bar">
+            <div class="dot on">1</div><div class="ln"></div><div class="dot">2</div>
+          </div>
+          <div class="mcard">
+            <h4>セルフイメージセミナー【先行受付】</h4>
+            <div class="mrow"><span class="k">日程</span><span class="v">9月18日（金）11:00〜15:00</span></div>
+            <div class="mrow"><span class="k">会場</span><span class="v">沖縄県総合福祉センター 402号室</span></div>
+            <div class="mrow"><span class="k">受講料</span><span class="v">10,000円（税込）</span></div>
+            <div class="mrow"><span class="k">お支払い</span><span class="v">当日 会場にて現金</span></div>
+            <div class="seats">残席：8 席<span>※残席数は目安です</span></div>
+          </div>
+          <div class="mcard">
+            <div class="field"><span class="lb">お名前 必須</span><span class="box"></span></div>
+            <div class="field"><span class="lb">お電話番号 必須</span><span class="box"></span></div>
+            <div class="field"><span class="lb">メールアドレス 必須</span><span class="box"></span></div>
+            <div class="field"><span class="lb">いま感じているお悩み 必須</span><span class="box tall"></span></div>
+            <div class="btn">この内容で申し込む</div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num auto">✓</div>
+      <div class="step-body">
+        <span class="who auto">自動</span>
+        <h3>送信した瞬間に、ご参加が確定します</h3>
+        <p>当日現金のお支払いなので、<b>お支払いを待たずにその場で確定</b>です。画面には会場・持ち物・地図が表示され、同時に<b>確定のLINEが届きます</b>。</p>
+        <p>この画面は、LINEのボタンからいつでも見返せます。</p>
+      </div>
+      <div class="visual">
+        <div class="phone"><div class="scr">
+          <div class="scr-head">
+            <img src="assets/logo.png" alt="">
+            <div class="b">BONHEUR LELIEN</div>
+            <div class="t">セミナー受付</div>
+          </div>
+          <div class="bar">
+            <div class="dot ok">✓</div><div class="ln ok"></div><div class="dot ok">✓</div>
+          </div>
+          <div class="badge">ご参加確定</div>
+          <div class="mcard">
+            <div class="icon">🌸</div>
+            <h4>ご参加が確定いたしました</h4>
+            <div class="msg">デモ 花子 さま</div>
+            <div class="mrow"><span class="k">セミナー</span><span class="v">セルフイメージセミナー【先行受付】</span></div>
+            <div class="mrow"><span class="k">日程</span><span class="v">9月18日（金）11:00〜15:00</span></div>
+            <div class="mrow"><span class="k">会場</span><span class="v">沖縄県総合福祉センター 402号室</span></div>
+            <div class="mrow"><span class="k">持ち物</span><span class="v">筆記用具</span></div>
+            <div class="mrow"><span class="k">お支払い</span><span class="v">当日 会場にて現金</span></div>
+            <div class="btn ghost">地図を見る</div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num auto">✓</div>
+      <div class="step-body">
+        <span class="who auto">自動</span>
+        <h3>確定のお知らせがLINEに届きます</h3>
+        <p>お客さまが「申し込めたかどうか」を不安に思わないよう、LINEにも記録が残ります。ボタンから当日のご案内へ戻れます。</p>
+      </div>
+      <div class="visual">
+        <div class="talk">
+          <div class="who-lb">LINE ／ 申込直後</div>
+          <div class="bubble">このたびは、
+お申込みいただき
+本当にありがとうございます。
+
+これをもちまして、
+セミナーへのお申込みが
+確定いたしました。
+
+▼ 当日のご案内はこちらから
+
+開催日が近づきましたら、
+改めてご案内をお届けしますので、
+今しばらくお待ちくださいませ。
+
+当日、お会いできますこと、
+心より楽しみにしております。
+
+神谷 梓</div>
+          <div class="bubble btn-b">当日のご案内はこちら</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num auto">✓</div>
+      <div class="step-body">
+        <span class="who auto">自動</span>
+        <h3>20名が埋まったら、自動でキャンセル待ちに切り替わります</h3>
+        <p>満席後にお申込みいただいた方は、<b>お待ちの順番</b>とともにキャンセル待ちとして記録されます。空きが出たら、お待ちの1番目の方へ自動でご案内が届きます。</p>
+      </div>
+      <div class="visual">
+        <div class="phone"><div class="scr">
+          <div class="scr-head">
+            <img src="assets/logo.png" alt="">
+            <div class="b">BONHEUR LELIEN</div>
+            <div class="t">セミナー受付</div>
+          </div>
+          <div class="badge warn">キャンセル待ち</div>
+          <div class="mcard">
+            <div class="icon">🕊</div>
+            <h4>キャンセル待ちで承りました</h4>
+            <div class="msg">ただいま満席のため、<br><b>3番目</b>のキャンセル待ちで<br>お受けいたしました。<br><br>空きが出ましたら、<br>LINEでお知らせいたします。</div>
+          </div>
+          <div class="note">お待ちの順番は、キャンセルが出るたびに自動で繰り上がります。</div>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="call calm">
+      <h3>先行受付での、神谷さんチームの作業</h3>
+      <p><b>ありません。</b>お申込みから確定・LINE通知まですべて自動です。当日、会場で現金をお受け取りいただくだけです。</p>
+    </div>
+  </section>
+
+  <!-- ===================== 一般 ===================== -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag">Flow 02</div>
+      <h2>一般受付（30名・事前のお支払い）</h2>
+      <div class="meta">9月18日（金）11:00〜15:00 ／ 受講料 10,000円 ／ <b>クレジットカード または 銀行振込</b>（お申込みから3日以内）</div>
+    </div>
+
+    <div class="step">
+      <div class="num">1</div>
+      <div class="step-body">
+        <span class="who guest">お客さま</span>
+        <h3>一般のご案内URLから、LINEを友だち追加</h3>
+        <p>先行とは<b>別のURL</b>です。どちらから登録されたかで、届くご案内も進む受付フォームも自動で変わります。</p>
+      </div>
+      <div class="visual">
+        <div class="talk">
+          <div class="who-lb">LINE ／ 友だち追加した直後</div>
+          <div class="bubble">このたびは、
+セルフイメージセミナーに
+ご興味をお持ちくださり、
+ありがとうございます。
+
+こちらは30名限定の一般受付です。
+下記より、お早めに
+お手続きくださいませ。
+
+【セルフイメージセミナー】
+・9月18日（金）11:00〜15:00
+・沖縄県総合福祉センター 402号室
+・受講料 10,000円
+・お支払い：クレジットカード決済／銀行振込
+
+▼ お申込みはこちらから</div>
+          <div class="bubble btn-b">お申込みはこちら</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">2</div>
+      <div class="step-body">
+        <span class="who guest">お客さま</span>
+        <h3>受付フォームにご記入いただきます</h3>
+        <p>先行と同じ内容ですが、<b>進み方が3ステップ</b>（お申込み → お支払い → ご参加確定）になります。お支払いが必要だからです。</p>
+      </div>
+      <div class="visual">
+        <div class="phone"><div class="scr">
+          <div class="scr-head">
+            <img src="assets/logo.png" alt="">
+            <div class="b">BONHEUR LELIEN</div>
+            <div class="t">受付フォーム</div>
+          </div>
+          <div class="bar">
+            <div class="dot on">1</div><div class="ln"></div><div class="dot">2</div><div class="ln"></div><div class="dot">3</div>
+          </div>
+          <div class="mcard">
+            <h4>セルフイメージセミナー【一般受付】</h4>
+            <div class="mrow"><span class="k">日程</span><span class="v">9月18日（金）11:00〜15:00</span></div>
+            <div class="mrow"><span class="k">会場</span><span class="v">沖縄県総合福祉センター 402号室</span></div>
+            <div class="mrow"><span class="k">受講料</span><span class="v">10,000円（税込）</span></div>
+            <div class="mrow"><span class="k">お支払い</span><span class="v">クレジットカード／銀行振込</span></div>
+            <div class="seats">残席：12 席<span>※残席数は目安です</span></div>
+          </div>
+          <div class="mcard">
+            <div class="field"><span class="lb">お名前 必須</span><span class="box"></span></div>
+            <div class="field"><span class="lb">お電話番号 必須</span><span class="box"></span></div>
+            <div class="field"><span class="lb">メールアドレス 必須</span><span class="box"></span></div>
+            <div class="btn">この内容で申し込む</div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num auto">✓</div>
+      <div class="step-body">
+        <span class="who auto">自動</span>
+        <h3>お席を確保し、お支払いのご案内が届きます</h3>
+        <p>この時点では<b>まだ確定ではありません</b>。お席を3日間おさえた状態です。LINEにもご案内が届くので、その場で払えなくても後から戻ってこられます。</p>
+      </div>
+      <div class="visual">
+        <div class="talk">
+          <div class="who-lb">LINE ／ お申込み直後</div>
+          <div class="bubble">お申込みを承りました。
+このたびは
+ありがとうございます。
+
+お席を確保いたしましたが、
+お手続きはまだ完了ではございません。
+
+3日以内にお支払いを
+お願いいたします。
+期限を過ぎますと、
+お待ちの方へお席をお譲りすることに
+なりますので、ご了承くださいませ。
+
+お支払い方法（カード／お振込）と
+残りのお時間は、
+下記のページでご確認いただけます。
+
+▼ お手続きはこちらから</div>
+          <div class="bubble btn-b">お手続きはこちら</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">3</div>
+      <div class="step-body">
+        <span class="who guest">お客さま</span>
+        <h3>お支払いの画面（残り時間が見えます）</h3>
+        <p>期限までの<b>残り時間が秒単位で表示</b>されます。お支払いは2つ。<b>カード</b>ならその場で完了。<b>お振込</b>なら口座が表示され、振込後に「完了のご連絡」ボタンを押していただきます。</p>
+      </div>
+      <div class="visual">
+        <div class="phone"><div class="scr">
+          <div class="scr-head">
+            <img src="assets/logo.png" alt="">
+            <div class="b">BONHEUR LELIEN</div>
+            <div class="t">セミナー受付</div>
+          </div>
+          <div class="bar">
+            <div class="dot ok">✓</div><div class="ln ok"></div><div class="dot on">2</div><div class="ln"></div><div class="dot">3</div>
+          </div>
+          <div class="cd">
+            <div class="eb">PAYMENT DEADLINE</div>
+            <div class="ttl">お支払い期限まで</div>
+            <div class="digits">
+              <div class="unit"><div class="d">02</div><div class="u">DAYS</div></div><div class="sep">:</div>
+              <div class="unit"><div class="d">11</div><div class="u">HOURS</div></div><div class="sep">:</div>
+              <div class="unit"><div class="d">34</div><div class="u">MIN</div></div><div class="sep">:</div>
+              <div class="unit"><div class="d">08</div><div class="u">SEC</div></div>
+            </div>
+          </div>
+          <div class="pay-h">💳 カードでのお支払いの方はこちら</div>
+          <div class="btn">クレジットカードで支払う</div>
+          <div class="pay-h">🏦 銀行振込ご希望の方はこちら</div>
+          <div class="bank">
+            <div class="r"><span class="k">銀行</span><span>沖縄銀行</span></div>
+            <div class="r"><span class="k">支店</span><span>安慶名支店（314）</span></div>
+            <div class="r"><span class="k">口座</span><span>普通 1970581</span></div>
+            <div class="r"><span class="k">名義</span><span>株式会社ボヌールルリアン</span></div>
+          </div>
+          <div class="btn ghost">振込完了のご連絡はこちら</div>
+          <div class="note green">この画面は閉じても大丈夫です。LINEのボタンからいつでも戻ってこられます。</div>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num auto">✓</div>
+      <div class="step-body">
+        <span class="who auto">自動</span>
+        <h3>カードで払われた方は、そのまま確定します</h3>
+        <p>お支払いが済むと<b>自動で確定</b>になり、確定のLINEが届きます。神谷さんチームの操作は必要ありません。</p>
+      </div>
+      <div class="visual">
+        <div class="talk">
+          <div class="who-lb">LINE ／ お支払い完了後</div>
+          <div class="bubble">このたびは、
+お申込みいただき
+本当にありがとうございます。
+
+これをもちまして、
+セミナーへのお申込みが
+確定いたしました。
+
+▼ 当日のご案内はこちらから
+
+当日、お会いできますこと、
+心より楽しみにしております。
+
+神谷 梓</div>
+          <div class="bubble btn-b">当日のご案内はこちら</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">4</div>
+      <div class="step-body">
+        <span class="who staff">神谷さんチーム</span>
+        <h3>お振込の方だけ、入金確認をお願いします</h3>
+        <p>お客さまが「振込完了のご連絡」を押すと、画面は<b>確認待ち</b>になり、管理画面に並びます。通帳で入金を確認したら<b>「✔ 入金確認 → 確定」を押すだけ</b>。押した瞬間に確定のLINEが届きます。</p>
+        <p><b>これが唯一の手作業です。</b></p>
+      </div>
+      <div class="visual">
+        <div class="phone"><div class="scr">
+          <div class="scr-head">
+            <img src="assets/logo.png" alt="">
+            <div class="b">BONHEUR LELIEN</div>
+            <div class="t">セミナー受付</div>
+          </div>
+          <div class="badge info">確認中</div>
+          <div class="mcard">
+            <div class="icon">🕊</div>
+            <h4>ご報告ありがとうございます</h4>
+            <div class="msg">お振込のご報告を承りました。<br>入金の確認が取れましたら、<br>LINEにてご連絡いたします。<br>今しばらくお待ちくださいませ。</div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num auto">✓</div>
+      <div class="step-body">
+        <span class="who auto">自動</span>
+        <h3>3日を過ぎたら、自動でキャンセル・繰り上げ</h3>
+        <p>期限までにお支払いがない場合、<b>1時間ごとの自動チェック</b>でキャンセルになります。その方には期限切れのお知らせが、<b>キャンセル待ちの1番目の方には「あなたの番です」のご案内</b>が自動で届き、新たに3日間の期限が始まります。</p>
+        <p>お席が空いたままにならない仕組みです。</p>
+      </div>
+      <div class="visual">
+        <div class="talk">
+          <div class="who-lb">LINE ／ キャンセル待ちの方へ自動で</div>
+          <div class="bubble">【ご案内】
+
+お待たせしております。
+セミナーに空きが出ましたので、
+お申込み確定のお手続きをお願いいたします。
+
+▼ お申込みはこちらから
+
+【重要】
+・お支払い期限：3日以内
+・期限内にご入金が確認できない場合、
+　次のお待ちの方にお席をお譲りいたします。
+
+神谷 梓</div>
+          <div class="bubble btn-b">お手続きはこちら</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 運営 ===================== -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag">Flow 03</div>
+      <h2>神谷さんチームから見える画面</h2>
+      <div class="meta">スマートフォンでもパソコンでもご覧いただけます</div>
+    </div>
+
+    <div class="step">
+      <div class="num">1</div>
+      <div class="step-body">
+        <span class="who staff">神谷さんチーム</span>
+        <h3>管理画面 ── 日々見るのはここだけ</h3>
+        <p>セミナーごとに<b>定員・確定・お手続き中・キャンセル待ち・残席</b>が一目でわかります。お名前の行に操作ボタンが並ぶので、<b>タップするだけ</b>で確定やキャンセルができ、LINE通知も自動で飛びます。</p>
+        <p>スマートフォンで「ホーム画面に追加」しておくと、アプリのように開けて、<b>お知らせも受け取れます</b>。</p>
+      </div>
+      <div class="visual">
+        <div class="phone"><div class="scr">
+          <div class="scr-head">
+            <img src="assets/logo.png" alt="">
+            <div class="b">BONHEUR LELIEN</div>
+            <div class="t">受付管理</div>
+          </div>
+          <div class="mcard">
+            <div class="mrow"><span class="k">定員</span><span class="v">30</span></div>
+            <div class="mrow"><span class="k">確定</span><span class="v">18</span></div>
+            <div class="mrow"><span class="k">手続き中</span><span class="v">4</span></div>
+            <div class="mrow"><span class="k">待機</span><span class="v">2</span></div>
+            <div class="mrow"><span class="k">残席</span><span class="v">8</span></div>
+          </div>
+          <div class="mcard">
+            <div class="mrow"><span class="k">山田 花子</span><span class="v">振込報告済み</span></div>
+            <div class="btn">✔ 入金確認 → 確定</div>
+            <div class="mrow"><span class="k">佐藤 美咲</span><span class="v">確定</span></div>
+            <div class="mrow"><span class="k">鈴木 彩</span><span class="v">決済案内中 残り2日</span></div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num auto">✓</div>
+      <div class="step-body">
+        <span class="who auto">自動</span>
+        <h3>スプレッドシート ── すべての記録が自動で残ります</h3>
+        <p>お申込みの内容、状態の移り変わり、お支払い方法まで<b>自動で記録</b>されます。セミナーごとのシートに加えて、<b>全セミナー横断の「総参加者一覧」</b>と、参加に至らなかった方の<b>「準見込みリスト」</b>も自動で作られます。</p>
+        <p>次回のご案内先を探すときに、そのまま使えます。</p>
+      </div>
+      <div class="visual">
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr><th>お名前</th><th>状態</th><th>お支払い</th><th>申込日時</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>山田 花子</td><td><span class="pill bank">振込報告済み</span></td><td>銀行振込</td><td>8/24 21:03</td></tr>
+              <tr><td>佐藤 美咲</td><td><span class="pill ok">確定</span></td><td>カード</td><td>8/24 21:01</td></tr>
+              <tr><td>鈴木 彩</td><td><span class="pill pay">決済案内中</span></td><td>—</td><td>8/24 21:05</td></tr>
+              <tr><td>田中 優</td><td><span class="pill wait">キャンセル待ち 1</span></td><td>—</td><td>8/24 21:12</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 触ってみる ===================== -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag">Try</div>
+      <h2>実際の画面を触ってみる</h2>
+      <div class="meta">お客さまの画面をそのまま体験できます。<b>お申込みやLINE通知は一切発生しません</b></div>
+    </div>
+    <div class="call">
+      <h3>デモをひらく</h3>
+      <p>画面下のボタンで「受付 → お支払い → 待機 → 確定 → 期限切れ」を切り替えてご覧いただけます。安心して触ってみてください。</p>
+      <a class="try" href="https://apps.l-mine.com/kamiya-seminar-reception/index.html?demo=1" target="_blank" rel="noopener">デモを開く →</a>
+    </div>
+  </section>
+
+  <footer>
+    ご不明な点は、いつでもとーるまでお知らせください。<br>
+    このご案内は、実際のシステムの動きに合わせて更新しています。
+  </footer>
+
+</div>
+
+</body>
+</html>
