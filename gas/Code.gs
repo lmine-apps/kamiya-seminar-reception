@@ -1,3 +1,11 @@
+/*** 神谷梓さん 受付管理システム GAS v8.3 ****************************
+ * 【v8.3 追加 2026-08-20】本番稼働中でも混雑テストができるように
+ *   ・admin_submit_dryrun（管理キー必須）＝申込処理を「計算だけ」実行。
+ *     行の追加もLINE送信もしないので、本番データを汚さずに
+ *     ロックの混み具合を測れる。
+ *   ・申込のレスポンスに lock_held_ms（カギを何ミリ秒つかんだか）を追加。
+ *     ここが伸びてきたら混雑のサイン。
+ *
 /*** 神谷梓さん 受付管理システム GAS v8.2 ****************************
  * 【v8.2 一斉アクセス対策 2026-08-20】募集開始直後の同時申込に耐える
  *   ① ロックの中を最小化：LINE送信と操作履歴をロックの外へ。
@@ -178,7 +186,8 @@ function handleRequest_(e) {
                          'admin_save_push_token', 'admin_test_push', 'admin_set_test_pay',
                          'admin_set_gate',
                          'admin_news_list', 'admin_news_save', 'admin_news_send',
-                         'admin_news_count', 'admin_news_delete'];
+                         'admin_news_count', 'admin_news_delete',
+                         'admin_submit_dryrun'];
     if (ADMIN_ACTIONS.indexOf(action) !== -1) {
       if (String(p.token) !== String(ADMIN_TOKEN)) {
         return out_({ ok: false, error: 'unauthorized' });
@@ -196,6 +205,7 @@ function handleRequest_(e) {
       if (action === 'admin_news_send')       return adminNewsSend_(p);
       if (action === 'admin_news_count')      return adminNewsCount_(p);
       if (action === 'admin_news_delete')     return adminNewsDelete_(p);
+      if (action === 'admin_submit_dryrun')   return submitApplication_(p, true);
     }
 
     // トークン認証（一般）
@@ -537,7 +547,13 @@ function gateInfo_(seminarKey) {
 }
 
 // ========== 【v2】Webアプリからの申込受信 ==========
-function submitApplication_(p) {
+/**
+ * 申込を受け付ける。
+ * @param {boolean} dryRun trueなら「どう処理されるか」を計算して返すだけ。
+ *   行の追加もLINE送信も一切しない。本番稼働中に混雑テストをするための入口で、
+ *   管理キーが要る（admin_submit_dryrun）。お客さまからは呼べない。
+ */
+function submitApplication_(p, dryRun) {
   var seminarKey = p.seminar;
   var config = SEMINARS[seminarKey];
   if (!config) return out_({ ok: false, error: 'unknown seminar: ' + seminarKey });
@@ -545,7 +561,7 @@ function submitApplication_(p) {
 
   // 受付開始ゲート：募集開始前は受け付けない（URLが漏れてもフライング申込を防ぐ）
   var gate = gateInfo_(seminarKey);
-  if (!gate.is_open) {
+  if (!gate.is_open && !dryRun) {
     return out_({ ok: false, error: 'not_open_yet', open_at: gate.open_at });
   }
 
@@ -563,6 +579,7 @@ function submitApplication_(p) {
     return out_({ ok: false, error: 'busy', retry: true });
   }
 
+  var lockedAt = new Date().getTime(), lockHeld = 0;
   var status, deadline, waitNum, scenarioName;
   try {
     // A〜H列を【1回だけ】読む。重複チェック・定員・待機番号をこの1回でまかなう
@@ -604,6 +621,17 @@ function submitApplication_(p) {
       status = 'キャンセル待ち'; deadline = ''; waitNum = maxWait + 1; scenarioName = 'キャンセル待ち';
     }
 
+    // ここまでが「数える」。dry run はここで返す（1行も書かない）
+    if (dryRun) {
+      return out_({
+        ok: true, dry_run: true,
+        seminar: seminarKey, rows_read: rows.length,
+        occupied: occupied, capacity: config.capacity,
+        would_status: status, would_wait: waitNum, would_scenario: scenarioName,
+        lock_held_ms: new Date().getTime() - lockedAt
+      });
+    }
+
     sh.appendRow([
       p.uid || '',
       p.name || '',
@@ -620,6 +648,7 @@ function submitApplication_(p) {
       p.job || '',
       p.worries || ''
     ]);
+    lockHeld = new Date().getTime() - lockedAt;
   } finally {
     lock.releaseLock();
   }
@@ -630,9 +659,9 @@ function submitApplication_(p) {
 
   // 以下は他の人を待たせないので、ロックの外で行う
   moveScenario_(p.uid, scenarioName);
-  logAction_('web_application', p.uid, config.sheet, '→ ' + status, 'Webアプリ経由');
+  logAction_('web_application', p.uid, config.sheet, '→ ' + status, 'Webアプリ経由 ／ カギ占有 ' + lockHeld + 'ms');
 
-  return out_({ ok: true, status: status, waitNum: waitNum, deadline: deadline });
+  return out_({ ok: true, status: status, waitNum: waitNum, deadline: deadline, lock_held_ms: lockHeld });
 }
 
 // ========== 【v2】振込報告受信 ==========
