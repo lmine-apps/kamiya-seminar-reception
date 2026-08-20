@@ -1,3 +1,9 @@
+/*** 神谷梓さん 受付管理システム GAS v8.0 ****************************
+ * 【v8.0 変更 2026-08-20】前日リマインドの自動送信を廃止
+ *   ・プロライン⑧は「📣 お知らせ」専用の合図になりました。
+ *   ・前日のご連絡は、お知らせ機能の「予約」で前日10時などに送ってください
+ *     （文面を自由に書けるので、こちらのほうが融通がききます）。
+ *
 /*** 神谷梓さん 受付管理システム GAS v7.9 ****************************
  * 【v7.9 改良 2026-08-20】お知らせの表示ルールを分かりやすく
  *   ・「表示」に【非表示】を追加（送り終わった過去のお知らせを畳む用）
@@ -20,11 +26,6 @@
  *   ※LINEは⑧を「お知らせの合図」として使うため、シナリオ枠は増えません
  *
 /*** 神谷梓さん 受付管理システム GAS v7.6 ****************************
- * 【v7.6 追加 2026-08-20】前日リマインドの自動送信
- *   SEMINARSの dates に開催日を持たせ、その前日の10時以降にくる
- *   毎時チェックで、そのセミナーの「確定」の方へ⑧を自動送信する。
- *   セルフ=9/18 ／ マーケ=9/29・10/29・11/25（各回の前日に送信）
- *   時刻を変えるときは REMIND_HOUR を書き換え。
  *   ※ previewDayBeforeReminders() をエディタで実行すると、送らずに対象人数だけ確認できる
  *
 /*** 神谷梓さん 受付管理システム GAS v7.5 ****************************
@@ -117,7 +118,7 @@ var PROLINE_URLS = {
   '空きできました': 'https://autosns.jp/api/call-beacon/bTFA7xmCIj/[[uid]]',  // ⑤あなたの番
   '期限切れ':      'https://autosns.jp/api/call-beacon/T4X1DuWLcP/[[uid]]',  // ⑥期限切れ
   '確定':          'https://autosns.jp/api/call-beacon/fL7KpDojxq/[[uid]]',  // ⑦支払い確定
-  '前日リマインド': 'https://autosns.jp/api/call-beacon/qgD9wnxlmt/[[uid]]',  // ⑧（GAS自動発火なし・将来用）
+  'お知らせ': 'https://autosns.jp/api/call-beacon/qgD9wnxlmt/[[uid]]',       // ⑧ 📣お知らせの合図（本文はアプリ側）
   'キャンセル完了': 'https://autosns.jp/api/call-beacon/fG0RdXOvCs/[[uid]]'   // ⑨キャンセル完了通知
 };
 
@@ -126,6 +127,7 @@ var PROLINE_URLS = {
 // ※効くのは「受付開始ゲート」がONのときだけ。管理画面のスイッチでOFFにすればテスト申込ができる
 // ※先行と一般で開始時刻を分けたい場合は、この行の日時を個別に変えるだけでOK
 var SEMINARS = {
+  /* dates は開催日のメモです（自動送信には使いません） */
   'self_priority':   { sheet: '📋 セルフ先行',  capacity: 20, payment: 'cash',    open_at: '2026-08-20 00:00',  // 先行は8/20から受付中
                        dates: ['2026-09-18'] },
   'self_general':    { sheet: '📋 セルフ一般',  capacity: 30, payment: 'prepaid', open_at: '2026-08-24 21:00',
@@ -958,80 +960,6 @@ function onEdit(e) {
 }
 
 // ========== ④時限トリガー：3日期限チェック ==========
-// ========== 【v7.6】前日リマインド（開催前日の10時に確定者へ自動送信） ==========
-// SEMINARSの dates に書いた開催日の「前日」になったら、そのセミナーの
-// 「確定」の方だけに⑧前日リマインドを送る。checkExpired（毎時）から呼ばれる。
-var REMIND_HOUR = 10;   // 送信する時刻（0〜23）。変えたい時はここだけ
-
-/** 送信対象を数えるだけ（送信しない）。エディタで実行して事前確認できる */
-function previewDayBeforeReminders() {
-  var plan = dayBeforeTargets_();
-  if (!plan.length) {
-    Logger.log('明日が開催日のセミナーはありません（対象0名）');
-    return '対象なし';
-  }
-  var msg = plan.map(function (p) {
-    return p.date + ' ' + p.sheet + '：' + p.uids.length + '名';
-  }).join(' / ');
-  Logger.log('明日の対象 → ' + msg);
-  return msg;
-}
-
-/** 明日が開催日のセミナーと、その確定者uidを集める */
-function dayBeforeTargets_() {
-  var tz = 'Asia/Tokyo';
-  var tomorrow = Utilities.formatDate(new Date(new Date().getTime() + 86400000), tz, 'yyyy-MM-dd');
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var out = [];
-
-  Object.keys(SEMINARS).forEach(function (key) {
-    var config = SEMINARS[key];
-    if (!config.dates || config.dates.indexOf(tomorrow) === -1) return;
-
-    var sh = ss.getSheetByName(config.sheet);
-    if (!sh) return;
-    var lastRow = sh.getLastRow();
-    if (lastRow < DATA_START_ROW) return;
-
-    var data = sh.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, LAST_COL).getValues();
-    var uids = [];
-    for (var i = 0; i < data.length; i++) {
-      if (!data[i][0]) continue;
-      if (String(data[i][6]) !== '確定') continue;   // 確定した方だけ
-      uids.push(String(data[i][0]));
-    }
-    out.push({ key: key, sheet: config.sheet, date: tomorrow, uids: uids });
-  });
-  return out;
-}
-
-/** 実際に送る（毎時チェックから呼ばれる。同じ回は一度だけ） */
-function sendDayBeforeReminders_() {
-  if (!PROLINE_URLS['前日リマインド']) return 0;
-
-  var hour = Number(Utilities.formatDate(new Date(), 'Asia/Tokyo', 'H'));
-  if (hour < REMIND_HOUR) return 0;   // その日の10時を過ぎた最初の実行で送る
-
-  var props = PropertiesService.getScriptProperties();
-  var total = 0;
-
-  dayBeforeTargets_().forEach(function (t) {
-    var mark = 'REMIND_' + t.key + '_' + t.date;
-    if (props.getProperty(mark)) return;        // 二重送信の防止
-    props.setProperty(mark, formatDate_(new Date()));
-
-    for (var i = 0; i < t.uids.length; i++) {
-      moveScenario_(t.uids[i], '前日リマインド');
-      Utilities.sleep(150);                     // 連続送信を少しずつ
-    }
-    total += t.uids.length;
-    logAction_('day_before_reminder', '', t.sheet, t.date + ' 開催分', t.uids.length + '名へ送信');
-    notifyOps_('📣 前日リマインドを送りました',
-      t.sheet.replace('📋 ', '') + '（' + t.date + '開催）の確定者 ' + t.uids.length + '名へお送りしました。');
-  });
-  return total;
-}
-
 function checkExpired() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var now = new Date();
@@ -1070,9 +998,6 @@ function checkExpired() {
     notifyOps_('⏰ 期限切れ処理を行いました',
       expiredCount + '件のお申込みが期限切れになりました。待機の方がいる場合は自動で繰上げています。');
   }
-
-  // 前日リマインド（開催前日の10時以降、最初の実行で確定者へ送る）
-  try { sendDayBeforeReminders_(); } catch (err) { logAction_('error', '', '', 'reminder failed: ' + err, ''); }
 
   // 📣 予約されたお知らせ（時刻を過ぎたものを送る）
   try { sendScheduledNews_(); } catch (err) { logAction_('error', '', '', 'news failed: ' + err, ''); }
@@ -1768,7 +1693,7 @@ function newsTargets_(seminarLabel, target) {
 function sendNewsRow_(n) {
   var uids = newsTargets_(n.seminar, n.target);
   for (var i = 0; i < uids.length; i++) {
-    moveScenario_(uids[i], '前日リマインド');   // ⑧を「お知らせの合図」として使う
+    moveScenario_(uids[i], 'お知らせ');   // ⑧＝お知らせの合図（本文はアプリで読む）
     Utilities.sleep(150);
   }
   var sh = ensureNewsSheet_();

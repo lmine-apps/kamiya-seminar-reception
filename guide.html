@@ -199,6 +199,10 @@
   .mrow:last-of-type { border-bottom: 0; padding-bottom: 0; }
   .mrow .k { color: var(--ink-soft); width: 42px; flex-shrink: 0; }
   .mrow .v { color: var(--ink); }
+  .mcard.news { border-left: 3px solid var(--gold); gap: 5px; text-align: left; }
+  .mcard.news .eyebrow { font-size: 7px; font-weight: 700; letter-spacing: .14em; color: var(--gold); }
+  .mcard.news h5 { font-size: 10.5px; font-weight: 700; color: var(--ink); margin: 0; line-height: 1.55; }
+  .mcard.news p { font-size: 9px; line-height: 1.8; color: var(--ink-soft); margin: 0; white-space: pre-line; }
   .seats { text-align: center; font-size: 11px; font-weight: 700; color: var(--primary-dk); }
   .seats span { display: block; font-size: 8px; font-weight: 400; color: var(--ink-faint); }
   .field { display: flex; flex-direction: column; gap: 3px; }
@@ -738,47 +742,113 @@
     </div>
   </section>
 
-  <!-- ===================== 前日 ===================== -->
+  <!-- ===================== お知らせ ===================== -->
   <section>
     <div class="sec-head">
-      <div class="sec-tag">The day before</div>
-      <h2>開催前日のお知らせ</h2>
-      <div class="meta">先行・一般どちらの方にも、共通でお送りします</div>
+      <div class="sec-tag">Announcement</div>
+      <h2>お知らせを送る</h2>
+      <div class="meta">前日のご連絡も、追加のご案内も、すべてこの仕組みでお送りします</div>
+    </div>
+
+    <div class="call calm">
+      <h3>LINEには「合図」だけ、本文はアプリの中に</h3>
+      <p>LINEに長文を流すのではなく、<b>お知らせがあることだけをLINEでお伝えし、中身はアプリで読んでいただく</b>形にしています。</p>
+      <p>この形にすると、<b>「セルフイメージの、確定した方だけ」</b>のように相手を選んでお送りできます。書き直しも、送ったあとの追記も、アプリの文章を直すだけで済みます。</p>
+    </div>
+
+    <div class="step">
+      <div class="num">1</div>
+      <div class="step-body">
+        <span class="who staff">神谷さんチーム</span>
+        <h3>お知らせの文面をつくり、届ける相手を選びます</h3>
+        <p>管理アプリの<b>「📣 お知らせ」</b>、またはスプレッドシートの<b>「📣 お知らせ」シート</b>のどちらでも書けます。</p>
+        <p>選ぶのは<b>「どのセミナーの方へ」</b>と<b>「どの状態の方へ」</b>の2つだけです。たとえば<b>セルフイメージ × 確定</b>を選べば、当日ご参加される方だけに届きます。</p>
+        <p><b>いま送る</b>ほかに、<b>日付と時刻を指定して予約</b>することもできます。開催前日の朝10時に届くようにしておく、といった使い方ができます。</p>
+      </div>
+      <div class="visual">
+        <div class="phone"><div class="scr">
+          <div class="scr-head">
+            <img src="assets/logo.png" alt="">
+            <div class="b">BONHEUR LELIEN</div>
+            <div class="t">お知らせ</div>
+          </div>
+          <div class="mcard">
+            <div class="field"><span class="lb">表示</span><span class="box"></span></div>
+            <div class="field"><span class="lb">対象セミナー ／ 対象の状態</span><span class="box"></span></div>
+            <div class="field"><span class="lb">タイトル</span><span class="box"></span></div>
+            <div class="field"><span class="lb">本文</span><span class="box tall"></span></div>
+            <div class="field"><span class="lb">LINE通知 ／ 予約日 ／ 予約時刻</span><span class="box"></span></div>
+            <div class="btn">保存する</div>
+          </div>
+        </div></div>
+      </div>
     </div>
 
     <div class="step">
       <div class="num auto">✓</div>
       <div class="step-body">
         <span class="who auto">自動</span>
-        <h3>前日の朝10時に、リマインドが自動で届きます</h3>
-        <p>お送りするのは<b>「確定」の方だけ</b>です。キャンセル待ちの方や、お手続きが途中の方には届きません。</p>
-        <p>ボタンから<b>会場・お時間・持ち物・地図</b>をご覧いただけます。当日の朝に慌てて探さなくて済むように、という意図です。</p>
-        <p>マーケティングセミナーは全3回なので、<b>各回の前日それぞれ</b>にお送りします（9/28・10/28・11/24）。セルフイメージは9/17です。</p>
+        <h3>お客さまのLINEには、短い合図が届きます</h3>
+        <p>届くのは<b>いつも同じ文面</b>です。「アプリにお知らせがあります」とお伝えして、ボタンでアプリへご案内します。</p>
+        <p>お客さまが<b>ボタンをタップしなくても大丈夫</b>です。次にアプリを開いたときにも、お知らせは表示されたままになっています。</p>
       </div>
       <div class="visual">
         <div class="talk">
-          <div class="who-lb">LINE ／ 開催前日 10:00</div>
-          <div class="bubble">明日は
-セミナー開催日です。
+          <div class="who-lb">LINE ／ お知らせを送った直後</div>
+          <div class="bubble">アプリに
+お知らせを掲載いたしました。
 
-当日のご案内（会場・お時間・持ち物）は
 下記よりご確認くださいませ。
 
-▼ 当日のご案内はこちらから
-
-お気をつけてお越しくださいませ。
-お会いできますこと、
-楽しみにしております。
-
-神谷 梓</div>
-          <div class="bubble btn-b">当日のご案内はこちら</div>
+▼ お知らせはこちらから</div>
+          <div class="bubble btn-b">お知らせを見る</div>
         </div>
       </div>
     </div>
 
-    <div class="call calm">
-      <h3>神谷さんチームの作業はありません</h3>
-      <p>送信は<b>すべて自動</b>です。送り終わると、運営のスマホに「📣 前日リマインドを送りました（○名）」とお知らせが届くので、届いたことも確認できます。</p>
+    <div class="step">
+      <div class="num">2</div>
+      <div class="step-body">
+        <span class="who guest">お客さま</span>
+        <h3>アプリを開くと、いちばん上にお知らせが出ます</h3>
+        <p>ご自身の<b>ご参加状況の画面の、いちばん上</b>に表示されます。会場やお持ち物のご案内はこれまでどおり下に残るので、<b>見比べながらご確認いただけます</b>。</p>
+        <p>当てはまるお知らせが複数あるときは、<b>並べて全部</b>表示されます。</p>
+      </div>
+      <div class="visual">
+        <div class="phone"><div class="scr">
+          <div class="scr-head">
+            <img src="assets/logo.png" alt="">
+            <div class="b">BONHEUR LELIEN</div>
+            <div class="t">セミナー受付</div>
+          </div>
+          <div class="mcard news">
+            <div class="eyebrow">📣 お知らせ</div>
+            <h5>明日は開催日です</h5>
+            <p>いよいよ明日となりました。
+会場は沖縄県総合福祉センター 402号室、
+10時45分より受付を開始いたします。
+
+筆記用具と、羽織るものを
+お持ちいただけますと安心です。
+
+お会いできますこと、
+楽しみにしております。</p>
+          </div>
+          <div class="badge">ご参加確定</div>
+          <div class="mcard">
+            <h4>当日のご案内</h4>
+            <div class="mrow"><span class="k">日程</span><span class="v">9月18日（金）11:00〜15:00</span></div>
+            <div class="mrow"><span class="k">会場</span><span class="v">沖縄県総合福祉センター 402号室</span></div>
+            <div class="mrow"><span class="k">持ち物</span><span class="v">筆記用具</span></div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="call">
+      <h3>ふだんは「通常」の文面が出ています</h3>
+      <p>お知らせを何も出していないときのために、<b>「通常」</b>という文面をひとつ用意しています。「当日お待ちしております」といった、いつ見ても差し支えない内容です。</p>
+      <p>新しいお知らせを出せば「通常」は自動で引っ込み、そのお知らせを<b>「非表示」</b>に戻せば、また「通常」に戻ります。<b>消す必要はありません</b>ので、送った記録はそのまま残ります。</p>
     </div>
   </section>
 

@@ -192,6 +192,7 @@
       <span class="tab hot">📋 セルフ一般</span>
       <span class="tab hot">📋 マーケ一般</span>
       <span class="tab hot">🏦 支払い状況</span>
+      <span class="tab hot">📣 お知らせ</span>
       <span class="tab">👥 総参加者一覧</span>
       <span class="tab">💎 準見込みリスト</span>
       <span class="tab">📦 参加履歴台帳</span>
@@ -214,6 +215,11 @@
           <tr>
             <td class="n"><b>🏦 支払い状況</b></td>
             <td><b>お支払い待ちの方だけ</b>を全セミナーまとめて表示。入金確認のチェックはここでできます。</td>
+            <td class="n">さわる</td>
+          </tr>
+          <tr>
+            <td class="n"><b>📣 お知らせ</b></td>
+            <td>アプリに出す<b>お知らせの文面</b>。誰に届けるかもここで選びます。</td>
             <td class="n">さわる</td>
           </tr>
           <tr>
@@ -359,7 +365,86 @@
     </div>
   </section>
 
-  <!-- 5. メニュー -->
+  <!-- 5. お知らせシート -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag">SHEET 📣</div>
+      <h2>お知らせシート</h2>
+      <div class="meta">アプリに出すお知らせを書く場所。LINEには「アプリを見てください」だけが飛びます</div>
+    </div>
+
+    <div class="call calm">
+      <h3>LINEに長文を流さなくて済みます</h3>
+      <p>お知らせの<b>中身はアプリの中</b>にあり、LINEでは<b>お知らせがあることだけ</b>をお伝えします。だから<b>「セルフイメージの、確定した方だけ」</b>のように相手を選んでお届けできますし、送ったあとで文章を直すこともできます。</p>
+      <p>前日のご案内も、会場変更のお詫びも、追加募集のご案内も、すべてここから送ります。</p>
+    </div>
+
+    <div class="grid-wrap">
+      <table class="grid">
+        <thead>
+          <tr><th></th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th><th>G</th><th>H</th></tr>
+        </thead>
+        <tbody>
+          <tr class="tint"><td class="rn">1</td><td colspan="8">📣 お知らせ｜アプリに出すお知らせを書く場所</td></tr>
+          <tr><td class="rn">2〜3</td><td colspan="8" class="muted">使い方のメモ</td></tr>
+          <tr class="head-row"><td class="rn">4</td><td>表示</td><td>対象セミナー</td><td>対象の状態</td><td>タイトル</td><td>本文</td><td>LINE通知</td><td>予約日</td><td>予約時刻</td></tr>
+          <tr><td class="rn">5</td><td><span class="pill p-ok">公開</span></td><td>セルフイメージ</td><td>確定</td><td>明日は開催日です</td><td class="muted">いよいよ明日と…</td><td>送らない</td><td></td><td></td></tr>
+          <tr><td class="rn">6</td><td><span class="pill p-pay">下書き</span></td><td>すべて</td><td>すべて</td><td>会場が変更になりました</td><td class="muted">このたび会場が…</td><td>予約</td><td>2026-09-17</td><td>10:00</td></tr>
+          <tr><td class="rn">7</td><td><span class="pill p-gone">非表示</span></td><td>マーケティング</td><td>確定</td><td>10月開催のご案内</td><td class="muted">10月29日の…</td><td>送信済み</td><td></td><td></td></tr>
+          <tr><td class="rn">8</td><td><span class="pill p-bank">通常</span></td><td>すべて</td><td>すべて</td><td>当日お待ちしております</td><td class="muted">ご不明な点は…</td><td>送らない</td><td></td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="legend">
+      <div><span class="k">上の行が先</span><span class="v">当てはまるお知らせは<b>すべて表示</b>されます。並ぶ順番は<b>シートの上から順</b>なので、<b>新しいものほど上の行</b>に書いてください。</span></div>
+      <div><span class="k">I・J列</span><span class="v">送信済み日時と送信人数。<b>システムが自動で記入</b>します。触らないでください。</span></div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table class="info">
+        <thead><tr><th>列</th><th>内容</th></tr></thead>
+        <tbody>
+          <tr><td class="n"><b>A</b> 表示</td><td><b>いちばん大事な列。</b>下の表をご覧ください。</td></tr>
+          <tr><td class="n"><b>B</b> 対象セミナー</td><td>どのセミナーの方へ届けるか。<b>すべて</b>を選ぶと全セミナーが対象です。</td></tr>
+          <tr><td class="n"><b>C</b> 対象の状態</td><td><b>確定</b>／<b>手続き中</b>／<b>キャンセル待ち</b>／<b>すべて</b>から選びます。「確定」を選べば、当日ご参加の方だけに届きます。</td></tr>
+          <tr><td class="n"><b>D</b> タイトル</td><td>お知らせの見出し。太字で表示されます。</td></tr>
+          <tr><td class="n"><b>E</b> 本文</td><td>お知らせの中身。<b>改行はそのまま表示</b>されます。セルの中で改行するには <b>Alt＋Enter</b> を押してください。</td></tr>
+          <tr><td class="n"><b>F</b> LINE通知</td><td><b>送らない</b>（アプリに置くだけ）／<b>すぐ送る</b>（メニューから送信）／<b>予約</b>（日時を指定）。送り終わると自動で<b>送信済み</b>に変わります。</td></tr>
+          <tr><td class="n"><b>G</b> 予約日</td><td>セルを<b>ダブルクリックするとカレンダー</b>が開きます。「予約」のときだけ使います。</td></tr>
+          <tr><td class="n"><b>H</b> 予約時刻</td><td>30分きざみのプルダウン。前日の朝に届けたいなら <b>10:00</b> です。</td></tr>
+          <tr><td class="n"><b>I・J</b></td><td>送信済み日時と送信人数。自動で入ります。</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tbl-wrap">
+      <table class="info">
+        <thead><tr><th>A列「表示」</th><th>どうなるか</th><th>どんなとき</th></tr></thead>
+        <tbody>
+          <tr><td class="n"><span class="pill p-ok">公開</span></td><td>アプリに<b>出ます</b></td><td>いまお伝えしたいお知らせ。</td></tr>
+          <tr><td class="n"><span class="pill p-pay">下書き</span></td><td>出ません</td><td><b>準備中</b>。書きかけを置いておく場所です。</td></tr>
+          <tr><td class="n"><span class="pill p-gone">非表示</span></td><td>出ません</td><td><b>お伝えし終わったもの</b>。消さずにここへ戻せば記録が残ります。</td></tr>
+          <tr><td class="n"><span class="pill p-bank">通常</span></td><td>公開が<b>1件も無いとき</b>だけ出ます</td><td>「当日お待ちしております」など、いつ見ても差し支えない<b>ふだんの文面</b>。1行だけ用意してください。</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="call">
+      <h3>送るときの流れ</h3>
+      <p><b>①</b> 行を書く（表示＝公開、対象を選ぶ）　→　<b>②</b> LINE通知を<b>「すぐ送る」</b>にする　→　<b>③</b> メニューの<b>「📣 お知らせをLINEで送る」</b>を押す　→　<b>④</b> 「○名に送ります」と出るので<b>OK</b>。</p>
+      <p><b>予約</b>にした場合は、指定の日時を過ぎたあと<b>1時間以内</b>に自動で送られます。10:00ちょうどではなく、少し遅れることがあります。</p>
+      <p>お伝えし終わったら、A列を<b>「非表示」</b>に戻してください。次のお知らせが見やすくなります。</p>
+    </div>
+
+    <div class="call warn">
+      <h3>LINEに届く文面は、いつも同じです</h3>
+      <p>LINEには<b>「アプリにお知らせがあります」</b>という決まった文面と、アプリへのボタンだけが届きます。<b>書いた本文はLINEには流れません。</b></p>
+      <p>ですので、<b>本文の1行目に「いつ・なんのお知らせか」</b>を書いていただくと、開いた方がすぐ分かって親切です。</p>
+    </div>
+  </section>
+
+  <!-- 6. メニュー -->
   <section>
     <div class="sec-head">
       <div class="sec-tag">MENU 🌸</div>
@@ -373,6 +458,9 @@
       <div class="mi">👥💎 総合リストを再生成</div>
       <div class="mi">📦 終了セミナーを台帳へ保存</div>
       <hr>
+      <div class="mi">📣 お知らせをLINEで送る</div>
+      <div class="mi">📣 お知らせシートを用意する</div>
+      <hr>
       <div class="mi">📊 集計エリアを再設置</div>
       <div class="mi">📖 操作マニュアルを再生成</div>
     </div>
@@ -384,6 +472,8 @@
           <tr><td class="n"><b>🏦 支払い状況を更新</b></td><td>最新の状態にしたいとき。<b>1時間ごとに自動でも更新</b>されます。</td></tr>
           <tr><td class="n"><b>👥💎 総合リストを再生成</b></td><td>総参加者一覧・準見込みリストを作り直します。</td></tr>
           <tr><td class="n"><b>📦 終了セミナーを台帳へ保存</b></td><td><b>セミナーが終わったら</b>実行。参加者の記録が台帳に永久保存され、以後その受付シートを消しても記録は残ります。</td></tr>
+          <tr><td class="n"><b>📣 お知らせをLINEで送る</b></td><td>お知らせシートで<b>「LINE通知＝すぐ送る」</b>にした行を実際に送ります。何人に届くか確認してから送れます。</td></tr>
+          <tr><td class="n"><b>📣 お知らせシートを用意する</b></td><td>お知らせシートを作る／プルダウンを最新にします。<b>書いた内容は消えません。</b></td></tr>
           <tr><td class="n"><b>📊 集計エリアを再設置</b></td><td>残席の数字がおかしいときに。5〜6行目を作り直します。</td></tr>
           <tr><td class="n"><b>📖 操作マニュアルを再生成</b></td><td>シート内の手順書を最新にします。</td></tr>
         </tbody>
@@ -396,7 +486,7 @@
     </div>
   </section>
 
-  <!-- 6. やってはいけないこと -->
+  <!-- 7. やってはいけないこと -->
   <section>
     <div class="sec-head">
       <div class="sec-tag">CAUTION</div>
@@ -421,7 +511,7 @@
     </div>
   </section>
 
-  <!-- 7. QA -->
+  <!-- 8. QA -->
   <section>
     <div class="sec-head">
       <div class="sec-tag">Q &amp; A</div>

@@ -82,6 +82,14 @@
   .rbar .tm { font-size: 7px; color: var(--ink-soft); }
   .rbar .gp { display: flex; gap: 4px; }
   .rbar .rb { font-size: 7.5px; padding: 3px 7px; border-radius: 12px; border: 1px solid var(--primary); color: var(--primary-dk); background: var(--card); white-space: nowrap; }
+  .nitem { border: 1px solid var(--line); border-left: 2px solid var(--gold); border-radius: 8px; padding: 7px 8px; display: flex; flex-direction: column; gap: 4px; background: var(--card); }
+  .nitem .nh { display: flex; gap: 4px; flex-wrap: wrap; }
+  .ntag { font-size: 6.5px; font-weight: 700; border-radius: 999px; padding: 2px 6px; background: var(--card-soft); color: var(--ink-soft); }
+  .ntag.open { background: var(--green-soft); color: var(--green); }
+  .ntag.hide { background: var(--card-soft); color: var(--ink-faint); }
+  .nitem .nt { font-size: 8.5px; font-weight: 700; color: var(--ink); }
+  .nitem .nb { font-size: 7.5px; line-height: 1.6; color: var(--ink-soft); }
+  .nitem .nm { font-size: 6.5px; color: var(--ink-faint); }
   .remind { font-size: 7.5px; line-height: 1.6; background: var(--warn-soft); color: var(--warn); border-radius: 6px; padding: 5px 7px; }
   .switches { display: flex; gap: 4px; justify-content: flex-end; }
   .sw { font-size: 7px; font-weight: 700; padding: 3px 7px; border-radius: 11px; border: 1px solid var(--line); background: var(--card-soft); color: var(--ink-soft); white-space: nowrap; }
@@ -213,7 +221,7 @@
         <table>
           <thead><tr><th>場所</th><th>なにが見える／できる</th></tr></thead>
           <tbody>
-            <tr><td class="n"><b>いちばん上</b></td><td>最終更新の時刻と、<b>🔔通知</b>／<b>📖使い方</b>／<b>🔄更新</b>のボタン。</td></tr>
+            <tr><td class="n"><b>いちばん上</b></td><td>最終更新の時刻と、<b>🔔通知</b>／<b>📣お知らせ</b>／<b>📖使い方</b>／<b>🔄更新</b>のボタン。</td></tr>
             <tr><td class="n"><b>タブ</b></td><td>セミナーの切り替え。カッコ内は<b>（確定＋手続き中）／定員</b>、⏳はキャンセル待ちの人数です。</td></tr>
             <tr><td class="n"><b>数字カード</b></td><td>左から<b>定員・確定・手続き中・待機・残席</b>。<b>手続き中</b>は「決済案内中＋振込報告済み」の合計です。</td></tr>
             <tr><td class="n"><b>絞り込み</b></td><td>状態ごとに名簿をしぼれます。数字は該当人数。</td></tr>
@@ -230,7 +238,7 @@
         </div>
         <div class="rbar">
           <span class="tm">最終更新：8/24 21:06</span>
-          <span class="gp"><span class="rb">🔔 通知</span><span class="rb">📖 使い方</span><span class="rb">🔄 更新</span></span>
+          <span class="gp"><span class="rb">🔔 通知</span><span class="rb">📣 お知らせ</span><span class="rb">📖 使い方</span><span class="rb">🔄 更新</span></span>
         </div>
         <div class="remind">⚠️ 確認・操作をする前に、必ず右上の「🔄 更新」を押してください</div>
         <div class="mtabs">
@@ -281,9 +289,9 @@
     </ol>
 
     <div class="call calm">
-      <h3>開催前日も、なにもしなくて大丈夫です</h3>
-      <p><b>前日の朝10時</b>に、そのセミナーの「確定」の方へリマインドが<b>自動で送信</b>されます。送り終わると、このアプリから<b>「📣 前日リマインドを送りました（○名）」</b>とお知らせが届きます。</p>
-      <p>マーケティングは全3回なので、<b>各回の前日それぞれ</b>に送られます（9/28・10/28・11/24）。セルフイメージは9/17です。</p>
+      <h3>開催前日のご案内は、お知らせ機能でお送りします</h3>
+      <p>以前は前日の朝10時に自動送信していましたが、<b>文面を自由に書ける「📣 お知らせ」に一本化しました</b>。前日に届くよう<b>日時を予約しておける</b>ので、当日になって慌てることはありません。</p>
+      <p>使い方は、このあとの<b>「📣 お知らせを送る」</b>をご覧ください。</p>
     </div>
 
     <div class="call warn">
@@ -386,7 +394,87 @@
     </div>
   </section>
 
-  <!-- 6. 通知 -->
+  <!-- 6. お知らせ -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag">ANNOUNCE 📣</div>
+      <h2>お知らせを送る</h2>
+      <div class="meta">いちばん上の「📣 お知らせ」から。相手を選んでお届けできます</div>
+    </div>
+
+    <div class="call calm">
+      <h3>LINEには合図だけ、本文はアプリの中に</h3>
+      <p>お知らせの<b>中身はアプリの中</b>にあり、LINEには<b>「アプリにお知らせがあります」</b>という決まった文面とボタンだけが届きます。</p>
+      <p>この形なので、<b>「セルフイメージの、確定した方だけ」</b>のように<b>相手を選んで</b>お届けできますし、送ったあとで文章を直すこともできます。</p>
+    </div>
+
+    <div class="cols">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>入力する場所</th><th>なにを選ぶ／書く</th></tr></thead>
+          <tbody>
+            <tr><td class="n"><b>表示</b></td><td><b>公開</b>＝アプリに出す／<b>下書き</b>＝準備中／<b>非表示</b>＝お伝えし終わったもの／<b>通常</b>＝ふだんの文面。</td></tr>
+            <tr><td class="n"><b>対象セミナー</b></td><td>どのセミナーの方へ届けるか。<b>すべて</b>も選べます。</td></tr>
+            <tr><td class="n"><b>対象の状態</b></td><td><b>確定</b>／<b>手続き中</b>／<b>キャンセル待ち</b>／<b>すべて</b>。「確定」なら当日ご参加の方だけです。</td></tr>
+            <tr><td class="n"><b>タイトル・本文</b></td><td>お知らせの見出しと中身。<b>改行はそのまま</b>表示されます。</td></tr>
+            <tr><td class="n"><b>LINEでのお知らせ</b></td><td><b>送らない</b>（アプリに置くだけ）／<b>すぐ送る</b>／<b>予約</b>（日時を指定）。</td></tr>
+            <tr><td class="n"><b>予約日・予約時刻</b></td><td>「予約」のときだけ。<b>日付欄をタップするとカレンダー</b>が開きます。時刻は30分きざみです。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="phone"><div class="scr">
+        <div class="scr-head">
+          <img src="assets/logo.png" alt="">
+          <div class="b">BONHEUR LELIEN</div>
+          <div class="t">お知らせ</div>
+        </div>
+        <div class="rbar">
+          <span class="tm">📣 お知らせ</span>
+          <span class="gp"><span class="rb">＋ 新規</span><span class="rb">← 戻る</span></span>
+        </div>
+        <div class="nitem">
+          <div class="nh"><span class="ntag open">公開</span><span class="ntag">セルフイメージ / 確定</span></div>
+          <div class="nt">明日は開催日です</div>
+          <div class="nb">いよいよ明日となりました。会場は沖縄県総合福祉センター 402号室、10時45分より受付を開始いたします。</div>
+          <div class="acts"><span class="ab ab-bk">✎ 編集</span><span class="ab ab-ok">📣 LINEで送る</span></div>
+        </div>
+        <div class="nitem">
+          <div class="nh"><span class="ntag">下書き</span><span class="ntag">すべて / すべて</span></div>
+          <div class="nt">会場が変更になりました</div>
+          <div class="nm">予約：2026-09-17 10:00</div>
+          <div class="acts"><span class="ab ab-bk">✎ 編集</span><span class="ab ab-ok">📣 LINEで送る</span></div>
+        </div>
+        <div class="nitem">
+          <div class="nh"><span class="ntag hide">非表示</span><span class="ntag">マーケティング / 確定</span></div>
+          <div class="nt">10月開催のご案内</div>
+          <div class="nm">送信済み：9/17 10:02（18名）</div>
+          <div class="acts"><span class="ab ab-bk">✎ 編集</span><span class="ab ab-ok">📣 LINEで送る</span></div>
+        </div>
+      </div></div>
+    </div>
+
+    <ol class="steps">
+      <li><b>「＋ 新規」</b>を押して、対象と文面を書く</li>
+      <li>表示を<b>「公開」</b>にして<b>「保存する」</b></li>
+      <li>一覧に戻ったら<b>「📣 LINEで送る」</b>を押す</li>
+      <li><b>「○名にLINEでお知らせします」</b>と人数が出るので、確認して<b>OK</b></li>
+    </ol>
+
+    <div class="call">
+      <h3>送ったあとは「非表示」に戻してください</h3>
+      <p>お伝えし終わったお知らせは、<b>削除せず「非表示」に</b>。送信日時と人数の記録が残ったまま、アプリからは見えなくなります。</p>
+      <p><b>「公開」のものが複数あるときは、全部が並んで表示</b>されます。古いものを残したままにすると、お客さまの画面が混み合ってしまいます。</p>
+    </div>
+
+    <div class="call warn">
+      <h3>送信は取り消せません</h3>
+      <p>LINEに一度飛んだ通知は取り消せません。<b>対象と人数を必ず確認</b>してからOKを押してください。</p>
+      <p>ただし<b>本文はあとから直せます</b>。文面の誤りに気づいたら、編集して保存すればアプリの表示はすぐ直ります。</p>
+    </div>
+  </section>
+
+  <!-- 7. 通知 -->
   <section>
     <div class="sec-head">
       <div class="sec-tag">NOTIFY 🔔</div>
@@ -412,7 +500,7 @@
     <p class="lead">お申込みや決済のたびには鳴りません。<b>手を動かす必要があるときだけ</b>お知らせします。</p>
   </section>
 
-  <!-- 7. 触らないスイッチ -->
+  <!-- 8. 触らないスイッチ -->
   <section>
     <div class="sec-head">
       <div class="sec-tag">CAUTION</div>
@@ -449,7 +537,7 @@
     </div>
   </section>
 
-  <!-- 8. QA -->
+  <!-- 9. QA -->
   <section>
     <div class="sec-head">
       <div class="sec-tag">Q &amp; A</div>
