@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>受付フォーム｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=34">
+<link rel="stylesheet" href="css/style.css?v=35">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -24,7 +24,7 @@
   <!-- ローディング -->
   <div id="loading" style="display:none;">
     <div class="spinner"></div>
-    <div>送信しています…</div>
+    <div id="loading-msg">送信しています…</div>
   </div>
 
   <!-- uid無しフォールバック -->
@@ -215,8 +215,8 @@
 
 </div>
 
-<script src="js/config.js?v=34"></script>
-<script src="js/common.js?v=34"></script>
+<script src="js/config.js?v=35"></script>
+<script src="js/common.js?v=35"></script>
 <script>
 let uid = getUid();
 const seminarKey = new URLSearchParams(location.search).get('seminar');
@@ -388,6 +388,44 @@ function enterWaitlistMode() {
   document.getElementById('btn-submit').textContent = 'キャンセル待ちで申し込む';
 }
 
+/* ===== 混雑時の自動やり直し =====
+   募集開始直後は申込が一斉に来るため、サーバーが「混み合っています(busy)」を
+   返すことがある。そのときは少し待ってから自動で送り直す。
+   ※同じuidで二重に送っても、サーバー側が既存の申込を見つけて
+     「already」を返すだけなので、二重申込にはならない（LINEも二重に飛ばない）。 */
+const BUSY_WAITS = [1500, 4000, 8000];   // 待つミリ秒。ジッターを足して山を散らす
+const BUSY_MSGS = [
+  '混み合っています。おつなぎしています…',
+  '順番にお待ちいただいています…',
+  'もう少しお待ちくださいませ…'
+];
+
+function setLoadingMsg_(text) {
+  const el = document.getElementById('loading-msg');
+  if (el) el.textContent = text;
+}
+
+async function submitWithRetry_(payload) {
+  let sawBusy = false, lastErr = null;
+
+  for (let n = 0; n <= BUSY_WAITS.length; n++) {
+    try {
+      const res = await apiPost('submit_application', payload);
+      // 混雑以外（成功・受付前・重複など）はそのまま返す
+      if (!res || res.ok || res.error !== 'busy') return res;
+      sawBusy = true;
+    } catch (err) {
+      lastErr = err;          // 通信断・タイムアウト。送り直しは安全なのでやり直す
+    }
+    if (n === BUSY_WAITS.length) break;
+    setLoadingMsg_(BUSY_MSGS[n]);
+    await new Promise(r => setTimeout(r, BUSY_WAITS[n] + Math.random() * 1200));
+  }
+
+  if (sawBusy) return { ok: false, error: 'busy' };
+  throw lastErr || new Error('送信できませんでした');
+}
+
 document.getElementById('apply-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const btn = document.getElementById('btn-submit');
@@ -396,8 +434,9 @@ document.getElementById('apply-form').addEventListener('submit', async (e) => {
   showLoading(true);
 
   const fd = new FormData(e.target);
+  setLoadingMsg_('送信しています…');
   try {
-    const res = await apiPost('submit_application', {
+    const res = await submitWithRetry_({
       uid: uid,
       seminar: seminarKey,
       name: fd.get('name'),
@@ -411,6 +450,10 @@ document.getElementById('apply-form').addEventListener('submit', async (e) => {
     if (!res.ok) {
       // 受付開始前（URL直打ち等）→ カウントダウン画面へ
       if (res.error === 'not_open_yet') { renderNotOpen_(res.open_at); return; }
+      if (res.error === 'busy') {
+        alert('ただいま大変混み合っております。\n恐れ入りますが、もう一度「申し込む」を押してくださいませ。\n\n※二重にお申込みになることはございません。');
+        return;
+      }
       showError(res.error || ''); return;
     }
 

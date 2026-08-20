@@ -1,3 +1,12 @@
+/*** 神谷梓さん 受付管理システム GAS v8.2 ****************************
+ * 【v8.2 一斉アクセス対策 2026-08-20】募集開始直後の同時申込に耐える
+ *   ① ロックの中を最小化：LINE送信と操作履歴をロックの外へ。
+ *      シートの読み込みも3回→1回（A〜H列をまとめて読む）。
+ *      → 1人あたりの占有時間が約2.5秒 → 約0.7秒に。
+ *   ② waitLock(10秒・例外) → tryLock(25秒・busyを返す)。
+ *      混雑してもエラー画面ではなく「混み合っています」を返し、アプリが再送する。
+ *   ③ 残席表示を3秒キャッシュ（getCapacity_）。定員判定には使わない。
+ *
 /*** 神谷梓さん 受付管理システム GAS v8.1 ****************************
  * 【v8.1 追加 2026-08-20】お知らせの対象セミナーに「まとめて」を追加
  *   ・「セルフ両方」＝セルフ先行＋セルフ一般（同じ9/18開催なので便利）
@@ -393,7 +402,7 @@ function adminUpdateStatus_(p) {
   if (!uid || !newStatus) return out_({ ok: false, error: 'uid and new_status required' });
 
   var lock = LockService.getScriptLock();
-  lock.waitLock(10000);
+  if (!lock.tryLock(LOCK_WAIT_MS)) return out_({ ok: false, error: 'busy', retry: true });
   try {
     var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(config.sheet);
     if (!sh) return out_({ ok: false, error: 'sheet not found' });
@@ -540,45 +549,59 @@ function submitApplication_(p) {
     return out_({ ok: false, error: 'not_open_yet', open_at: gate.open_at });
   }
 
-  // 同時申込対策のロック
-  var lock = LockService.getScriptLock();
-  lock.waitLock(10000);
-  try {
-    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(config.sheet);
-    if (!sh) return out_({ ok: false, error: 'sheet not found' });
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(config.sheet);
+  if (!sh) return out_({ ok: false, error: 'sheet not found' });
 
-    // 重複チェック（同uidの既存申込があれば現状を返す）
-    var existRow = findRowByUid_(sh, p.uid);
-    if (existRow) {
-      var st = sh.getRange(existRow, 7).getValue();
-      return out_({ ok: true, already: true, status: st, row: existRow });
+  // ============ ここからロック ============
+  // 【重要】ロックの中でやるのは「数える → 書く」だけ。
+  // LINE送信（外部通信）と操作履歴はロックの外へ出してある。
+  // ここに処理を足すと、その分だけ全員の行列が伸びる。足さないこと。
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(LOCK_WAIT_MS)) {
+    // 待っても取れなかった＝混雑。例外を投げずに「やり直してね」を返す
+    logAction_('busy', p.uid, config.sheet, 'lock timeout', '同時アクセス');
+    return out_({ ok: false, error: 'busy', retry: true });
+  }
+
+  var status, deadline, waitNum, scenarioName;
+  try {
+    // A〜H列を【1回だけ】読む。重複チェック・定員・待機番号をこの1回でまかなう
+    var lastRow = sh.getLastRow();
+    var rows = (lastRow >= DATA_START_ROW)
+      ? sh.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, 8).getValues()
+      : [];
+
+    var occupied = 0, maxWait = 0, exRow = 0, exStatus = '';
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      var st = r[6];
+      // 重複チェック（uidが入っている行だけ見る）
+      if (r[0] && !exRow && r[0] === p.uid) { exRow = DATA_START_ROW + i; exStatus = String(st); }
+      // 定員の数え方は従来どおり（uidの有無に関係なく状態だけで数える）
+      if (st === '確定' || st === '決済案内中' || st === '振込報告済み') occupied++;
+      else if (st === 'キャンセル待ち') {
+        var wn = Number(r[7]);
+        if (wn > maxWait) maxWait = wn;
+      }
     }
 
-    // 定員判定
-    var occupied = countByStatuses_(sh, ['確定', '決済案内中', '振込報告済み']);
-    var isWithinCapacity = occupied < config.capacity;
+    // 重複（もう申し込んでいる人）→ 現状を返すだけ。LINEは飛ばさない
+    if (exRow) {
+      return out_({ ok: true, already: true, status: exStatus, row: exRow });
+    }
 
     var now = new Date();
-    var status, deadline, waitNum, scenarioName;
-
-    if (isWithinCapacity) {
+    if (occupied < config.capacity) {
       if (config.payment === 'cash') {
         // セルフ先行：当日現金 → 即確定
-        status = '確定';
-        deadline = '';
-        waitNum = '';
-        scenarioName = '確定';
+        status = '確定';       deadline = '';  waitNum = '';  scenarioName = '確定';
       } else {
         status = '決済案内中';
         deadline = formatDate_(new Date(now.getTime() + DEADLINE_DAYS * 86400000));
-        waitNum = '';
-        scenarioName = '決済案内';
+        waitNum = '';          scenarioName = '決済案内';
       }
     } else {
-      status = 'キャンセル待ち';
-      deadline = '';
-      waitNum = getNextWaitNumber_(sh);
-      scenarioName = 'キャンセル待ち';
+      status = 'キャンセル待ち'; deadline = ''; waitNum = maxWait + 1; scenarioName = 'キャンセル待ち';
     }
 
     sh.appendRow([
@@ -597,14 +620,19 @@ function submitApplication_(p) {
       p.job || '',
       p.worries || ''
     ]);
-
-    moveScenario_(p.uid, scenarioName);
-    logAction_('web_application', p.uid, config.sheet, '→ ' + status, 'Webアプリ経由');
-
-    return out_({ ok: true, status: status, waitNum: waitNum, deadline: deadline });
   } finally {
     lock.releaseLock();
   }
+  // ============ ここでロックを離した ============
+
+  // 残席の表示用キャッシュを捨てる（次の人には新しい数字を見せる）
+  capacityCacheClear_(seminarKey);
+
+  // 以下は他の人を待たせないので、ロックの外で行う
+  moveScenario_(p.uid, scenarioName);
+  logAction_('web_application', p.uid, config.sheet, '→ ' + status, 'Webアプリ経由');
+
+  return out_({ ok: true, status: status, waitNum: waitNum, deadline: deadline });
 }
 
 // ========== 【v2】振込報告受信 ==========
@@ -665,28 +693,74 @@ function reportCardPayment_(p) {
 }
 
 // ========== 【v2】残席照会 ==========
+/**
+ * 残席などを返す。募集開始直後は同じ問い合わせが一気に来るので、
+ * 数字だけ CAPACITY_CACHE_SEC 秒キャッシュして負荷を下げる。
+ * 【重要】これは「画面に出す数字」専用。実際の定員判定は
+ * submitApplication_ がロックの中で毎回数え直すので、ここは多少古くてよい。
+ */
 function getCapacity_(p) {
   var config = SEMINARS[p.seminar];
   if (!config) return out_({ ok: false, error: 'unknown seminar' });
 
-  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(config.sheet);
-  if (!sh) return out_({ ok: false, error: 'sheet not found' });
-
-  var confirmed = countByStatuses_(sh, ['確定', '決済案内中', '振込報告済み']);
-  var waiting = countByStatuses_(sh, ['キャンセル待ち']);
-  var gate = gateInfo_(p.seminar);
+  var gate = gateInfo_(p.seminar);   // ゲートはキャッシュしない（開始判定なので）
+  var counts = capacityCounts_(p.seminar);
+  if (!counts) return out_({ ok: false, error: 'sheet not found' });
 
   return out_({
     ok: true,
     seminar: p.seminar,
     capacity: config.capacity,
-    confirmed: confirmed,
-    waiting: waiting,
-    available: Math.max(0, config.capacity - confirmed),
+    confirmed: counts.confirmed,
+    waiting: counts.waiting,
+    available: Math.max(0, config.capacity - counts.confirmed),
     is_open: gate.is_open,     // false なら受付開始前（カウントダウン画面を出す）
     open_at: gate.open_at,
-    gate_on: gate.gate_on
+    gate_on: gate.gate_on,
+    cached: counts.cached
   });
+}
+
+var CAPACITY_CACHE_SEC = 3;   // 残席表示のキャッシュ秒数。長くすると軽いが表示が古くなる
+
+function capacityCacheKey_(seminarKey) { return 'cap_' + seminarKey; }
+
+function capacityCacheClear_(seminarKey) {
+  try { CacheService.getScriptCache().remove(capacityCacheKey_(seminarKey)); } catch (_) {}
+}
+
+/** 確定系と待機の人数を数える（3秒キャッシュ付き・G列だけ1回読む） */
+function capacityCounts_(seminarKey) {
+  var config = SEMINARS[seminarKey];
+  if (!config) return null;
+
+  var cache = CacheService.getScriptCache();
+  var key = capacityCacheKey_(seminarKey);
+  try {
+    var hit = cache.get(key);
+    if (hit) {
+      var o = JSON.parse(hit);
+      o.cached = true;
+      return o;
+    }
+  } catch (_) {}
+
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(config.sheet);
+  if (!sh) return null;
+
+  var lastRow = sh.getLastRow();
+  var confirmed = 0, waiting = 0;
+  if (lastRow >= DATA_START_ROW) {
+    var col = sh.getRange(DATA_START_ROW, 7, lastRow - DATA_START_ROW + 1, 1).getValues();
+    for (var i = 0; i < col.length; i++) {
+      var st = col[i][0];
+      if (st === '確定' || st === '決済案内中' || st === '振込報告済み') confirmed++;
+      else if (st === 'キャンセル待ち') waiting++;
+    }
+  }
+  var out = { confirmed: confirmed, waiting: waiting, cached: false };
+  try { cache.put(key, JSON.stringify({ confirmed: confirmed, waiting: waiting }), CAPACITY_CACHE_SEC); } catch (_) {}
+  return out;
 }
 
 // ========== 【v2】ユーザーキャンセル ==========
@@ -695,7 +769,7 @@ function cancelApplication_(p) {
   if (!uid) return out_({ ok: false, error: 'uid required' });
 
   var lock = LockService.getScriptLock();
-  lock.waitLock(10000);
+  if (!lock.tryLock(LOCK_WAIT_MS)) return out_({ ok: false, error: 'busy', retry: true });
   try {
     var found = findUserAcrossSeminars_(uid);
     if (!found) return out_({ ok: false, error: 'user not found' });
@@ -1552,6 +1626,9 @@ function setupManualSheet() {
  * 「通常」＝臨時のお知らせが無いときに出る定常メッセージ。
  *          公開の行があればそちらが優先され、下書きに戻すと通常に戻る。
  * ============================================================ */
+// 申込が重なったときにロックを待つ上限。ここを過ぎたら「混み合っています」を返す
+var LOCK_WAIT_MS = 25000;
+
 var NEWS_SHEET = '📣 お知らせ';
 var NEWS_START_ROW = 5;
 var NEWS_COLS = 10;
