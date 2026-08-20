@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=33">
+<link rel="stylesheet" href="css/style.css?v=34">
 </head>
 <body>
 <div class="container">
@@ -263,8 +263,8 @@
 
 </div>
 
-<script src="js/config.js?v=33"></script>
-<script src="js/common.js?v=33"></script>
+<script src="js/config.js?v=34"></script>
+<script src="js/common.js?v=34"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -301,22 +301,25 @@ async function loadStatus() {
   }
 }
 
-/** 📣 お知らせを表示（スプシの📣お知らせシートで運営が編集） */
+/** 📣 お知らせを表示（該当するものをすべて／スプシまたは管理アプリで編集） */
 function renderNews(news) {
   const box = document.getElementById('news-box');
   if (!box) return;
-  if (!news || (!news.title && !news.body)) {
+  const list = Array.isArray(news) ? news : (news ? [news] : []);
+  const items = list.filter(n => n && (n.title || n.body));
+  if (!items.length) {
     box.style.display = 'none';
     box.innerHTML = '';
     return;
   }
   box.style.display = '';
-  box.innerHTML =
-    '<div class="card" style="border-left:3px solid #bd9a58; padding:15px 17px; text-align:left;">' +
+  box.innerHTML = items.map(n =>
+    '<div class="card" style="border-left:3px solid #bd9a58; padding:15px 17px; text-align:left; margin-bottom:10px;">' +
       '<div style="font-size:11px; font-weight:700; letter-spacing:.12em; color:#bd9a58;">\u{1F4E3} お知らせ</div>' +
-      (news.title ? '<div style="font-size:15px; font-weight:700; margin-top:5px; line-height:1.6;">' + esc(news.title) + '</div>' : '') +
-      (news.body ? '<div style="font-size:13px; line-height:1.9; margin-top:6px; color:#8a7d76; white-space:pre-line;">' + esc(news.body) + '</div>' : '') +
-    '</div>';
+      (n.title ? '<div style="font-size:15px; font-weight:700; margin-top:5px; line-height:1.6;">' + esc(n.title) + '</div>' : '') +
+      (n.body ? '<div style="font-size:13px; line-height:1.9; margin-top:6px; color:#8a7d76; white-space:pre-line;">' + esc(n.body) + '</div>' : '') +
+    '</div>'
+  ).join('');
 }
 
 function render(st) {
@@ -596,7 +599,7 @@ function demoShow_(kind) {
   const dl = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' +
     pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
   const base = { ok: true, uid: 'DEMO', name: 'デモ 花子',
-    news: { title: '当日のお持ち物について', body: '筆記用具のほかに、飲みもののご用意をおすすめしております。\n会場は少し冷えることがございますので、羽織るものがあると安心です。' } };
+    news: [{ title: '当日のお持ち物について', body: '筆記用具のほかに、飲みもののご用意をおすすめしております。\n会場は少し冷えることがございますので、羽織るものがあると安心です。' }] };
   let st;
   if (kind === 'payment')        st = Object.assign(base, { status: '決済案内中', seminar: 'marke_general', deadline: dl });
   else if (kind === 'waiting')   st = Object.assign(base, { status: 'キャンセル待ち', seminar: 'self_general', wait_number: 2 });

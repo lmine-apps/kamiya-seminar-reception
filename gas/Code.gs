@@ -1,3 +1,9 @@
+/*** 神谷梓さん 受付管理システム GAS v7.9 ****************************
+ * 【v7.9 改良 2026-08-20】お知らせの表示ルールを分かりやすく
+ *   ・「表示」に【非表示】を追加（送り終わった過去のお知らせを畳む用）
+ *   ・該当する「公開」のお知らせは【すべて】アプリに表示（以前は1件だけだった）
+ *   ・公開が1件も無いときだけ「通常」を表示
+ *
 /*** 神谷梓さん 受付管理システム GAS v7.8 ****************************
  * 【v7.8 改良 2026-08-20】お知らせの入力と編集をもっと簡単に
  *   ・予約日はカレンダーから選択、時刻は30分きざみのプルダウンに分離
@@ -1620,7 +1626,7 @@ var NEWS_SHEET = '📣 お知らせ';
 var NEWS_START_ROW = 5;
 var NEWS_COLS = 10;
 var NEWS_SEM_ALL = 'すべて';
-var NEWS_SHOW_LIST   = ['公開', '下書き', '通常'];
+var NEWS_SHOW_LIST   = ['公開', '下書き', '非表示', '通常'];
 var NEWS_TARGET_LIST = ['すべて', '確定', 'お支払い待ち', 'キャンセル待ち'];
 var NEWS_NOTIFY_LIST = ['送らない', 'すぐ送る', '予約', '送信済み'];
 
@@ -1715,22 +1721,27 @@ function newsRows_(useCache) {
 
 function newsCacheClear_() { try { CacheService.getScriptCache().remove('news_rows'); } catch (_) {} }
 
-/** その人に出すお知らせを1件選ぶ（公開が優先、無ければ通常） */
+/**
+ * その人に出すお知らせを集める。
+ * 「公開」に当てはまるものは【すべて】返す（シートの上から順）。
+ * 公開が1件も無ければ「通常」を1件だけ返す。
+ * 「下書き」「非表示」は出さない。
+ */
 function pickNews_(seminarKey, status) {
   var label = newsSeminarLabel_(seminarKey);
   var rows = newsRows_();
-  var open = null, normal = null;
+  var opens = [], normal = null;
+
   for (var i = 0; i < rows.length; i++) {
     var n = rows[i];
     if (n.show !== '公開' && n.show !== '通常') continue;
     if (n.seminar && n.seminar !== NEWS_SEM_ALL && n.seminar !== label) continue;
     if (!newsStatusMatch_(n.target, status)) continue;
-    if (n.show === '公開' && !open) open = n;
-    if (n.show === '通常' && !normal) normal = n;
+    if (n.show === '公開') opens.push({ title: n.title, body: n.body, normal: false });
+    else if (!normal) normal = { title: n.title, body: n.body, normal: true };
   }
-  var pick = open || normal;
-  if (!pick) return null;
-  return { title: pick.title, body: pick.body, normal: (pick.show === '通常') };
+  if (opens.length) return opens;
+  return normal ? [normal] : [];
 }
 
 /** 対象者のuidを集める */

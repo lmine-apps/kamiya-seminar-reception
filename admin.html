@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="受付管理">
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=33">
+<link rel="stylesheet" href="css/style.css?v=34">
 <style>
   .container { max-width: 720px; }
   /* タブ */
@@ -310,8 +310,8 @@
   <div class="footer">株式会社 Bonheur Lelien｜運営者専用ページ</div>
 </div>
 
-<script src="js/config.js?v=33"></script>
-<script src="js/common.js?v=33"></script>
+<script src="js/config.js?v=34"></script>
+<script src="js/common.js?v=34"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script>
@@ -507,7 +507,7 @@ async function openNews() {
 function newsTagClass_(show) {
   if (show === '公開') return 'ntag-open';
   if (show === '通常') return 'ntag-normal';
-  return 'ntag-draft';
+  return 'ntag-draft';   // 下書き・非表示
 }
 
 function renderNewsList() {
@@ -548,7 +548,7 @@ function showNewsForm_(n) {
   wrap.style.display = '';
   wrap.innerHTML =
     '<div class="news-form">' +
-      '<label>表示</label>' + newsSelect_('nf-show', ['公開', '下書き', '通常'], n.show || '下書き') +
+      '<label>表示</label>' + newsSelect_('nf-show', ['公開', '下書き', '非表示', '通常'], n.show || '下書き') +
       '<div class="two">' +
         '<div><label>対象セミナー</label>' + newsSelect_('nf-sem', newsData.seminars, n.seminar || 'すべて') + '</div>' +
         '<div><label>対象の状態</label>' + newsSelect_('nf-target', newsData.targets, n.target || 'すべて') + '</div>' +
