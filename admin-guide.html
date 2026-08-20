@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>管理アプリの使いかた｜Bonheur Lelien</title>
+<link rel="icon" type="image/png" href="assets/favicon-32.png">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+
+  :root {
+    --ground:     #f6f1ec;  --card:       #fffdfb;  --card-soft:  #fdf8f4;
+    --ink:        #453a35;  --ink-soft:   #8b7d75;  --ink-faint:  #b0a29a;
+    --line:       #e8ded6;  --primary:    #b18474;  --primary-dk: #8e6255;
+    --gold:       #bd9a58;  --green:      #5c8a5c;  --green-soft: #eef4ee;
+    --warn:       #c96f5e;  --warn-soft:  #f9ece8;  --blue:       #4a6fa5;
+    --blue-soft:  #e9eff7;  --purple:     #8a5ca5;  --purple-soft:#efe5f5;
+    --orange:     #c97b3d;  --orange-soft:#fdeee3;  --bezel:      #2f2724;
+    --serif: "Yu Mincho", YuMincho, "Hiragino Mincho ProN", "MS PMincho", serif;
+    --sans: "Yu Gothic UI", "Yu Gothic", YuGothic, "Hiragino Kaku Gothic ProN", Meiryo, system-ui, sans-serif;
+    --mono: Consolas, "Cascadia Mono", ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#1d1815; --card:#272019; --card-soft:#2e251e;
+      --ink:#ece2da; --ink-soft:#a89890; --ink-faint:#7a6a62;
+      --line:#3a2f28; --primary:#cd9c8a; --primary-dk:#e0b6a5;
+      --gold:#d6b477; --green:#86bf86; --green-soft:#242c24;
+      --warn:#e0917f; --warn-soft:#3b2723; --blue:#9dbde4;
+      --blue-soft:#232d38; --purple:#b48ccb; --purple-soft:#302640;
+      --orange:#e3a978; --orange-soft:#3a2b1e; --bezel:#0f0c0a;
+    }
+  }
+  :root[data-theme="dark"] {
+      --ground:#1d1815; --card:#272019; --card-soft:#2e251e;
+      --ink:#ece2da; --ink-soft:#a89890; --ink-faint:#7a6a62;
+      --line:#3a2f28; --primary:#cd9c8a; --primary-dk:#e0b6a5;
+      --gold:#d6b477; --green:#86bf86; --green-soft:#242c24;
+      --warn:#e0917f; --warn-soft:#3b2723; --blue:#9dbde4;
+      --blue-soft:#232d38; --purple:#b48ccb; --purple-soft:#302640;
+      --orange:#e3a978; --orange-soft:#3a2b1e; --bezel:#0f0c0a;
+  }
+
+  body { background: var(--ground); color: var(--ink); font-family: var(--sans); line-height: 1.85; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 3.5rem 1.3rem 6rem; display: flex; flex-direction: column; gap: 3.2rem; }
+
+  .masthead { text-align: center; display: flex; flex-direction: column; align-items: center; gap: .5rem; }
+  .masthead img { width: 66px; }
+  .brand { font-family: var(--serif); font-size: .74rem; letter-spacing: .32em; color: var(--gold); padding-left: .32em; }
+  h1 { font-family: var(--serif); font-size: clamp(1.5rem, 4.2vw, 2rem); font-weight: 600; line-height: 1.45; text-wrap: balance; margin: .2rem 0 0; }
+  .rule { width: 44px; height: 1px; background: var(--gold); opacity: .7; }
+  .masthead p { color: var(--ink-soft); font-size: .93rem; max-width: 32em; margin: 0; }
+
+  section { display: flex; flex-direction: column; gap: 1.2rem; }
+  .sec-head { display: flex; flex-direction: column; gap: .3rem; border-top: 2px solid var(--primary); padding-top: 1rem; }
+  .sec-tag { font-size: .7rem; letter-spacing: .16em; font-weight: 700; color: var(--primary-dk); }
+  .sec-head h2 { font-family: var(--serif); font-size: 1.38rem; font-weight: 600; margin: 0; line-height: 1.45; }
+  .sec-head .meta { font-size: .89rem; color: var(--ink-soft); }
+  p { margin: 0; font-size: .93rem; }
+  p.lead { color: var(--ink-soft); }
+  p b, li b, td b { color: var(--ink); font-weight: 700; }
+  .stack { display: flex; flex-direction: column; gap: .8rem; }
+  .cols { display: grid; grid-template-columns: 1fr 320px; gap: 1.6rem; align-items: start; }
+  @media (max-width: 800px) { .cols { grid-template-columns: 1fr; } }
+
+  /* phone mock of the admin app */
+  .phone { width: 100%; max-width: 320px; border: 7px solid var(--bezel); border-radius: 26px;
+           background: var(--card-soft); overflow: hidden; box-shadow: 0 8px 26px rgba(90,64,50,.16); }
+  :root:not([data-theme="light"]) .phone, :root[data-theme="dark"] .phone { box-shadow: 0 8px 26px rgba(0,0,0,.45); }
+  .scr { padding: 13px 11px 15px; display: flex; flex-direction: column; gap: 9px; }
+  .scr-head { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .scr-head img { width: 27px; }
+  .scr-head .b { font-family: var(--serif); font-size: 6.5px; letter-spacing: .26em; color: var(--gold); padding-left: .26em; }
+  .scr-head .t { font-family: var(--serif); font-size: 12px; color: var(--primary-dk); }
+
+  .rbar { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
+  .rbar .tm { font-size: 7px; color: var(--ink-soft); }
+  .rbar .gp { display: flex; gap: 4px; }
+  .rbar .rb { font-size: 7.5px; padding: 3px 7px; border-radius: 12px; border: 1px solid var(--primary); color: var(--primary-dk); background: var(--card); white-space: nowrap; }
+  .remind { font-size: 7.5px; line-height: 1.6; background: var(--warn-soft); color: var(--warn); border-radius: 6px; padding: 5px 7px; }
+  .switches { display: flex; gap: 4px; justify-content: flex-end; }
+  .sw { font-size: 7px; font-weight: 700; padding: 3px 7px; border-radius: 11px; border: 1px solid var(--line); background: var(--card-soft); color: var(--ink-soft); white-space: nowrap; }
+
+  .mtabs { display: flex; gap: 4px; overflow: hidden; }
+  .mtab { font-size: 7.5px; padding: 4px 7px; border-radius: 11px; border: 1px solid var(--line); background: var(--card); color: var(--ink-soft); white-space: nowrap; }
+  .mtab.on { background: linear-gradient(135deg,var(--primary),var(--primary-dk)); color: #fff; border-color: transparent; font-weight: 700; }
+
+  .sums { display: grid; grid-template-columns: repeat(5,1fr); gap: 4px; }
+  .sum { background: var(--card); border-radius: 8px; padding: 6px 2px; text-align: center; }
+  .sum .v { font-size: 14px; font-weight: 700; color: var(--primary-dk); line-height: 1.25; }
+  .sum .k { font-size: 6.5px; color: var(--ink-soft); }
+  .sum.alert .v { color: var(--warn); }
+  .sum.ok .v { color: var(--green); }
+
+  .fils { display: flex; gap: 3px; flex-wrap: wrap; }
+  .fil { font-size: 6.5px; padding: 3px 7px; border-radius: 10px; background: var(--card-soft); color: var(--ink-soft); border: 1px solid var(--line); white-space: nowrap; }
+  .fil.on { background: var(--primary-dk); color: #fff; border-color: transparent; }
+
+  .rrow { background: var(--card); border-radius: 9px; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .rrow .top { display: flex; align-items: center; gap: 5px; justify-content: space-between; }
+  .rrow .nm { font-size: 11px; font-weight: 700; }
+  .rrow .sub { font-size: 7.5px; color: var(--ink-soft); }
+  .rrow .acts { display: flex; gap: 4px; }
+  .ab { flex: 1; text-align: center; font-size: 8px; font-weight: 700; padding: 6px 3px; border-radius: 8px; }
+  .ab-ok { background: var(--green-soft); color: var(--green); }
+  .ab-ng { background: var(--warn-soft); color: var(--warn); }
+  .ab-bk { background: var(--purple-soft); color: var(--purple); }
+
+  .pill { display: inline-block; font-size: .74rem; font-weight: 700; padding: .1rem .55rem; border-radius: 999px; white-space: nowrap; }
+  .st { display: inline-block; font-size: 7.5px; font-weight: 700; padding: 2px 7px; border-radius: 9px; white-space: nowrap; }
+  .p-ok, .st-ok       { background: var(--green-soft);  color: var(--green); }
+  .p-pay, .st-pay     { background: var(--orange-soft); color: var(--orange); }
+  .p-bank, .st-bank   { background: var(--blue-soft);   color: var(--blue); }
+  .p-wait, .st-wait   { background: var(--purple-soft); color: var(--purple); }
+  .p-gone, .st-gone   { background: var(--line);        color: var(--ink-soft); }
+
+  .tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+  table { border-collapse: collapse; width: 100%; font-size: .88rem; min-width: 580px; }
+  th, td { padding: .6rem .8rem; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--card-soft); font-size: .78rem; color: var(--ink-soft); white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  td.n { white-space: nowrap; }
+  .bt { display: inline-block; font-size: .78rem; font-weight: 700; padding: .16rem .6rem; border-radius: 8px; white-space: nowrap; }
+  .bt-ok { background: var(--green-soft); color: var(--green); }
+  .bt-ng { background: var(--warn-soft); color: var(--warn); }
+  .bt-bk { background: var(--purple-soft); color: var(--purple); }
+  .yes { color: var(--green); font-weight: 700; }
+  .no  { color: var(--ink-faint); }
+
+  .call { background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--gold); border-radius: 10px; padding: 1rem 1.15rem; display: flex; flex-direction: column; gap: .35rem; }
+  .call.warn { border-left-color: var(--warn); }
+  .call.calm { border-left-color: var(--green); }
+  .call h3 { font-family: var(--serif); font-size: 1rem; margin: 0; font-weight: 600; }
+  .call p { color: var(--ink-soft); }
+  .key { font-family: var(--mono); font-size: .95rem; background: var(--card-soft); border: 1px solid var(--line); border-radius: 7px; padding: .18rem .6rem; color: var(--primary-dk); font-weight: 700; }
+
+  ol.steps { margin: 0; padding-left: 1.3rem; display: flex; flex-direction: column; gap: .55rem; font-size: .93rem; }
+  ol.steps li::marker { color: var(--primary-dk); font-weight: 700; }
+  ul.dont { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: .3rem; font-size: .92rem; color: var(--ink-soft); }
+  ul.dont li::marker { color: var(--warn); }
+
+  .qa { display: flex; flex-direction: column; gap: 1rem; }
+  .qa .q { font-weight: 700; font-size: .95rem; }
+  .qa .a { font-size: .92rem; color: var(--ink-soft); }
+
+  .dialog { max-width: 340px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: .8rem .9rem; font-size: .82rem; line-height: 1.75; color: var(--ink-soft); white-space: pre-line; box-shadow: 0 6px 18px rgba(90,64,50,.14); }
+  :root:not([data-theme="light"]) .dialog, :root[data-theme="dark"] .dialog { box-shadow: 0 6px 18px rgba(0,0,0,.45); }
+  .dialog b { color: var(--ink); }
+
+  a.link { color: var(--primary-dk); font-weight: 700; text-decoration: none; border-bottom: 1.5px solid var(--primary); }
+  a.link:hover { background: var(--card-soft); }
+  a.link:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  footer { border-top: 1px solid var(--line); padding-top: 1.3rem; font-size: .84rem; color: var(--ink-soft); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <img src="assets/logo.png" alt="A'z">
+    <div class="brand">BONHEUR LELIEN</div>
+    <h1>管理アプリの使いかた</h1>
+    <div class="rule"></div>
+    <p>受付状況の確認と、入金確認のひと押し。<br>日々の運営で使うのは、この画面ひとつです。</p>
+  </header>
+
+  <div class="call calm">
+    <h3>覚えることは、ほぼ1つだけ</h3>
+    <p><b>「振込報告済み」の方の入金を確かめて、確定を押す。</b>これだけです。あとは開いて眺めていただければ、いまの受付状況がわかります。</p>
+  </div>
+
+  <!-- 1. 開き方 -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag">START</div>
+      <h2>開き方</h2>
+      <div class="meta">スマートフォンでもパソコンでも同じように使えます</div>
+    </div>
+
+    <div class="stack">
+      <p>このURLを開きます。<b>初回だけ管理キーの入力</b>があり、以降はその端末で記憶されます。</p>
+      <p><a class="link" href="admin.html">https://apps.l-mine.com/kamiya-seminar-reception/admin.html</a></p>
+      <p class="lead">管理キー：<span class="key">kamiya-admin-Wq7xR3nT</span></p>
+    </div>
+
+    <div class="call warn">
+      <h3>管理キーはお客さまに教えないでください</h3>
+      <p>このキーがあると、お申込みの名簿すべてが見られます。<b>神谷さん・仲眞さん・ユイ子さん・とーるの間だけ</b>でお使いください。</p>
+    </div>
+
+    <div class="call">
+      <h3>スマホは「ホーム画面に追加」がおすすめです</h3>
+      <p>アプリのように1タップで開けるようになり、<b>お申込みや振込報告のお知らせを受け取れる</b>ようになります。追加したあと、画面右上の<b>「🔔 通知」</b>を一度押して登録してください。</p>
+    </div>
+  </section>
+
+  <!-- 2. 画面の見かた -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag">SCREEN</div>
+      <h2>画面の見かた</h2>
+      <div class="meta">上から順に、5つのかたまりでできています</div>
+    </div>
+
+    <div class="cols">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>場所</th><th>なにが見える／できる</th></tr></thead>
+          <tbody>
+            <tr><td class="n"><b>いちばん上</b></td><td>最終更新の時刻と、<b>🔔通知</b>／<b>📖使い方</b>／<b>🔄更新</b>のボタン。</td></tr>
+            <tr><td class="n"><b>タブ</b></td><td>セミナーの切り替え。カッコ内は<b>（確定＋手続き中）／定員</b>、⏳はキャンセル待ちの人数です。</td></tr>
+            <tr><td class="n"><b>数字カード</b></td><td>左から<b>定員・確定・手続き中・待機・残席</b>。<b>手続き中</b>は「決済案内中＋振込報告済み」の合計です。</td></tr>
+            <tr><td class="n"><b>絞り込み</b></td><td>状態ごとに名簿をしぼれます。数字は該当人数。</td></tr>
+            <tr><td class="n"><b>名簿</b></td><td>お一人ずつのカード。お名前・状態・期限・連絡先と、<b>いま押せるボタン</b>が並びます。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="phone"><div class="scr">
+        <div class="scr-head">
+          <img src="assets/logo.png" alt="">
+          <div class="b">BONHEUR LELIEN</div>
+          <div class="t">受付管理</div>
+        </div>
+        <div class="rbar">
+          <span class="tm">最終更新：8/24 21:06</span>
+          <span class="gp"><span class="rb">🔔 通知</span><span class="rb">📖 使い方</span><span class="rb">🔄 更新</span></span>
+        </div>
+        <div class="remind">⚠️ 確認・操作をする前に、必ず右上の「🔄 更新」を押してください</div>
+        <div class="mtabs">
+          <span class="mtab on">セルフ一般（22/30）</span>
+          <span class="mtab">マーケ一般</span>
+        </div>
+        <div class="sums">
+          <div class="sum"><div class="v">30</div><div class="k">定員</div></div>
+          <div class="sum ok"><div class="v">18</div><div class="k">確定</div></div>
+          <div class="sum"><div class="v">4</div><div class="k">手続き中</div></div>
+          <div class="sum alert"><div class="v">2</div><div class="k">待機</div></div>
+          <div class="sum"><div class="v">8</div><div class="k">残席</div></div>
+        </div>
+        <div class="fils">
+          <span class="fil on">すべて 24</span><span class="fil">確定 18</span><span class="fil">振込報告済み 1</span><span class="fil">待機 2</span>
+        </div>
+        <div class="rrow">
+          <div class="top"><span class="nm">山田 花子</span><span class="st st-bank">振込報告済み</span></div>
+          <div class="sub">名義：ヤマダ ハナコ ／ 期限まで 残り3日</div>
+          <div class="acts"><span class="ab ab-ok">✔ 入金確認→確定</span><span class="ab ab-ng">✕ キャンセル</span></div>
+        </div>
+        <div class="rrow">
+          <div class="top"><span class="nm">鈴木 彩</span><span class="st st-pay">決済案内中</span></div>
+          <div class="sub">期限まで 残り2日</div>
+          <div class="acts"><span class="ab ab-ok">✔ 確定にする</span><span class="ab ab-ng">✕ キャンセル</span></div>
+        </div>
+        <div class="rrow">
+          <div class="top"><span class="nm">佐藤 美咲</span><span class="st st-ok">確定</span></div>
+          <div class="sub">カード決済 ／ 8/24 21:01</div>
+        </div>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- 3. 毎日やること -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag">DAILY</div>
+      <h2>毎日やること（1分）</h2>
+      <div class="meta">これだけ回していただければ大丈夫です</div>
+    </div>
+
+    <ol class="steps">
+      <li>管理アプリを開いて、まず<b>右上の「🔄 更新」</b>を押す</li>
+      <li>タブでセミナーを切り替えて、<b>青い「振込報告済み」の方がいないか</b>見る</li>
+      <li>いたら、通帳やネットバンキングで<b>入金を確認</b>する</li>
+      <li>確認できたら<b>「✔ 入金確認→確定」</b>を押す</li>
+    </ol>
+
+    <div class="call warn">
+      <h3>操作の前に、必ず「🔄 更新」を</h3>
+      <p>画面を開いたままにしていると、表示が古いままのことがあります。<b>他の方が先に手続きを進めている</b>可能性もあるので、押す前のひと手間として習慣にしてください。</p>
+    </div>
+  </section>
+
+  <!-- 4. ボタン一覧 -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag">BUTTONS</div>
+      <h2>ボタンと、押したときに起きること</h2>
+      <div class="meta">ボタンは「その方の状態」に応じて出ます。押すと確認メッセージが出るので、間違えてもそこで止められます</div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>いまの状態</th><th>出るボタン</th><th>押すとどうなる</th><th>LINE通知</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="n"><span class="pill p-pay">決済案内中</span></td>
+            <td class="n"><span class="bt bt-ok">✔ 確定にする</span></td>
+            <td>ご参加確定になります。お支払いを別途受け取ったときなどに。</td>
+            <td class="n"><span class="yes">届く</span></td>
+          </tr>
+          <tr>
+            <td class="n"><span class="pill p-bank">振込報告済み</span></td>
+            <td class="n"><span class="bt bt-ok">✔ 入金確認→確定</span></td>
+            <td><b>いちばんよく使うボタン。</b>入金を確認したうえで押します。2段階の確認が出ます（次の項をご覧ください）。</td>
+            <td class="n"><span class="yes">届く</span></td>
+          </tr>
+          <tr>
+            <td class="n"><span class="pill p-pay">決済案内中</span> <span class="pill p-bank">振込報告済み</span></td>
+            <td class="n"><span class="bt bt-ng">✕ キャンセル</span></td>
+            <td>キャンセルになり、<b>キャンセル待ちの1番目の方が自動で繰り上がります</b>。</td>
+            <td class="n"><span class="yes">両方に届く</span></td>
+          </tr>
+          <tr>
+            <td class="n"><span class="pill p-wait">キャンセル待ち</span></td>
+            <td class="n"><span class="bt bt-ng">✕ キャンセル</span></td>
+            <td>お待ちの列から外れます。後ろの方の順番が繰り上がります。</td>
+            <td class="n"><span class="yes">届く</span></td>
+          </tr>
+          <tr>
+            <td class="n"><span class="pill p-ok">確定</span></td>
+            <td class="n"><span class="bt bt-ng">✕ キャンセル</span></td>
+            <td><b>強い警告が出ます。</b>返金なしのお約束があるため、必ず<b>ご本人と話がついてから</b>押してください。</td>
+            <td class="n"><span class="yes">届く</span></td>
+          </tr>
+          <tr>
+            <td class="n"><span class="pill p-gone">期限切れ</span> <span class="pill p-gone">キャンセル済</span></td>
+            <td class="n"><span class="bt bt-bk">↩ 復帰させる</span></td>
+            <td>「決済案内中」に戻し、<b>期限を今から3日</b>に引き直します。「もう一度チャンスを」というときに。</td>
+            <td class="n"><span class="no">届きません</span></td>
+          </tr>
+          <tr>
+            <td class="n">満席なのに空きがあるとき</td>
+            <td class="n"><span class="bt bt-ok">⬆ 待機1番を繰上げ</span></td>
+            <td>お待ちの1番目の方を「決済案内中」にして、ご案内を送ります。ふだんは自動なので使いません。</td>
+            <td class="n"><span class="yes">届く</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="call">
+      <h3>「復帰させる」だけ、LINEが飛びません</h3>
+      <p>お客さまは<b>復帰したことに気づけません</b>。復帰させたときは、<b>チャットでひとことお声がけ</b>をお願いします。</p>
+    </div>
+  </section>
+
+  <!-- 5. 入金確認 -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag">DEPOSIT</div>
+      <h2>入金確認の2段階チェック</h2>
+      <div class="meta">押し間違いと、名義違いによる取り違えを防ぐための確認です</div>
+    </div>
+
+    <div class="cols">
+      <div class="stack">
+        <p>「✔ 入金確認→確定」を押すと、<b>2回の確認</b>が出ます。</p>
+        <p class="lead"><b>1回目</b>は「本当に通帳で確認しましたか？」という問いかけ。<b>2回目</b>は、お客さまが申告された<b>振込名義</b>を表示して、通帳の名義と合っているかを確かめます。</p>
+        <p class="lead">ご家族名義など<b>お申込み名と振込名が違うこと</b>はよくあります。ここで一度目を通していただければ、取り違えを防げます。</p>
+      </div>
+      <div class="dialog"><b>【入金確認チェック】</b>
+
+通帳またはネットバンキングで、実際の入金を確認しましたか？
+
+お名前：山田 花子
+報告された振込名義：<b>ヤマダ ハナコ</b>
+
+通帳の名義と一致していますか？</div>
+    </div>
+
+    <div class="call calm">
+      <h3>間違えて押してしまったら</h3>
+      <p>あわてなくて大丈夫です。<b>「✕ キャンセル」→「↩ 復帰させる」</b>で元の状態に戻せます。ただし<b>お客さまには通知が届いてしまう</b>ので、ひとことお詫びを添えてください。</p>
+    </div>
+  </section>
+
+  <!-- 6. 通知 -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag">NOTIFY 🔔</div>
+      <h2>スマホへのお知らせ</h2>
+      <div class="meta">画面を見ていなくても、動きがあったときに気づけます</div>
+    </div>
+
+    <div class="stack">
+      <p>ホーム画面に追加したあと、<b>右上の「🔔 通知」</b>を押すと登録できます。お届けするのは<b>この3つだけ</b>です。</p>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>お知らせ</th><th>どんなとき</th></tr></thead>
+        <tbody>
+          <tr><td class="n"><b>🏦 振込のご報告</b></td><td>お客さまが「振込しました」とご連絡くださったとき。<b>入金確認をお願いします。</b></td></tr>
+          <tr><td class="n"><b>⬆ 繰り上げ発生</b></td><td>キャンセル待ちの方へ自動でご案内が飛んだとき。</td></tr>
+          <tr><td class="n"><b>⏰ 期限切れ処理</b></td><td>お支払い期限を過ぎた方が自動キャンセルになったとき。</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="lead">お申込みや決済のたびには鳴りません。<b>手を動かす必要があるときだけ</b>お知らせします。</p>
+  </section>
+
+  <!-- 7. 触らないスイッチ -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag">CAUTION</div>
+      <h2>触らないでいただきたいスイッチ</h2>
+      <div class="meta">画面の右上あたりにある2つのボタンです</div>
+    </div>
+
+    <div class="switches" style="justify-content:flex-start; margin-bottom:.2rem;">
+      <span class="sw" style="font-size:.8rem; padding:.3rem .8rem;">⏳ 受付開始ゲート：ON</span>
+      <span class="sw" style="font-size:.8rem; padding:.3rem .8rem;">🧪 テスト決済：OFF</span>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>スイッチ</th><th>役割</th><th>正しい状態</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="n"><b>⏳ 受付開始ゲート</b></td>
+            <td>募集開始の日時まで、お申込みを受け付けないようにする鍵です。OFFにすると<b>開始前でも申し込めてしまいます</b>。</td>
+            <td class="n"><b>ON</b></td>
+          </tr>
+          <tr>
+            <td class="n"><b>🧪 テスト決済</b></td>
+            <td>動作確認用にお支払いを100円のテスト商品へ切り替える機能です。ONのままだと<b>本当のお客さまがテスト決済になってしまいます</b>。</td>
+            <td class="n"><b>OFF</b></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="call warn">
+      <h3>もし色つきの警告バーが出ていたら</h3>
+      <p>スイッチが危険な状態のときは、画面の上に<b>点滅する帯</b>が出ます。見かけたら、そのままにせず<b>とーるまでご連絡ください</b>。</p>
+    </div>
+  </section>
+
+  <!-- 8. QA -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag">Q &amp; A</div>
+      <h2>よくあるご質問</h2>
+    </div>
+
+    <div class="qa">
+      <div>
+        <div class="q">新しいお申込みが表示されません</div>
+        <div class="a"><b>右上の「🔄 更新」</b>を押してください。この画面は自動では更新されません。</div>
+      </div>
+      <div>
+        <div class="q">「通信に失敗しました」と出ます</div>
+        <div class="a">電波状況やスリープ明けによく起きます。<b>もう一度「🔄 更新」</b>で直ることがほとんどです。何度も続くようならご連絡ください。</div>
+      </div>
+      <div>
+        <div class="q">管理キーをまた聞かれました</div>
+        <div class="a">ブラウザのデータを消すと記憶が消えます。<span class="key">kamiya-admin-Wq7xR3nT</span> を入力し直してください。</div>
+      </div>
+      <div>
+        <div class="q">お客さまから「キャンセルしたい」と連絡がありました</div>
+        <div class="a">その方の行の<b>「✕ キャンセル」</b>を押してください。ご本人へのお知らせと、キャンセル待ちの方への繰り上げが自動で行われます。</div>
+      </div>
+      <div>
+        <div class="q">お支払い期限を延ばしてあげたい</div>
+        <div class="a">いったん期限が切れるのを待って<b>「↩ 復帰させる」</b>を押すと、そこから3日間に引き直されます。通知は飛ばないので、ひとことお声がけを。</div>
+      </div>
+      <div>
+        <div class="q">スマホとパソコン、両方で使えますか</div>
+        <div class="a">はい。<b>同じURLと管理キー</b>でどちらからでも使えます。何人が同時に見ても問題ありません。</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    お客さま側の画面と流れは <a class="link" href="guide.html">受付の流れ</a>、記録の見かたは <a class="link" href="sheet-guide.html">スプレッドシートの見かた</a> をご覧ください。<br>
+    ご不明な点は、いつでもとーるまでお知らせください。
+  </footer>
+
+</div>
+</body>
+</html>
