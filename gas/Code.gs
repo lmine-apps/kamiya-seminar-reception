@@ -1,3 +1,8 @@
+/*** 神谷梓さん 受付管理システム GAS v8.1 ****************************
+ * 【v8.1 追加 2026-08-20】お知らせの対象セミナーに「まとめて」を追加
+ *   ・「セルフ両方」＝セルフ先行＋セルフ一般（同じ9/18開催なので便利）
+ *   ・「マーケ両方」＝マーケ先行＋マーケ一般
+ *
 /*** 神谷梓さん 受付管理システム GAS v8.0 ****************************
  * 【v8.0 変更 2026-08-20】前日リマインドの自動送信を廃止
  *   ・プロライン⑧は「📣 お知らせ」専用の合図になりました。
@@ -1551,6 +1556,11 @@ var NEWS_SHEET = '📣 お知らせ';
 var NEWS_START_ROW = 5;
 var NEWS_COLS = 10;
 var NEWS_SEM_ALL = 'すべて';
+// セミナーをまとめて指定する選択肢（先行＋一般をひとまとめに送りたいとき）
+var NEWS_SEM_GROUPS = {
+  'セルフ両方': ['self_priority', 'self_general'],
+  'マーケ両方': ['marke_priority', 'marke_general']
+};
 var NEWS_SHOW_LIST   = ['公開', '下書き', '非表示', '通常'];
 var NEWS_TARGET_LIST = ['すべて', '確定', 'お支払い待ち', 'キャンセル待ち'];
 var NEWS_NOTIFY_LIST = ['送らない', 'すぐ送る', '予約', '送信済み'];
@@ -1567,8 +1577,20 @@ function newsTimeList_() {
 
 function newsSeminarList_() {
   var list = [NEWS_SEM_ALL];
+  Object.keys(NEWS_SEM_GROUPS).forEach(function (g) { list.push(g); });
   Object.keys(SEMINARS).forEach(function (k) { list.push(newsSeminarLabel_(k)); });
   return list;
+}
+
+/**
+ * お知らせの「対象セミナー」欄と、実際のセミナーが合っているか。
+ * すべて → 全部／セルフ両方・マーケ両方 → そのグループ／それ以外 → 名前が一致するか
+ */
+function newsSeminarMatch_(seminarLabel, key) {
+  if (!seminarLabel || seminarLabel === NEWS_SEM_ALL) return true;
+  var group = NEWS_SEM_GROUPS[seminarLabel];
+  if (group) return group.indexOf(key) !== -1;
+  return newsSeminarLabel_(key) === seminarLabel;
 }
 
 function newsSeminarLabel_(key) {
@@ -1653,14 +1675,13 @@ function newsCacheClear_() { try { CacheService.getScriptCache().remove('news_ro
  * 「下書き」「非表示」は出さない。
  */
 function pickNews_(seminarKey, status) {
-  var label = newsSeminarLabel_(seminarKey);
   var rows = newsRows_();
   var opens = [], normal = null;
 
   for (var i = 0; i < rows.length; i++) {
     var n = rows[i];
     if (n.show !== '公開' && n.show !== '通常') continue;
-    if (n.seminar && n.seminar !== NEWS_SEM_ALL && n.seminar !== label) continue;
+    if (!newsSeminarMatch_(n.seminar, seminarKey)) continue;
     if (!newsStatusMatch_(n.target, status)) continue;
     if (n.show === '公開') opens.push({ title: n.title, body: n.body, normal: false });
     else if (!normal) normal = { title: n.title, body: n.body, normal: true };
@@ -1674,7 +1695,7 @@ function newsTargets_(seminarLabel, target) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var uids = [];
   Object.keys(SEMINARS).forEach(function (key) {
-    if (seminarLabel && seminarLabel !== NEWS_SEM_ALL && newsSeminarLabel_(key) !== seminarLabel) return;
+    if (!newsSeminarMatch_(seminarLabel, key)) return;
     var sh = ss.getSheetByName(SEMINARS[key].sheet);
     if (!sh) return;
     var lastRow = sh.getLastRow();
@@ -1823,6 +1844,7 @@ function setupNewsSheet() {
   sh.getRange(2, 1, 1, NEWS_COLS).merge()
     .setValue('「表示」を公開にするとアプリに出ます。臨時のお知らせを下書きに戻すと通常のメッセージに戻ります。'
             + ' ／ LINEでも知らせたい時は「LINE通知」を すぐ送る（→メニューから実行）か 予約（日付と時刻を入れる）に。'
+            + ' ／ 対象セミナーは「セルフ両方」「マーケ両方」でまとめて選べます。'
             + ' ／ 管理アプリの「📣 お知らせ」からも編集できます。')
     .setFontSize(9).setFontColor('#888').setHorizontalAlignment('center').setWrap(true);
   sh.getRange(4, 1, 1, NEWS_COLS).setValues([HEAD])
