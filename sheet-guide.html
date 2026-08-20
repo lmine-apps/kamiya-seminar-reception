@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>受付スプレッドシートの見かた｜Bonheur Lelien</title>
+<link rel="icon" type="image/png" href="assets/favicon-32.png">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+
+  :root {
+    --ground:     #f6f1ec;
+    --card:       #fffdfb;
+    --card-soft:  #fdf8f4;
+    --ink:        #453a35;
+    --ink-soft:   #8b7d75;
+    --ink-faint:  #b0a29a;
+    --line:       #e8ded6;
+    --primary:    #b18474;
+    --primary-dk: #8e6255;
+    --gold:       #bd9a58;
+    --green:      #5c8a5c;
+    --green-soft: #eef4ee;
+    --warn:       #c96f5e;
+    --warn-soft:  #f9ece8;
+    --blue:       #4a6fa5;
+    --blue-soft:  #e9eff7;
+    --purple:     #8a5ca5;
+    --purple-soft:#efe5f5;
+    --orange:     #c97b3d;
+    --orange-soft:#fdeee3;
+    --grid-head:  #f1ece6;
+    --grid-line:  #ddd2c8;
+    --serif: "Yu Mincho", YuMincho, "Hiragino Mincho ProN", "MS PMincho", serif;
+    --sans: "Yu Gothic UI", "Yu Gothic", YuGothic, "Hiragino Kaku Gothic ProN", Meiryo, system-ui, sans-serif;
+    --mono: Consolas, "Cascadia Mono", ui-monospace, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:     #1d1815;  --card:       #272019;  --card-soft:  #2e251e;
+      --ink:        #ece2da;  --ink-soft:   #a89890;  --ink-faint:  #7a6a62;
+      --line:       #3a2f28;  --primary:    #cd9c8a;  --primary-dk: #e0b6a5;
+      --gold:       #d6b477;  --green:      #86bf86;  --green-soft: #242c24;
+      --warn:       #e0917f;  --warn-soft:  #3b2723;  --blue:       #9dbde4;
+      --blue-soft:  #232d38;  --purple:     #b48ccb;  --purple-soft:#302640;
+      --orange:     #e3a978;  --orange-soft:#3a2b1e;
+      --grid-head:  #322a22;  --grid-line:  #453a30;
+    }
+  }
+  :root[data-theme="dark"] {
+      --ground:     #1d1815;  --card:       #272019;  --card-soft:  #2e251e;
+      --ink:        #ece2da;  --ink-soft:   #a89890;  --ink-faint:  #7a6a62;
+      --line:       #3a2f28;  --primary:    #cd9c8a;  --primary-dk: #e0b6a5;
+      --gold:       #d6b477;  --green:      #86bf86;  --green-soft: #242c24;
+      --warn:       #e0917f;  --warn-soft:  #3b2723;  --blue:       #9dbde4;
+      --blue-soft:  #232d38;  --purple:     #b48ccb;  --purple-soft:#302640;
+      --orange:     #e3a978;  --orange-soft:#3a2b1e;
+      --grid-head:  #322a22;  --grid-line:  #453a30;
+  }
+
+  body { background: var(--ground); color: var(--ink); font-family: var(--sans); line-height: 1.85; }
+
+  .wrap { max-width: 900px; margin: 0 auto; padding: 3.5rem 1.3rem 6rem; display: flex; flex-direction: column; gap: 3.2rem; }
+
+  /* header */
+  .masthead { text-align: center; display: flex; flex-direction: column; align-items: center; gap: .5rem; }
+  .masthead img { width: 66px; }
+  .brand { font-family: var(--serif); font-size: .74rem; letter-spacing: .32em; color: var(--gold); padding-left: .32em; }
+  h1 { font-family: var(--serif); font-size: clamp(1.5rem, 4.2vw, 2rem); font-weight: 600; line-height: 1.45; text-wrap: balance; margin: .2rem 0 0; }
+  .rule { width: 44px; height: 1px; background: var(--gold); opacity: .7; }
+  .masthead p { color: var(--ink-soft); font-size: .93rem; max-width: 32em; margin: 0; }
+
+  /* section */
+  section { display: flex; flex-direction: column; gap: 1.2rem; }
+  .sec-head { display: flex; flex-direction: column; gap: .3rem; border-top: 2px solid var(--primary); padding-top: 1rem; }
+  .sec-tag { font-size: .7rem; letter-spacing: .16em; font-weight: 700; color: var(--primary-dk); }
+  .sec-head h2 { font-family: var(--serif); font-size: 1.38rem; font-weight: 600; margin: 0; line-height: 1.45; }
+  .sec-head .meta { font-size: .89rem; color: var(--ink-soft); }
+  p { margin: 0; font-size: .93rem; }
+  p.lead { color: var(--ink-soft); }
+  p b, li b { color: var(--ink); font-weight: 700; }
+  .stack { display: flex; flex-direction: column; gap: .8rem; }
+
+  /* sheet tabs */
+  .tabs { display: flex; flex-wrap: wrap; gap: 5px; background: var(--card-soft); border: 1px solid var(--line); border-radius: 10px; padding: 9px; }
+  .tab {
+    font-size: .8rem; padding: .3rem .75rem; border-radius: 6px 6px 0 0;
+    background: var(--card); border: 1px solid var(--grid-line); border-bottom: 2px solid var(--grid-line);
+    white-space: nowrap;
+  }
+  .tab.hot { border-bottom-color: var(--primary); font-weight: 700; color: var(--primary-dk); }
+  .tab.quiet { color: var(--ink-faint); }
+
+  /* grid mock */
+  .grid-wrap { overflow-x: auto; border: 1px solid var(--grid-line); border-radius: 10px; background: var(--card); }
+  table.grid { border-collapse: collapse; width: 100%; min-width: 660px; font-size: .78rem; font-family: var(--sans); }
+  table.grid th, table.grid td { border: 1px solid var(--grid-line); padding: .32rem .5rem; text-align: left; white-space: nowrap; }
+  table.grid thead th { background: var(--grid-head); color: var(--ink-soft); font-family: var(--mono); font-weight: 700; text-align: center; font-size: .72rem; }
+  table.grid td.rn { background: var(--grid-head); color: var(--ink-soft); font-family: var(--mono); text-align: center; width: 2.1rem; font-size: .72rem; }
+  table.grid tr.tint td:not(.rn) { background: var(--card-soft); }
+  table.grid tr.head-row td:not(.rn) { background: var(--grid-head); font-weight: 700; color: var(--ink); }
+  table.grid .muted { color: var(--ink-faint); }
+  .side { font-size: .78rem; color: var(--primary-dk); font-weight: 700; }
+
+  /* legend under grid */
+  .legend { display: flex; flex-direction: column; gap: .4rem; font-size: .87rem; }
+  .legend div { display: flex; gap: .6rem; }
+  .legend .k { font-family: var(--mono); font-size: .8rem; color: var(--primary-dk); font-weight: 700; flex-shrink: 0; min-width: 4.6rem; }
+  .legend .v { color: var(--ink-soft); }
+
+  /* pills */
+  .pill { display: inline-block; font-size: .74rem; font-weight: 700; padding: .1rem .55rem; border-radius: 999px; white-space: nowrap; }
+  .p-ok    { background: var(--green-soft);  color: var(--green); }
+  .p-pay   { background: var(--orange-soft); color: var(--orange); }
+  .p-bank  { background: var(--blue-soft);   color: var(--blue); }
+  .p-wait  { background: var(--purple-soft); color: var(--purple); }
+  .p-gone  { background: var(--line);        color: var(--ink-soft); }
+
+  /* state table */
+  .tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+  table.info { border-collapse: collapse; width: 100%; font-size: .88rem; min-width: 560px; }
+  table.info th, table.info td { padding: .6rem .8rem; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.info th { background: var(--card-soft); font-size: .78rem; color: var(--ink-soft); white-space: nowrap; }
+  table.info tr:last-child td { border-bottom: 0; }
+  table.info td.n { white-space: nowrap; }
+
+  /* menu mock */
+  .menu {
+    max-width: 340px; background: var(--card); border: 1px solid var(--grid-line);
+    border-radius: 8px; padding: .35rem; box-shadow: 0 6px 18px rgba(90,64,50,.14);
+    display: flex; flex-direction: column;
+  }
+  :root:not([data-theme="light"]) .menu, :root[data-theme="dark"] .menu { box-shadow: 0 6px 18px rgba(0,0,0,.45); }
+  .menu .mt { font-size: .78rem; font-weight: 700; color: var(--primary-dk); padding: .35rem .6rem; border-bottom: 1px solid var(--line); }
+  .menu .mi { font-size: .84rem; padding: .38rem .6rem; }
+  .menu .mi:hover { background: var(--card-soft); }
+  .menu hr { border: 0; border-top: 1px solid var(--line); margin: .25rem 0; }
+
+  /* callouts */
+  .call { background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--gold); border-radius: 10px; padding: 1rem 1.15rem; display: flex; flex-direction: column; gap: .35rem; }
+  .call.warn { border-left-color: var(--warn); }
+  .call.calm { border-left-color: var(--green); }
+  .call h3 { font-family: var(--serif); font-size: 1rem; margin: 0; font-weight: 600; }
+  .call p { color: var(--ink-soft); }
+  ul.dont { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: .3rem; font-size: .92rem; color: var(--ink-soft); }
+  ul.dont li::marker { color: var(--warn); }
+
+  .qa { display: flex; flex-direction: column; gap: 1rem; }
+  .qa .q { font-weight: 700; font-size: .95rem; }
+  .qa .a { font-size: .92rem; color: var(--ink-soft); }
+
+  a.link { color: var(--primary-dk); font-weight: 700; text-decoration: none; border-bottom: 1.5px solid var(--primary); }
+  a.link:hover { background: var(--card-soft); }
+  a.link:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  footer { border-top: 1px solid var(--line); padding-top: 1.3rem; font-size: .84rem; color: var(--ink-soft); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <img src="assets/logo.png" alt="A'z">
+    <div class="brand">BONHEUR LELIEN</div>
+    <h1>受付スプレッドシートの見かた</h1>
+    <div class="rule"></div>
+    <p>どのシートに何が入っているのか、どこを見て、どこは触らないのか。<br>迷ったときに開いていただくご案内です。</p>
+  </header>
+
+  <div class="call calm">
+    <h3>大前提：ほとんど「見るだけ」で大丈夫です</h3>
+    <p>このスプレッドシートは、<b>申込・支払い・キャンセルの記録が自動で書き込まれる台帳</b>です。日々の操作は<a class="link" href="admin.html">管理アプリ</a>で完結します。スプレッドシートは<b>記録を確認する場所</b>とお考えください。</p>
+  </div>
+
+  <!-- 1. シートの地図 -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag">MAP</div>
+      <h2>シートの地図</h2>
+      <div class="meta">画面のいちばん下に並んでいるタブです</div>
+    </div>
+
+    <div class="tabs">
+      <span class="tab hot">📋 セルフ先行</span>
+      <span class="tab hot">📋 セルフ一般</span>
+      <span class="tab hot">📋 マーケ一般</span>
+      <span class="tab hot">🏦 支払い状況</span>
+      <span class="tab">👥 総参加者一覧</span>
+      <span class="tab">💎 準見込みリスト</span>
+      <span class="tab">📦 参加履歴台帳</span>
+      <span class="tab quiet">📖 操作マニュアル</span>
+      <span class="tab quiet">📜 操作履歴</span>
+      <span class="tab quiet">🔔 通知先</span>
+    </div>
+
+    <div class="tbl-wrap">
+      <table class="info">
+        <thead>
+          <tr><th>シート</th><th>なにが入っているか</th><th>さわる？</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="n"><b>📋 セルフ先行<br>📋 セルフ一般<br>📋 マーケ一般</b></td>
+            <td>セミナーごとの<b>お申込み名簿</b>。お名前・ご連絡先・状態がすべてここに記録されます。</td>
+            <td class="n">見る<br><span style="font-size:.78rem;color:var(--ink-soft)">（状態の書換も可）</span></td>
+          </tr>
+          <tr>
+            <td class="n"><b>🏦 支払い状況</b></td>
+            <td><b>お支払い待ちの方だけ</b>を全セミナーまとめて表示。入金確認のチェックはここでできます。</td>
+            <td class="n">さわる</td>
+          </tr>
+          <tr>
+            <td class="n"><b>👥 総参加者一覧</b></td>
+            <td><b>確定した方</b>を全セミナー横断で自動表示。当日の名簿として使えます。</td>
+            <td class="n">見るだけ</td>
+          </tr>
+          <tr>
+            <td class="n"><b>💎 準見込みリスト</b></td>
+            <td>期限切れ・キャンセルになった方。<b>次回セミナーのご案内先</b>の候補です。</td>
+            <td class="n">見るだけ</td>
+          </tr>
+          <tr>
+            <td class="n"><b>📦 参加履歴台帳</b></td>
+            <td>終了したセミナーの記録を<b>永久保存</b>する場所。メニューから作成します。</td>
+            <td class="n">見るだけ</td>
+          </tr>
+          <tr>
+            <td class="n"><b>📖 操作マニュアル</b><br><b>📜 操作履歴</b><br><b>🔔 通知先</b></td>
+            <td>手順書、システムの動作記録、スマホ通知の登録先。<b>システムが使う場所</b>です。</td>
+            <td class="n">さわらない</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 2. 受付シートの見方 -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag">SHEET 📋</div>
+      <h2>受付シートの見かた</h2>
+      <div class="meta">セミナーごとの名簿。上から4つのブロックに分かれています</div>
+    </div>
+
+    <div class="grid-wrap">
+      <table class="grid">
+        <thead>
+          <tr><th></th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th><th>G</th><th>H</th></tr>
+        </thead>
+        <tbody>
+          <tr class="tint"><td class="rn">1</td><td colspan="8">セルフイメージセミナー【先行】｜受付管理</td></tr>
+          <tr class="tint"><td class="rn">2</td><td colspan="8">定員：20名 ／ 参加費：10,000円</td></tr>
+          <tr class="tint"><td class="rn">3</td><td colspan="8">募集開始・開催日などのメモ</td></tr>
+          <tr><td class="rn">4</td><td colspan="8" class="muted"></td></tr>
+          <tr class="head-row"><td class="rn">5</td><td>申込総数</td><td>確定</td><td>決済案内中</td><td>振込報告済み</td><td>キャンセル待ち</td><td>期限切れ</td><td>残席</td></tr>
+          <tr><td class="rn">6</td><td>12</td><td>9</td><td>2</td><td>1</td><td>0</td><td>0</td><td><b>8</b></td></tr>
+          <tr><td class="rn">7</td><td colspan="8" class="muted"></td></tr>
+          <tr class="head-row"><td class="rn">8</td><td>uid</td><td>名前</td><td>メール</td><td>電話</td><td>送信日時</td><td>決済期限</td><td>状態</td><td>待機順</td></tr>
+          <tr><td class="rn">9</td><td colspan="8" class="muted">※GASが自動入力</td></tr>
+          <tr><td class="rn">10</td><td class="muted">xhtuyp</td><td>山田 花子</td><td>hana@…</td><td>090-…</td><td>8/24 21:03</td><td>8/27 21:03</td><td><span class="pill p-bank">振込報告済み</span></td><td></td></tr>
+          <tr><td class="rn">11</td><td class="muted">ucfpvl</td><td>佐藤 美咲</td><td>misa@…</td><td>080-…</td><td>8/24 21:01</td><td></td><td><span class="pill p-ok">確定</span></td><td></td></tr>
+          <tr><td class="rn">12</td><td class="muted">lxdcwq</td><td>鈴木 彩</td><td>aya@…</td><td>070-…</td><td>8/24 21:05</td><td>8/27 21:05</td><td><span class="pill p-pay">決済案内中</span></td><td></td></tr>
+          <tr><td class="rn">13</td><td class="muted">vyclkb</td><td>田中 優</td><td>yu@…</td><td>090-…</td><td>8/24 21:12</td><td></td><td><span class="pill p-wait">キャンセル待ち</span></td><td>1</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="legend">
+      <div><span class="k">1〜3行目</span><span class="v">セミナーの見出しとメモ。<b>手で書き換えていただいて大丈夫</b>な場所です（システムは読みません）。</span></div>
+      <div><span class="k">5〜6行目</span><span class="v">自動集計。<b>残席はここが正解</b>です。数式なので触らないでください。</span></div>
+      <div><span class="k">8〜9行目</span><span class="v">列の見出し。触らないでください。</span></div>
+      <div><span class="k">10行目〜</span><span class="v">お申込みのデータ。<b>自動で1行ずつ増えます。</b></span></div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table class="info">
+        <thead><tr><th>列</th><th>内容</th></tr></thead>
+        <tbody>
+          <tr><td class="n"><b>A</b> uid</td><td>LINEのお客さまを見分ける番号。<b>絶対に書き換えないでください</b>（通知が届かなくなります）。</td></tr>
+          <tr><td class="n"><b>B〜D</b></td><td>お名前・メールアドレス・お電話番号。フォームにご記入いただいた内容です。</td></tr>
+          <tr><td class="n"><b>E</b> 送信日時</td><td>お申込みいただいた日時。</td></tr>
+          <tr><td class="n"><b>F</b> 決済期限</td><td>お支払いの期限（お申込みから3日後）。確定すると空になります。</td></tr>
+          <tr><td class="n"><b>G</b> 状態</td><td><b>いちばん大事な列。</b>下の表をご覧ください。</td></tr>
+          <tr><td class="n"><b>H</b> 待機順</td><td>キャンセル待ちの順番。繰り上がると自動で振り直されます。</td></tr>
+          <tr><td class="n"><b>I〜K</b></td><td>決済完了日時・決済方法・備考（振込名義など）。</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 3. 状態 -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag">STATUS</div>
+      <h2>状態（G列）の意味</h2>
+      <div class="meta">この6つだけです。ここを見れば、その方がいまどこにいるかがわかります</div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table class="info">
+        <thead><tr><th>状態</th><th>意味</th><th>お席</th></tr></thead>
+        <tbody>
+          <tr><td class="n"><span class="pill p-pay">決済案内中</span></td><td>お申込み済み。<b>お支払い待ち</b>（期限は3日間）。</td><td class="n">おさえている</td></tr>
+          <tr><td class="n"><span class="pill p-bank">振込報告済み</span></td><td>お客さまが「振込しました」とご連絡くださった状態。<b>入金確認をお願いします。</b></td><td class="n">おさえている</td></tr>
+          <tr><td class="n"><span class="pill p-ok">確定</span></td><td>ご参加確定。当日お越しいただきます。</td><td class="n">確定</td></tr>
+          <tr><td class="n"><span class="pill p-wait">キャンセル待ち</span></td><td>満席のためお待ちいただいている方。空きが出ると<b>自動で繰り上がります</b>。</td><td class="n">なし</td></tr>
+          <tr><td class="n"><span class="pill p-gone">期限切れ</span></td><td>3日以内にお支払いがなく、<b>自動でキャンセル</b>になった方。</td><td class="n">なし</td></tr>
+          <tr><td class="n"><span class="pill p-gone">キャンセル済</span></td><td>お客さまご自身、または運営がキャンセルした方。</td><td class="n">なし</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="call">
+      <h3>残席は「確定＋決済案内中＋振込報告済み」で計算されます</h3>
+      <p>まだお支払いいただいていない方も<b>お席をおさえている</b>ため、残席から引かれています。期限が切れると自動でお席が戻り、キャンセル待ちの方へ繰り上がります。</p>
+    </div>
+  </section>
+
+  <!-- 4. 支払い状況 -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag">SHEET 🏦</div>
+      <h2>支払い状況シート</h2>
+      <div class="meta">お支払い待ちの方だけが、全セミナーまとめて並びます</div>
+    </div>
+
+    <div class="grid-wrap">
+      <table class="grid">
+        <thead>
+          <tr><th></th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th></tr>
+        </thead>
+        <tbody>
+          <tr class="tint"><td class="rn">1</td><td colspan="6">🏦 支払い状況（全セミナー横断）</td></tr>
+          <tr class="tint"><td class="rn">2</td><td colspan="6" class="muted">入金を確認したら A列の☑を入れる → 自動で「確定」＋本人へLINE通知</td></tr>
+          <tr><td class="rn">3</td><td colspan="6" class="muted"></td></tr>
+          <tr class="head-row"><td class="rn">4</td><td>✔入金確認→確定</td><td>お名前</td><td>セミナー</td><td>状態</td><td>振込名義など</td><td>支払期限</td></tr>
+          <tr><td class="rn">5</td><td>☐</td><td>山田 花子</td><td>セルフ一般</td><td><span class="pill p-bank">振込報告済み</span></td><td>ヤマダ ハナコ</td><td>8/27 21:03</td></tr>
+          <tr><td class="rn">6</td><td>☐</td><td>鈴木 彩</td><td>マーケ一般</td><td><span class="pill p-pay">決済案内中</span></td><td></td><td>8/27 21:05</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="stack">
+      <p class="lead"><b>青い行（振込報告済み）が最優先</b>です。お客さまから「振込しました」とご連絡が届いた方なので、通帳で入金を確認してください。</p>
+      <p class="lead">確認できたら <b>A列の☐にチェック</b>を入れます。これだけで<b>「確定」に変わり、お客さまへ確定のLINEが届きます</b>。</p>
+    </div>
+
+    <div class="call warn">
+      <h3>おすすめは、管理アプリのボタンです</h3>
+      <p>このチェックでも確定できますが、<b>管理アプリの「✔ 入金確認 → 確定」ボタンの方が確実</b>です。スプレッドシート側の自動処理は、Google側の都合でごくまれに通知だけ失敗することがあります。管理アプリは別の仕組みで動いているため、その影響を受けません。</p>
+      <p>迷ったら<a class="link" href="admin.html">管理アプリ</a>からどうぞ。</p>
+    </div>
+  </section>
+
+  <!-- 5. メニュー -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag">MENU 🌸</div>
+      <h2>「受付管理」メニュー</h2>
+      <div class="meta">画面上部のメニューバーにあります。押すと各シートを作り直します</div>
+    </div>
+
+    <div class="menu">
+      <div class="mt">🌸 受付管理</div>
+      <div class="mi">🏦 支払い状況を更新</div>
+      <div class="mi">👥💎 総合リストを再生成</div>
+      <div class="mi">📦 終了セミナーを台帳へ保存</div>
+      <hr>
+      <div class="mi">📊 集計エリアを再設置</div>
+      <div class="mi">📖 操作マニュアルを再生成</div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table class="info">
+        <thead><tr><th>メニュー</th><th>どんなとき</th></tr></thead>
+        <tbody>
+          <tr><td class="n"><b>🏦 支払い状況を更新</b></td><td>最新の状態にしたいとき。<b>1時間ごとに自動でも更新</b>されます。</td></tr>
+          <tr><td class="n"><b>👥💎 総合リストを再生成</b></td><td>総参加者一覧・準見込みリストを作り直します。</td></tr>
+          <tr><td class="n"><b>📦 終了セミナーを台帳へ保存</b></td><td><b>セミナーが終わったら</b>実行。参加者の記録が台帳に永久保存され、以後その受付シートを消しても記録は残ります。</td></tr>
+          <tr><td class="n"><b>📊 集計エリアを再設置</b></td><td>残席の数字がおかしいときに。5〜6行目を作り直します。</td></tr>
+          <tr><td class="n"><b>📖 操作マニュアルを再生成</b></td><td>シート内の手順書を最新にします。</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="call calm">
+      <h3>どれを押しても安全です</h3>
+      <p>これらは<b>作り直すだけ</b>のメニューです。お申込みのデータが消えることはありません。何度押しても大丈夫です。</p>
+    </div>
+  </section>
+
+  <!-- 6. やってはいけないこと -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag">CAUTION</div>
+      <h2>これだけは避けてください</h2>
+      <div class="meta">記録が壊れたり、お客さまへの通知が届かなくなります</div>
+    </div>
+
+    <div class="call warn">
+      <ul class="dont">
+        <li><b>行を削除・並べ替え・切り取り</b>しないでください。消したい方は、状態を「キャンセル済」にするだけで大丈夫です。</li>
+        <li><b>A列（uid）を書き換えない。</b>お客さまとLINEを結ぶ番号です。変えると通知が届かなくなります。</li>
+        <li><b>列を追加・削除しない。</b>システムが列の位置で判断しています。</li>
+        <li><b>5・6・8行目を編集しない。</b>自動集計と見出しです。</li>
+        <li><b>状態の文字は一字一句そのまま。</b>「確定 」（うしろに空白）や「かくてい」では反応しません。</li>
+        <li><b>👥総参加者一覧・💎準見込みリストに直接書き込まない。</b>自動表示なので上書きすると壊れます。</li>
+      </ul>
+    </div>
+
+    <div class="call">
+      <h3>もし壊してしまったら</h3>
+      <p>あわてず、とーるまでご連絡ください。<b>Googleスプレッドシートは変更履歴から元に戻せます</b>ので、たいていの場合は復旧できます。</p>
+    </div>
+  </section>
+
+  <!-- 7. QA -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-tag">Q &amp; A</div>
+      <h2>よくあるご質問</h2>
+    </div>
+
+    <div class="qa">
+      <div>
+        <div class="q">申込があったのに、シートに出てきません</div>
+        <div class="a">スプレッドシートは開いたままだと自動更新されません。<b>ブラウザを再読み込み</b>してみてください。それでも出ない場合はご連絡ください。</div>
+      </div>
+      <div>
+        <div class="q">残席の数字が実際と合わない気がします</div>
+        <div class="a">メニューの<b>「📊 集計エリアを再設置」</b>を押すと計算し直されます。まだお支払いいただいていない方も席をおさえている点にご注意ください。</div>
+      </div>
+      <div>
+        <div class="q">キャンセルの方が出ました。どうすれば？</div>
+        <div class="a"><a class="link" href="admin.html">管理アプリ</a>で「✕ キャンセル」を押してください。<b>本人へのお知らせと、キャンセル待ちの方への繰り上げ案内が自動</b>で行われます。</div>
+      </div>
+      <div>
+        <div class="q">当日の名簿がほしいです</div>
+        <div class="a"><b>👥 総参加者一覧</b>をご覧ください。確定した方だけが自動で並んでいます。印刷してそのままお使いいただけます。</div>
+      </div>
+      <div>
+        <div class="q">次回のご案内を送りたい方を探したい</div>
+        <div class="a"><b>💎 準見込みリスト</b>です。「申し込んだけれど参加に至らなかった方」が並びます。関心はあった方なので、次回の有力な候補です。</div>
+      </div>
+      <div>
+        <div class="q">セミナーが終わりました。シートは消していい？</div>
+        <div class="a">先に<b>「📦 終了セミナーを台帳へ保存」</b>を実行してください。記録が台帳に移るので、そのあとは消していただいて大丈夫です。</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    お客さま側の画面と流れは <a class="link" href="guide.html">受付の流れ</a> をご覧ください。<br>
+    ご不明な点は、いつでもとーるまでお知らせください。
+  </footer>
+
+</div>
+</body>
+</html>
