@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=40">
+<link rel="stylesheet" href="css/style.css?v=41">
 </head>
 <body>
 <div class="container">
@@ -264,8 +264,8 @@
 
 </div>
 
-<script src="js/config.js?v=40"></script>
-<script src="js/common.js?v=40"></script>
+<script src="js/config.js?v=41"></script>
+<script src="js/common.js?v=41"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -302,10 +302,17 @@ async function loadStatus() {
   }
 }
 
-/** ひらがなをカタカナに直す */
+/** フリガナの表記をそろえる（半角カナ→全角、ひらがな→カタカナ、スペースも統一） */
 function toKatakana_(v) {
-  return String(v || '').trim().replace(/[\u3041-\u3096]/g, c =>
-    String.fromCharCode(c.charCodeAt(0) + 0x60));
+  let t = String(v || '');
+  try { t = t.normalize('NFKC'); } catch (_) {}
+  t = t.replace(/[\u3041-\u3096]/g, c => String.fromCharCode(c.charCodeAt(0) + 0x60));
+  return t.replace(/\s+/g, ' ').trim();
+}
+
+/** カタカナ（と長音・中黒・スペース）だけでできているか */
+function isKana_(v) {
+  return /^[\u30A1-\u30F6\u30FC\u30FB ]+$/.test(String(v || ''));
 }
 
 /** 🈁 読み仮名がまだの方に、入力欄を出す（あとから足した項目のため） */
@@ -321,7 +328,7 @@ function renderKana(st) {
       '<div style="font-size:15px; font-weight:700; margin-top:5px;">お名前のフリガナをお教えください</div>' +
       '<div style="font-size:13px; line-height:1.9; margin-top:6px; color:#8a7d76;">' +
         '当日の受付をスムーズに行うため、フリガナを頂戴しております。<br>' +
-        'お手数ですが、ご入力をお願いいたします。' +
+        'お手数ですが、<b>カタカナ</b>でのご入力をお願いいたします。' +
       '</div>' +
       '<div style="display:flex; gap:8px; margin-top:12px;">' +
         '<input type="text" id="kana-input" placeholder="ヤマダ ハナコ" inputmode="katakana" autocomplete="off" ' +
@@ -340,7 +347,13 @@ function renderKana(st) {
 
   btn.addEventListener('click', async () => {
     const kana = toKatakana_(input.value);
+    input.value = kana;
     if (!kana) { msg.textContent = 'フリガナをご入力くださいませ。'; return; }
+    if (!isKana_(kana)) {
+      msg.innerHTML = 'フリガナは<b>カタカナ</b>でご入力くださいませ。<br>（例）ヤマダ ハナコ';
+      input.focus(); input.select();
+      return;
+    }
     btn.disabled = true; btn.textContent = '送信中…'; msg.textContent = '';
     try {
       const res = await apiPost('save_kana', { uid: uid, kana: kana }, 35000);

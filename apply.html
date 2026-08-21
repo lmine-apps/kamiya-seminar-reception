@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>受付フォーム｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=40">
+<link rel="stylesheet" href="css/style.css?v=41">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -124,7 +124,7 @@
           <label>お名前（フリガナ）<span class="req">必須</span></label>
           <input type="text" name="kana" id="f-kana" required placeholder="ヤマダ ハナコ"
                  autocomplete="off" inputmode="katakana">
-          <p class="form-note">カタカナでご記入ください（ひらがなは自動でカタカナになります）</p>
+          <p class="form-note">カタカナでご記入ください。漢字ではなく<b>読み方</b>をお願いいたします（ひらがなは自動でカタカナになります）</p>
         </div>
         <div class="form-group">
           <label>お電話番号<span class="req">必須</span></label>
@@ -225,8 +225,8 @@
 
 </div>
 
-<script src="js/config.js?v=40"></script>
-<script src="js/common.js?v=40"></script>
+<script src="js/config.js?v=41"></script>
+<script src="js/common.js?v=41"></script>
 <script>
 let uid = getUid();
 const seminarKey = new URLSearchParams(location.search).get('seminar');
@@ -489,10 +489,17 @@ async function submitWithRetry_(payload) {
   throw lastErr || new Error('送信できませんでした');
 }
 
-/** ひらがなをカタカナに直す（振込名義の照合に使うため表記をそろえる） */
+/** フリガナの表記をそろえる（半角カナ→全角、ひらがな→カタカナ、スペースも統一） */
 function toKatakana_(v) {
-  return String(v || '').trim().replace(/[\u3041-\u3096]/g, c =>
-    String.fromCharCode(c.charCodeAt(0) + 0x60));
+  let t = String(v || '');
+  try { t = t.normalize('NFKC'); } catch (_) {}
+  t = t.replace(/[\u3041-\u3096]/g, c => String.fromCharCode(c.charCodeAt(0) + 0x60));
+  return t.replace(/\s+/g, ' ').trim();
+}
+
+/** カタカナ（と長音・中黒・スペース）だけでできているか */
+function isKana_(v) {
+  return /^[\u30A1-\u30F6\u30FC\u30FB ]+$/.test(String(v || ''));
 }
 
 // 入力欄を離れたときに自動でカタカナへ
@@ -503,6 +510,20 @@ function toKatakana_(v) {
 
 document.getElementById('apply-form').addEventListener('submit', async (e) => {
   e.preventDefault();
+
+  /* フリガナはカタカナのみ。漢字のままお送りいただくと当日の名簿が揃わないため、
+     ここで気づいていただく（ひらがな・半角カナは自動で直す） */
+  const kanaEl = document.getElementById('f-kana');
+  if (kanaEl) {
+    kanaEl.value = toKatakana_(kanaEl.value);
+    if (!isKana_(kanaEl.value)) {
+      alert('フリガナはカタカナでご入力くださいませ。\n\n（例）ヤマダ ハナコ\n\n※漢字ではなく、読み方をカタカナでお願いいたします。');
+      kanaEl.focus();
+      kanaEl.select();
+      return;
+    }
+  }
+
   const btn = document.getElementById('btn-submit');
   btn.disabled = true;
   btn.textContent = '送信中…';

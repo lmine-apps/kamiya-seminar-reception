@@ -1,3 +1,12 @@
+/*** 神谷梓さん 受付管理システム GAS v8.7 ****************************
+ * 【v8.7 変更 2026-08-21】フリガナはカタカナのみ
+ *   ・normalizeKana_ … 半角カナ・ひらがなをカタカナへ、スペースもそろえる
+ *   ・isKana_ … カタカナ（＋長音・中黒・スペース）だけかを判定
+ *   ・save_kana はカタカナ以外をお断りする
+ *   ・⚠️申込(submit_application)は【お断りしない】。表記をそろえて保存するだけ。
+ *     募集開始直後にフリガナの形式でお申込みを弾くと、席を落としてしまうため。
+ *     形式のチェックは申込フォーム側（apply.html）で行う。
+ *
 /*** 神谷梓さん 受付管理システム GAS v8.6 ****************************
  * 【v8.6 追加 2026-08-21】お知らせの「🧪 テスト送信」
  *   ・管理アプリから、指定した1人のuidにだけ⑧を飛ばせる。
@@ -526,15 +535,37 @@ function adminUpdateStatus_(p) {
 
 // ========== 【v2】uid状態取得 ==========
 /**
+ * 読み仮名の表記をそろえる。
+ *   ・半角カナ → 全角カナ（NFKC。濁点もまとめてくれる）
+ *   ・ひらがな → カタカナ
+ *   ・全角スペース → 半角、連続スペースは1つに
+ */
+function normalizeKana_(v) {
+  var t = String(v || '');
+  try { t = t.normalize('NFKC'); } catch (_) {}
+  t = t.replace(/[\u3041-\u3096]/g, function (c) {
+    return String.fromCharCode(c.charCodeAt(0) + 0x60);
+  });
+  return t.replace(/\s+/g, ' ').trim();
+}
+
+/** カタカナ（と長音・中黒・スペース）だけでできているか */
+function isKana_(v) {
+  return /^[\u30A1-\u30F6\u30FC\u30FB ]+$/.test(String(v || ''));
+}
+
+/**
  * 読み仮名をあとから登録する（すでにお申込み済みの方むけ）。
  * 複数のセミナーに申し込んでいる方は、その【すべての行】に入れる。
  */
 function saveKana_(p) {
   var uid = String(p.uid || '');
-  var kana = String(p.kana || '').trim();
+  var kana = normalizeKana_(p.kana);
   if (!uid)  return out_({ ok: false, error: 'uid required' });
   if (!kana) return out_({ ok: false, error: 'kana required' });
   if (kana.length > 60) kana = kana.slice(0, 60);
+  // ここは席の取り合いが絡まないので、カタカナ以外はきちんとお断りする
+  if (!isKana_(kana)) return out_({ ok: false, error: 'kana_invalid' });
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var saved = 0;
@@ -742,7 +773,9 @@ function submitApplication_(p, dryRun) {
       p.birthday || '',
       p.job || '',
       p.worries || '',
-      p.kana || ''   // O:読み仮名
+      normalizeKana_(p.kana)   // O:読み仮名（表記をそろえるだけ。
+                               //   カタカナでなくても申込は止めない＝席を落とさない。
+                               //   形式のチェックはフォーム側で行う）
     ]);
     lockHeld = new Date().getTime() - lockedAt;
   } finally {
