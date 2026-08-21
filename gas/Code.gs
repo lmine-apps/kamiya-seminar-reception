@@ -1,3 +1,8 @@
+/*** 神谷梓さん 受付管理システム GAS v8.6 ****************************
+ * 【v8.6 追加 2026-08-21】お知らせの「🧪 テスト送信」
+ *   ・管理アプリから、指定した1人のuidにだけ⑧を飛ばせる。
+ *   ・お客さまへ一斉に送る前に、自分のLINEで届き方を確かめられる。
+ *
 /*** 神谷梓さん 受付管理システム GAS v8.5 ****************************
  * 【v8.5 追加 2026-08-21】読み仮名と、受付完了のお知らせ
  *   ① 読み仮名を【O列】に追加。既存のA〜N列は一切動かしていない
@@ -207,7 +212,7 @@ function handleRequest_(e) {
                          'admin_set_gate',
                          'admin_news_list', 'admin_news_save', 'admin_news_send',
                          'admin_news_count', 'admin_news_delete',
-                         'admin_submit_dryrun'];
+                         'admin_submit_dryrun', 'admin_news_test'];
     if (ADMIN_ACTIONS.indexOf(action) !== -1) {
       if (String(p.token) !== String(ADMIN_TOKEN)) {
         return out_({ ok: false, error: 'unauthorized' });
@@ -226,6 +231,7 @@ function handleRequest_(e) {
       if (action === 'admin_news_count')      return adminNewsCount_(p);
       if (action === 'admin_news_delete')     return adminNewsDelete_(p);
       if (action === 'admin_submit_dryrun')   return submitApplication_(p, true);
+      if (action === 'admin_news_test')       return adminNewsTest_(p);
     }
 
     // トークン認証（一般）
@@ -2050,6 +2056,21 @@ function adminNewsSave_(p) {
 }
 
 /** 指定行をいま送信する */
+/**
+ * お知らせのテスト送信。指定した1人のuidにだけ⑧を飛ばす。
+ * LINEに届くのは、お知らせの本文ではなく「アプリを見てね」の合図。
+ * 本文はアプリを開いたときに、その方の状態に合わせて表示される。
+ */
+function adminNewsTest_(p) {
+  var uid = String(p.uid || '').trim();
+  if (!uid) return out_({ ok: false, error: 'uid required' });
+  if (!PROLINE_URLS['お知らせ']) return out_({ ok: false, error: 'proline url not set' });
+
+  moveScenario_(uid, 'お知らせ');
+  logAction_('news_test', uid, '', 'テスト送信', String(p.title || ''));
+  return out_({ ok: true, uid: uid });
+}
+
 function adminNewsSend_(p) {
   var row = Number(p.row || 0);
   var target = null;

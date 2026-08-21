@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="受付管理">
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=39">
+<link rel="stylesheet" href="css/style.css?v=40">
 <style>
   .container { max-width: 720px; }
   /* タブ */
@@ -310,8 +310,8 @@
   <div class="footer">株式会社 Bonheur Lelien｜運営者専用ページ</div>
 </div>
 
-<script src="js/config.js?v=39"></script>
-<script src="js/common.js?v=39"></script>
+<script src="js/config.js?v=40"></script>
+<script src="js/common.js?v=40"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script>
@@ -530,6 +530,7 @@ function renderNewsList() {
       ((sched || sent) ? '<div class="nmeta">' + [sched, sent].filter(Boolean).join(' ／ ') + '</div>' : '') +
       '<div class="nacts">' +
         '<button class="abtn abtn-back" onclick="editNews(' + n.row + ')">✎ 編集</button>' +
+        '<button class="abtn abtn-back" onclick="testNews(' + n.row + ')">🧪 テスト送信</button>' +
         '<button class="abtn abtn-ok" onclick="sendNewsRow(' + n.row + ')">📣 LINEで送る</button>' +
       '</div>' +
     '</div>';
@@ -655,6 +656,40 @@ async function sendNewsRow(row) {
   } catch (err) {
     showLoading(false);
     alert('通信に失敗しました。');
+  }
+}
+
+/* 🧪 テスト送信：指定した1人のuidにだけLINEを飛ばす。
+   お客さまへ一斉に送る前の確認用。uidは次回のために覚えておく。 */
+async function testNews(row) {
+  const n = ((newsData && newsData.rows) || []).find(x => x.row === row);
+  let saved = '';
+  try { saved = localStorage.getItem('kamiya_test_uid') || ''; } catch (_) {}
+
+  const uid = prompt(
+    'テスト送信するLINE ID（uid）を入力してください。\n' +
+    'この方のLINEにだけ「アプリにお知らせがあります」が届きます。\n\n' +
+    '※uidは受付シートのA列で確認できます。',
+    saved
+  );
+  if (uid === null) return;
+  const clean = String(uid).trim();
+  if (!clean) { alert('uidが空です。'); return; }
+  try { localStorage.setItem('kamiya_test_uid', clean); } catch (_) {}
+
+  try {
+    const res = await newsPost_('admin_news_test', { uid: clean, title: (n && n.title) || '' });
+    if (res && res.ok) {
+      alert('テスト送信しました。\n\n' +
+            'LINEをご確認ください。\n' +
+            '※LINEに届くのは「アプリを見てね」の合図だけです。\n' +
+            '　本文はアプリを開いたときに表示されます\n' +
+            '（その方が受付シートに載っている場合のみ）。');
+    } else {
+      alert('送信できませんでした：' + ((res && res.error) || '不明なエラー'));
+    }
+  } catch (err) {
+    alert('通信できませんでした。もう一度お試しください。');
   }
 }
 
