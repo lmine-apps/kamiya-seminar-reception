@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>受付フォーム｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=37">
+<link rel="stylesheet" href="css/style.css?v=38">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -219,8 +219,8 @@
 
 </div>
 
-<script src="js/config.js?v=37"></script>
-<script src="js/common.js?v=37"></script>
+<script src="js/config.js?v=38"></script>
+<script src="js/common.js?v=38"></script>
 <script>
 let uid = getUid();
 const seminarKey = new URLSearchParams(location.search).get('seminar');
@@ -383,6 +383,12 @@ function renderNotOpen_(openAt) {
   document.getElementById('notopen-openat').textContent = formatDeadline(openAt);
   showScreen('screen-notopen');
   startFlipCountdown(openAt, 'notopen-countdown');
+
+  // 表示を毎回いったん「開始前」に戻してから判定する
+  const gateBtn = document.getElementById('btn-gate-open');
+  const gateNote = document.getElementById('notopen-note');
+  if (gateBtn) { gateBtn.style.display = 'none'; gateBtn.disabled = false; }
+  if (gateNote) gateNote.style.display = '';
 
   /* 開始時刻になったら【自動で読み込み直さず】ボタンを出す。
      全員の端末が21:00:00ちょうどに一斉に読み込むと、その瞬間だけ極端に混む。
