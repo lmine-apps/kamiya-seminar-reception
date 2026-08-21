@@ -1,3 +1,10 @@
+/*** 神谷梓さん 受付管理システム GAS v8.4 ****************************
+ * 【v8.4 追加 2026-08-21】Google側の一時的な混雑を自動でやり直す
+ *   ・100人同時申込のテストで「同時呼び出しの数が多すぎます: スプレッドシート」
+ *     が数件発生した。これはGoogle側の一時的な制限で、待てば通る。
+ *   ・そういうエラーを busy として返すようにしたので、
+ *     アプリが少し待って自動でやり直す（お客さまにはエラーが見えない）。
+ *
 /*** 神谷梓さん 受付管理システム GAS v8.3 ****************************
  * 【v8.3 追加 2026-08-20】本番稼働中でも混雑テストができるように
  *   ・admin_submit_dryrun（管理キー必須）＝申込処理を「計算だけ」実行。
@@ -170,8 +177,8 @@ function doGet(e)  { return handleRequest_(e); }
 function doPost(e) { return handleRequest_(e); }
 
 function handleRequest_(e) {
+  var p = {};
   try {
-    var p = {};
     if (e && e.postData && e.postData.contents) {
       try { p = JSON.parse(e.postData.contents); }
       catch(_) { p = e.parameter || {}; }
@@ -229,8 +236,40 @@ function handleRequest_(e) {
 
     return out_({ ok: false, error: 'unknown action: ' + action });
   } catch (err) {
+    // Google側が一時的に「混んでいる」と言ってきた場合は、
+    // 失敗ではなく busy として返す。アプリが少し待って自動でやり直す。
+    if (isTransientError_(err)) {
+      try { logAction_('busy', (p && p.uid) || '', '', 'transient: ' + String(err).slice(0, 120), ''); } catch (_) {}
+      return out_({ ok: false, error: 'busy', retry: true });
+    }
     return out_({ ok: false, error: String(err) });
   }
+}
+
+/**
+ * 「待てば直る」たぐいのエラーかどうか。
+ * 例：同時にスプレッドシートを触りすぎたときにGoogleが返すもの。
+ * 募集開始直後の一斉アクセスで実際に発生する（100人同時で数件）。
+ */
+function isTransientError_(err) {
+  var m = String(err && err.message ? err.message : err);
+  var signs = [
+    '同時呼び出し',            // 同時呼び出しの数が多すぎます: スプレッドシート
+    'too many',               // Too many simultaneous invocations
+    'simultaneous',
+    'Service invoked too many times',
+    'サービスの呼び出し回数',
+    'Timed out',
+    'タイムアウト',
+    'try again',
+    'しばらくしてからもう一度',
+    'internal error',
+    '内部エラー'
+  ];
+  for (var i = 0; i < signs.length; i++) {
+    if (m.toLowerCase().indexOf(signs[i].toLowerCase()) !== -1) return true;
+  }
+  return false;
 }
 
 // ========== 【v6】運営プッシュ通知（FCM・エルラボ＋と同方式） ==========

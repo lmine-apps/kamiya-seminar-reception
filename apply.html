@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>受付フォーム｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=35">
+<link rel="stylesheet" href="css/style.css?v=36">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -88,10 +88,14 @@
         <div class="luxury-countdown__deadline">受付開始：<strong id="notopen-openat"></strong></div>
       </div>
 
-      <div class="note-box" style="border-left-color:#7da87d; background:#f4f8f4;">
+      <button class="btn btn-primary" id="btn-gate-open" style="display:none; margin-top:4px;">
+        受付を開始いたしました ／ お申込みへ進む
+      </button>
+
+      <div class="note-box" id="notopen-note" style="border-left-color:#7da87d; background:#f4f8f4;">
         💡 <strong style="font-size:15px; color:#5c8a5c;">この画面は閉じても大丈夫です</strong><br>
         お時間になりましたら、LINEのトーク履歴にあるボタンをもう一度タップしてお進みください。<br>
-        この画面を開いたままにしておくと、受付開始とともに自動でフォームに切り替わります。
+        この画面を開いたままにしておくと、受付開始とともにボタンが表示されます。
       </div>
     </div>
   </div>
@@ -215,8 +219,8 @@
 
 </div>
 
-<script src="js/config.js?v=35"></script>
-<script src="js/common.js?v=35"></script>
+<script src="js/config.js?v=36"></script>
+<script src="js/common.js?v=36"></script>
 <script>
 let uid = getUid();
 const seminarKey = new URLSearchParams(location.search).get('seminar');
@@ -340,8 +344,19 @@ function init() {
     }
   }).catch(() => {});
 
+  /* 読み込みが長引いたときのお知らせ。無言で固まっているように見えるのがいちばん不安なので、
+     3秒・10秒・20秒で言葉を変えていく（残席が返ってきたら止める） */
+  const capNote = document.getElementById('capacity-note');
+  const busyTimers_ = [
+    setTimeout(() => { if (capNote) capNote.innerHTML = '<span style="font-size:13px; color:#8a7d76;">残席を確認しています…</span>'; }, 3000),
+    setTimeout(() => { if (capNote) capNote.innerHTML = '<span style="font-size:13px; color:#8a7d76;">ただいま混み合っております。<br>そのままお待ちくださいませ。</span>'; }, 10000),
+    setTimeout(() => { if (capNote) capNote.innerHTML = '<span style="font-size:13px; color:#8a7d76;">順番にお繋ぎしております。<br>ご入力はこのままお進みいただけます。</span>'; }, 20000)
+  ];
+  const stopBusyTimers_ = () => busyTimers_.forEach(clearTimeout);
+
   // 残席表示（取得できなくても申込は可能）
   apiGet('get_capacity', { seminar: seminarKey }).then(res => {
+    stopBusyTimers_();
     // 募集開始前 → カウントダウン画面へ
     if (res.ok && res.is_open === false) { renderNotOpen_(res.open_at); return; }
     releaseSubmit();
@@ -356,7 +371,7 @@ function init() {
         enterWaitlistMode();
       }
     }
-  }).catch(() => { releaseSubmit(); });  // 通信できなくても申込は止めない（サーバー側で最終判定）
+  }).catch(() => { stopBusyTimers_(); releaseSubmit(); });  // 通信できなくても申込は止めない（サーバー側で最終判定）
 }
 
 /** 受付開始前：カウントダウンを出し、開始時刻になったら自動でフォームへ切り替える */
@@ -369,11 +384,30 @@ function renderNotOpen_(openAt) {
   showScreen('screen-notopen');
   startFlipCountdown(openAt, 'notopen-countdown');
 
+  /* 開始時刻になったら【自動で読み込み直さず】ボタンを出す。
+     全員の端末が21:00:00ちょうどに一斉に読み込むと、その瞬間だけ極端に混む。
+     ボタンにすると押す速さが人それぞれなので、山が自然にばらける。 */
   const ms = new Date(String(openAt).replace(/-/g, '/')).getTime() - Date.now();
   clearTimeout(notOpenTimer_);
-  if (ms > 0 && ms < 86400000 * 20) {   // setTimeoutの上限（約24日）を超えない範囲だけ予約
-    notOpenTimer_ = setTimeout(() => { location.reload(); }, ms + 1500);
+  if (ms <= 0) {
+    showGateOpenButton_();
+  } else if (ms < 86400000 * 20) {   // setTimeoutの上限（約24日）を超えない範囲だけ予約
+    notOpenTimer_ = setTimeout(showGateOpenButton_, ms + 800);
   }
+}
+
+/** 受付開始：進むボタンを出す（押した人から順にフォームへ） */
+function showGateOpenButton_() {
+  const btn = document.getElementById('btn-gate-open');
+  const note = document.getElementById('notopen-note');
+  if (!btn) { location.reload(); return; }
+  if (note) note.style.display = 'none';
+  btn.style.display = '';
+  btn.onclick = () => {
+    btn.disabled = true;
+    btn.textContent = 'お申込み画面をご用意しています…';
+    location.reload();
+  };
 }
 
 /** 満席時：キャンセル待ちモード（ユーザーが認識した上で送信できるように） */
