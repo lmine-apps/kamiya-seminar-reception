@@ -1,3 +1,13 @@
+/*** 神谷梓さん 受付管理システム GAS v8.5 ****************************
+ * 【v8.5 追加 2026-08-21】読み仮名と、受付完了のお知らせ
+ *   ① 読み仮名を【O列】に追加。既存のA〜N列は一切動かしていない
+ *      （途中に挿入すると全部の番号がずれて、すでに入っている申込が壊れるため）
+ *      ・新規のお申込みはフォームで入力していただく
+ *      ・すでにお申込み済みの方は、アプリに入力欄が出る（save_kana）
+ *      ・メニュー「🈁 読み仮名の列を用意する」で既存シートに見出しを付ける
+ *   ② 受付完了とキャンセル待ちのとき、運営のスマホへお知らせが飛ぶようにした。
+ *      事前決済の「決済案内中」では飛ばさない（募集開始直後に鳴り続けるため）
+ *
 /*** 神谷梓さん 受付管理システム GAS v8.4 ****************************
  * 【v8.4 追加 2026-08-21】Google側の一時的な混雑を自動でやり直す
  *   ・100人同時申込のテストで「同時呼び出しの数が多すぎます: スプレッドシート」
@@ -133,7 +143,9 @@
  *
  * 【列構成（各セミナーシート・10行目からデータ）】
  *  A:uid B:名前 C:メール D:電話 E:申込日時 F:期限 G:状態 H:待機順
- *  I:決済日時 J:決済方法 K:備考 L:生年月日 M:職業 N:お悩み
+ *  I:決済日時 J:決済方法 K:備考 L:生年月日 M:職業 N:お悩み O:読み仮名
+ *  ※読み仮名(O)は後から足した列。既存の並びを崩さないよう末尾に置いてある。
+ *    列を増やすときも必ず末尾に足すこと（途中に挿入すると全部の番号がずれる）
  ***********************************************************/
 
 // ========== 設定 ==========
@@ -170,7 +182,8 @@ var SEMINARS = {
 
 var DEADLINE_DAYS = 3;   // 決済期限（日数）
 var DATA_START_ROW = 10; // データ開始行
-var LAST_COL = 14;       // N列まで
+var KANA_COL = 15;       // O列＝読み仮名（v8.5で末尾に追加）
+var LAST_COL = 15;       // O列まで
 
 // ========== エンドポイント ==========
 function doGet(e)  { return handleRequest_(e); }
@@ -233,6 +246,7 @@ function handleRequest_(e) {
     if (action === 'report_card_payment')  return reportCardPayment_(p);
     if (action === 'get_capacity')         return getCapacity_(p);
     if (action === 'cancel_application')   return cancelApplication_(p);
+    if (action === 'save_kana')            return saveKana_(p);
 
     return out_({ ok: false, error: 'unknown action: ' + action });
   } catch (err) {
@@ -505,6 +519,37 @@ function adminUpdateStatus_(p) {
 }
 
 // ========== 【v2】uid状態取得 ==========
+/**
+ * 読み仮名をあとから登録する（すでにお申込み済みの方むけ）。
+ * 複数のセミナーに申し込んでいる方は、その【すべての行】に入れる。
+ */
+function saveKana_(p) {
+  var uid = String(p.uid || '');
+  var kana = String(p.kana || '').trim();
+  if (!uid)  return out_({ ok: false, error: 'uid required' });
+  if (!kana) return out_({ ok: false, error: 'kana required' });
+  if (kana.length > 60) kana = kana.slice(0, 60);
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var saved = 0;
+  Object.keys(SEMINARS).forEach(function (key) {
+    var sh = ss.getSheetByName(SEMINARS[key].sheet);
+    if (!sh) return;
+    var lastRow = sh.getLastRow();
+    if (lastRow < DATA_START_ROW) return;
+    var col = sh.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, 1).getValues();
+    for (var i = 0; i < col.length; i++) {
+      if (String(col[i][0]) !== uid) continue;
+      sh.getRange(DATA_START_ROW + i, KANA_COL).setValue(kana);
+      saved++;
+    }
+  });
+
+  if (!saved) return out_({ ok: false, error: 'not found' });
+  logAction_('save_kana', uid, '', kana, saved + '件に登録');
+  return out_({ ok: true, kana: kana, saved: saved });
+}
+
 function getStatus_(p) {
   var uid = String(p.uid || '');
   if (!uid) return out_({ ok: false, error: 'uid required' });
@@ -526,6 +571,9 @@ function getStatus_(p) {
     deadline: row[5] ? formatDateValue_(row[5]) : null,
     wait_number: row[7] || null,
     name: row[1] || '',
+    kana: row[14] || '',
+    // 読み仮名がまだ無い方には、アプリで入力をお願いする（v8.5）
+    need_kana: !String(row[14] || '').trim() && ['確定', '決済案内中', '振込報告済み', 'キャンセル待ち'].indexOf(String(row[6])) !== -1,
     payment_completed: row[6] === '確定',
     payment_method: row[9] || '',
     test_pay: isTestPayOn_(),
@@ -619,7 +667,7 @@ function submitApplication_(p, dryRun) {
   }
 
   var lockedAt = new Date().getTime(), lockHeld = 0;
-  var status, deadline, waitNum, scenarioName;
+  var status, deadline, waitNum, scenarioName, occupiedAfter = 0;
   try {
     // A〜H列を【1回だけ】読む。重複チェック・定員・待機番号をこの1回でまかなう
     var lastRow = sh.getLastRow();
@@ -671,6 +719,8 @@ function submitApplication_(p, dryRun) {
       });
     }
 
+    occupiedAfter = occupied + (status === 'キャンセル待ち' ? 0 : 1);
+
     sh.appendRow([
       p.uid || '',
       p.name || '',
@@ -685,7 +735,8 @@ function submitApplication_(p, dryRun) {
       '', // K:備考
       p.birthday || '',
       p.job || '',
-      p.worries || ''
+      p.worries || '',
+      p.kana || ''   // O:読み仮名
     ]);
     lockHeld = new Date().getTime() - lockedAt;
   } finally {
@@ -699,6 +750,23 @@ function submitApplication_(p, dryRun) {
   // 以下は他の人を待たせないので、ロックの外で行う
   moveScenario_(p.uid, scenarioName);
   logAction_('web_application', p.uid, config.sheet, '→ ' + status, 'Webアプリ経由 ／ カギ占有 ' + lockHeld + 'ms');
+
+  /* 運営のスマホへお知らせ（v8.5）
+     ・当日現金のセミナー（セルフ先行）は申込＝受付完了なので、その場でお知らせする
+     ・キャンセル待ちは「満席になった」合図なのでお知らせする
+     ・事前決済の「決済案内中」は通知しない。募集開始直後に何十件も鳴ってしまうため
+       （入金の報告が来たときに別途お知らせが飛ぶ） */
+  try {
+    var label = config.sheet.replace('📋 ', '');
+    if (status === '確定') {
+      notifyOps_('🌸 受付完了（' + label + '）',
+        (p.name || 'お名前未記入') + ' 様のお申込みが確定しました。残り' +
+        Math.max(0, config.capacity - (occupiedAfter)) + '席です。');
+    } else if (status === 'キャンセル待ち') {
+      notifyOps_('⏳ キャンセル待ちのお申込み（' + label + '）',
+        (p.name || 'お名前未記入') + ' 様が待機' + waitNum + '番目に入りました。満席です。');
+    }
+  } catch (_) {}
 
   return out_({ ok: true, status: status, waitNum: waitNum, deadline: deadline, lock_held_ms: lockHeld });
 }
@@ -1411,6 +1479,7 @@ function onOpen() {
       .addItem('📣 お知らせをLINEで送る', 'sendNewsNow')
       .addItem('📣 お知らせシートを用意する', 'setupNewsSheet')
       .addSeparator()
+      .addItem('🈁 読み仮名の列を用意する', 'setupKanaColumn')
       .addItem('📊 集計エリアを再設置', 'setupSummaryFormulas')
       .addItem('📖 操作マニュアルを再生成', 'setupManualSheet')
       .addToUi();
@@ -1520,12 +1589,13 @@ function setupMasterLists() {
   var parts = Object.keys(SEMINARS).map(function (key) {
     var s = SEMINARS[key].sheet;
     var label = s.replace('📋 ', '');
-    return "{'" + s + "'!A10:K1000, ARRAYFORMULA(IF(LEN('" + s + "'!A10:A1000),\"" + label + "\",\"\"))}";
+    return "{'" + s + "'!A10:O1000, ARRAYFORMULA(IF(LEN('" + s + "'!A10:A1000),\"" + label + "\",\"\"))}";
   });
   var stack = '{' + parts.join(';') + '}';
   // 列対応（v7.4でA列=uidを追加したため、1つずつ後ろにずれています）:
   //   Col1=uid Col2=名前 Col3=メール Col4=電話 Col5=申込日時 Col6=期限
-  //   Col7=状態 Col8=待機順 Col9=決済完了日時 Col10=決済方法 Col11=備考 Col12=セミナー名
+  //   Col7=状態 Col8=待機順 Col9=決済完了日時 Col10=決済方法 Col11=備考
+  //   Col12=生年月日 Col13=職業 Col14=お悩み Col15=読み仮名 Col16=セミナー名
 
   var C_TITLE = '#9c6f5f', C_HEAD = '#f8f4ea';
 
@@ -1550,16 +1620,16 @@ function setupMasterLists() {
     '👥 総参加者一覧',
     '👥 総参加者一覧（全セミナー横断・確定者）',
     '※受付シートから自動反映（さわらない）。複数セミナー参加の方は複数行で表示されます',
-    ['お名前', '参加セミナー', 'メール', '電話', '決済方法', '申込日時', 'LINE ID（uid）'],
-    '=IFERROR(QUERY(' + stack + ',"select Col2, Col12, Col3, Col4, Col10, Col5, Col1 where Col7=\'確定\' and Col2 is not null order by Col12, Col5",0),"まだ確定の方はいません")'
+    ['お名前', '読み仮名', '参加セミナー', 'メール', '電話', '決済方法', '申込日時', 'LINE ID（uid）'],
+    '=IFERROR(QUERY(' + stack + ',"select Col2, Col15, Col16, Col3, Col4, Col10, Col5, Col1 where Col7=\'確定\' and Col2 is not null order by Col16, Col5",0),"まだ確定の方はいません")'
   );
 
   buildSheet(
     '💎 準見込みリスト',
     '💎 準見込みリスト（申込意思あり・参加に至らなかった方）',
     '※期限切れ/キャンセル済の方が自動で並びます。次回セミナーの再アプローチ候補！（さわらない）',
-    ['お名前', '対象セミナー', '状態', 'メール', '電話', '申込日時', 'LINE ID（uid）'],
-    '=IFERROR(QUERY(' + stack + ',"select Col2, Col12, Col7, Col3, Col4, Col5, Col1 where (Col7=\'期限切れ\' or Col7=\'キャンセル済\') and Col2 is not null order by Col5 desc",0),"まだ該当の方はいません")'
+    ['お名前', '読み仮名', '対象セミナー', '状態', 'メール', '電話', '申込日時', 'LINE ID（uid）'],
+    '=IFERROR(QUERY(' + stack + ',"select Col2, Col15, Col16, Col7, Col3, Col4, Col5, Col1 where (Col7=\'期限切れ\' or Col7=\'キャンセル済\') and Col2 is not null order by Col5 desc",0),"まだ該当の方はいません")'
   );
 
   return '👥💎 総合リスト2シートを作成しました';
@@ -1572,6 +1642,44 @@ function setupMasterLists() {
  * ※各セミナーシートの5〜6行目に自動集計の数式を設置し直します。
  * ※デプロイ不要。何度実行しても作り直されるだけなので安全。
  * ============================================================ */
+/**
+ * 既存の受付シートに「読み仮名」(O列)の見出しを付ける。
+ * すでにお申込みが入っているシートでも安全：
+ *   ・列の挿入はしない（末尾のO列に見出しを書くだけ）
+ *   ・お申込みのデータには一切触れない
+ * 何度実行しても大丈夫。
+ */
+function setupKanaColumn() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var done = [];
+
+  Object.keys(SEMINARS).forEach(function (key) {
+    var sh = ss.getSheetByName(SEMINARS[key].sheet);
+    if (!sh) return;
+
+    // 見出しの行を探す（A列に「uid」と書いてある行）
+    var headRow = 0;
+    var top = sh.getRange(1, 1, DATA_START_ROW - 1, 1).getValues();
+    for (var i = top.length - 1; i >= 0; i--) {
+      if (String(top[i][0]).toLowerCase().indexOf('uid') !== -1) { headRow = i + 1; break; }
+    }
+    if (!headRow) headRow = DATA_START_ROW - 2;   // 見つからなければ従来の8行目
+
+    var cell = sh.getRange(headRow, KANA_COL);
+    if (String(cell.getValue()).indexOf('読み仮名') === -1) {
+      var sample = sh.getRange(headRow, 8);       // H列（待機順）の見た目に合わせる
+      cell.setValue('読み仮名')
+        .setFontWeight(sample.getFontWeight())
+        .setBackground(sample.getBackground())
+        .setFontSize(sample.getFontSize());
+    }
+    sh.setColumnWidth(KANA_COL, 130);
+    done.push(SEMINARS[key].sheet.replace('📋 ', ''));
+  });
+
+  return '🈁 読み仮名の列(O列)を用意しました：' + done.join('・');
+}
+
 function setupSummaryFormulas() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   Object.keys(SEMINARS).forEach(function (key) {

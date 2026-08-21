@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=38">
+<link rel="stylesheet" href="css/style.css?v=39">
 </head>
 <body>
 <div class="container">
@@ -23,6 +23,7 @@
 
   <!-- お知らせ（該当する方にだけ表示・スプシの📣お知らせシートから） -->
   <div id="news-box" style="display:none;"></div>
+  <div id="kana-box" style="display:none;"></div>
 
   <!-- ローディング -->
   <div id="loading">
@@ -263,8 +264,8 @@
 
 </div>
 
-<script src="js/config.js?v=38"></script>
-<script src="js/common.js?v=38"></script>
+<script src="js/config.js?v=39"></script>
+<script src="js/common.js?v=39"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -301,6 +302,67 @@ async function loadStatus() {
   }
 }
 
+/** ひらがなをカタカナに直す */
+function toKatakana_(v) {
+  return String(v || '').trim().replace(/[\u3041-\u3096]/g, c =>
+    String.fromCharCode(c.charCodeAt(0) + 0x60));
+}
+
+/** 🈁 読み仮名がまだの方に、入力欄を出す（あとから足した項目のため） */
+function renderKana(st) {
+  const box = document.getElementById('kana-box');
+  if (!box) return;
+  if (!st || !st.need_kana) { box.style.display = 'none'; box.innerHTML = ''; return; }
+
+  box.style.display = '';
+  box.innerHTML =
+    '<div class="card" style="border-left:3px solid #9c6f5f; padding:16px 18px; text-align:left;">' +
+      '<div style="font-size:11px; font-weight:700; letter-spacing:.12em; color:#9c6f5f;">🈁 ご入力のお願い</div>' +
+      '<div style="font-size:15px; font-weight:700; margin-top:5px;">お名前のフリガナをお教えください</div>' +
+      '<div style="font-size:13px; line-height:1.9; margin-top:6px; color:#8a7d76;">' +
+        '当日の受付をスムーズに行うため、フリガナを頂戴しております。<br>' +
+        'お手数ですが、ご入力をお願いいたします。' +
+      '</div>' +
+      '<div style="display:flex; gap:8px; margin-top:12px;">' +
+        '<input type="text" id="kana-input" placeholder="ヤマダ ハナコ" inputmode="katakana" autocomplete="off" ' +
+          'style="flex:1; min-width:0; padding:11px 12px; border:1px solid #e3dbd4; border-radius:8px; font-size:15px;">' +
+        '<button class="btn btn-primary" id="kana-send" style="width:auto; padding:11px 18px; margin:0; white-space:nowrap;">送信</button>' +
+      '</div>' +
+      '<div id="kana-msg" style="font-size:12px; color:#8a7d76; margin-top:8px;"></div>' +
+    '</div>';
+
+  const input = document.getElementById('kana-input');
+  const btn = document.getElementById('kana-send');
+  const msg = document.getElementById('kana-msg');
+
+  input.addEventListener('blur', () => { input.value = toKatakana_(input.value); });
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') btn.click(); });
+
+  btn.addEventListener('click', async () => {
+    const kana = toKatakana_(input.value);
+    if (!kana) { msg.textContent = 'フリガナをご入力くださいませ。'; return; }
+    btn.disabled = true; btn.textContent = '送信中…'; msg.textContent = '';
+    try {
+      const res = await apiPost('save_kana', { uid: uid, kana: kana }, 35000);
+      if (res && res.ok) {
+        box.innerHTML =
+          '<div class="card" style="border-left:3px solid #7da87d; padding:16px 18px; text-align:left;">' +
+            '<div style="font-size:15px; font-weight:700;">ありがとうございました</div>' +
+            '<div style="font-size:13px; line-height:1.9; margin-top:6px; color:#8a7d76;">' +
+              'フリガナ「' + esc(res.kana) + '」を承りました。' +
+            '</div>' +
+          '</div>';
+      } else {
+        msg.textContent = 'うまく送信できませんでした。少し時間をおいてお試しくださいませ。';
+        btn.disabled = false; btn.textContent = '送信';
+      }
+    } catch (_) {
+      msg.textContent = '通信が不安定なようです。少し時間をおいてお試しくださいませ。';
+      btn.disabled = false; btn.textContent = '送信';
+    }
+  });
+}
+
 /** 📣 お知らせを表示（該当するものをすべて／スプシまたは管理アプリで編集） */
 function renderNews(news) {
   const box = document.getElementById('news-box');
@@ -330,6 +392,7 @@ function render(st) {
     return;
   }
   renderNews(st.news);
+  renderKana(st);
   const sem = CONFIG.SEMINARS[st.seminar] || {};
 
   switch (st.status) {

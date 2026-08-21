@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>受付フォーム｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=38">
+<link rel="stylesheet" href="css/style.css?v=39">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -121,6 +121,12 @@
           <input type="text" name="name" required placeholder="山田 花子">
         </div>
         <div class="form-group">
+          <label>お名前（フリガナ）<span class="req">必須</span></label>
+          <input type="text" name="kana" id="f-kana" required placeholder="ヤマダ ハナコ"
+                 autocomplete="off" inputmode="katakana">
+          <p class="form-note">カタカナでご記入ください（ひらがなは自動でカタカナになります）</p>
+        </div>
+        <div class="form-group">
           <label>お電話番号<span class="req">必須</span></label>
           <input type="tel" name="phone" required placeholder="090-1234-5678" inputmode="tel">
         </div>
@@ -219,8 +225,8 @@
 
 </div>
 
-<script src="js/config.js?v=38"></script>
-<script src="js/common.js?v=38"></script>
+<script src="js/config.js?v=39"></script>
+<script src="js/common.js?v=39"></script>
 <script>
 let uid = getUid();
 const seminarKey = new URLSearchParams(location.search).get('seminar');
@@ -483,6 +489,18 @@ async function submitWithRetry_(payload) {
   throw lastErr || new Error('送信できませんでした');
 }
 
+/** ひらがなをカタカナに直す（振込名義の照合に使うため表記をそろえる） */
+function toKatakana_(v) {
+  return String(v || '').trim().replace(/[\u3041-\u3096]/g, c =>
+    String.fromCharCode(c.charCodeAt(0) + 0x60));
+}
+
+// 入力欄を離れたときに自動でカタカナへ
+(function () {
+  const el = document.getElementById('f-kana');
+  if (el) el.addEventListener('blur', () => { el.value = toKatakana_(el.value); });
+})();
+
 document.getElementById('apply-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const btn = document.getElementById('btn-submit');
@@ -497,6 +515,7 @@ document.getElementById('apply-form').addEventListener('submit', async (e) => {
       uid: uid,
       seminar: seminarKey,
       name: fd.get('name'),
+      kana: toKatakana_(fd.get('kana')),
       phone: fd.get('phone'),
       birthday: fd.get('birthday'),
       email: fd.get('email'),
