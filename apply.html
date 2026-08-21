@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>受付フォーム｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=36">
+<link rel="stylesheet" href="css/style.css?v=37">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -219,8 +219,8 @@
 
 </div>
 
-<script src="js/config.js?v=36"></script>
-<script src="js/common.js?v=36"></script>
+<script src="js/config.js?v=37"></script>
+<script src="js/common.js?v=37"></script>
 <script>
 let uid = getUid();
 const seminarKey = new URLSearchParams(location.search).get('seminar');
@@ -428,32 +428,49 @@ function enterWaitlistMode() {
    ※同じuidで二重に送っても、サーバー側が既存の申込を見つけて
      「already」を返すだけなので、二重申込にはならない（LINEも二重に飛ばない）。 */
 const BUSY_WAITS = [1500, 4000, 8000];   // 待つミリ秒。ジッターを足して山を散らす
-const BUSY_MSGS = [
-  '混み合っています。おつなぎしています…',
-  '順番にお待ちいただいています…',
-  'もう少しお待ちくださいませ…'
+const SUBMIT_TIMEOUT_MS = 35000;         // 1回の送信を待つ上限。超えたら打ち切って送り直す
+
+/* 待っているあいだの言葉。無言で固まって見えるのがいちばん不安なので、
+   返事が来る来ないに関わらず、時間で切り替える */
+const WAIT_MSGS = [
+  [4000,  '混み合っています。おつなぎしています…'],
+  [12000, '順番にお待ちいただいています…'],
+  [25000, 'もう少しお待ちくださいませ。<br>この画面のままお待ちいただけます。'],
+  [45000, 'お手続きは進んでおります。<br>画面を閉じずにお待ちくださいませ。']
 ];
 
-function setLoadingMsg_(text) {
+function setLoadingMsg_(html) {
   const el = document.getElementById('loading-msg');
-  if (el) el.textContent = text;
+  if (el) el.innerHTML = html;
 }
 
 async function submitWithRetry_(payload) {
-  let sawBusy = false, lastErr = null;
+  let sawBusy = false, lastErr = null, attempts = 0;
 
-  for (let n = 0; n <= BUSY_WAITS.length; n++) {
-    try {
-      const res = await apiPost('submit_application', payload);
-      // 混雑以外（成功・受付前・重複など）はそのまま返す
-      if (!res || res.ok || res.error !== 'busy') return res;
-      sawBusy = true;
-    } catch (err) {
-      lastErr = err;          // 通信断・タイムアウト。送り直しは安全なのでやり直す
+  // 経過時間に応じてメッセージを切り替える（送り直しをまたいでも続く）
+  const msgTimers = WAIT_MSGS.map(([ms, text]) => setTimeout(() => setLoadingMsg_(text), ms));
+  const stopMsgs = () => msgTimers.forEach(clearTimeout);
+
+  try {
+    for (let n = 0; n <= BUSY_WAITS.length; n++) {
+      attempts++;
+      try {
+        const res = await apiPost('submit_application', payload, SUBMIT_TIMEOUT_MS);
+        // 混雑以外（成功・受付前・重複など）はそのまま返す
+        if (!res || res.ok || res.error !== 'busy') {
+          if (res) res._attempts = attempts;
+          return res;
+        }
+        sawBusy = true;
+      } catch (err) {
+        // 通信断・打ち切り。同じuidで送り直しても二重申込にはならないのでやり直す
+        lastErr = err;
+      }
+      if (n === BUSY_WAITS.length) break;
+      await new Promise(r => setTimeout(r, BUSY_WAITS[n] + Math.random() * 1200));
     }
-    if (n === BUSY_WAITS.length) break;
-    setLoadingMsg_(BUSY_MSGS[n]);
-    await new Promise(r => setTimeout(r, BUSY_WAITS[n] + Math.random() * 1200));
+  } finally {
+    stopMsgs();
   }
 
   if (sawBusy) return { ok: false, error: 'busy' };
@@ -489,6 +506,14 @@ document.getElementById('apply-form').addEventListener('submit', async (e) => {
         return;
       }
       showError(res.error || ''); return;
+    }
+
+    // 打ち切って送り直した結果の「already」は、いま申し込んだご本人。
+    // その場合は状態に応じた完了画面へ進める（1回目で返ってきた already だけ重複扱い）
+    if (res.already && res._attempts > 1 && res.status) {
+      // キャンセル待ちは待機番号が要るので、番号まで出せる状態画面へ
+      if (res.status === 'キャンセル待ち') { location.replace('index.html'); return; }
+      res.already = false;
     }
 
     if (res.already) {

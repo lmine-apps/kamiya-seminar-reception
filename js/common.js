@@ -21,16 +21,29 @@ async function apiGet(action, params) {
   return res.json();
 }
 
-/** GAS API呼び出し（POST・text/plainでプリフライト回避） */
-async function apiPost(action, body) {
+/** GAS API呼び出し（POST・text/plainでプリフライト回避）
+ *  timeoutMs を渡すと、その時間で打ち切る。
+ *  混雑時にサーバーの返事が数分返らないことがあり、
+ *  そのまま待つと画面が固まって見えるため。打ち切って送り直すほうが速い。 */
+async function apiPost(action, body, timeoutMs) {
   const payload = Object.assign({ action: action, token: CONFIG.TOKEN }, body || {});
-  const res = await fetch(CONFIG.GAS_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(payload)
-  });
-  if (!res.ok) throw new Error('network error: ' + res.status);
-  return res.json();
+  let ctrl = null, timer = null;
+  if (timeoutMs && typeof AbortController !== 'undefined') {
+    ctrl = new AbortController();
+    timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  }
+  try {
+    const res = await fetch(CONFIG.GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload),
+      signal: ctrl ? ctrl.signal : undefined
+    });
+    if (!res.ok) throw new Error('network error: ' + res.status);
+    return res.json();
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 /** ローディング表示切替 */
