@@ -1,5 +1,5 @@
 /*** 神谷梓さん 受付管理システム GAS v8.8 ****************************
- * 【v8.8 追加 2026-08-26】
+ * 【v8.8 追加 2026-08-26】（v8.8.1で get_capacity にも締切情報を追加）
  *   ① 申込の締切 close_at を追加（開催前日23:59）。
  *      セルフ=9/17 23:59 ／ マーケ=9/28 23:59（初回開催の前日）
  *      締切を過ぎると submit_application が error:'closed' を返す。
@@ -941,6 +941,8 @@ function getCapacity_(p) {
     available: Math.max(0, config.capacity - counts.confirmed),
     is_open: gate.is_open,     // false なら受付開始前（カウントダウン画面を出す）
     open_at: gate.open_at,
+    is_closed: gate.is_closed, // true なら申込の締切を過ぎている
+    close_at: gate.close_at,
     gate_on: gate.gate_on,
     cached: counts.cached
   });
