@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="受付管理">
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=41">
+<link rel="stylesheet" href="css/style.css?v=42">
 <style>
   .container { max-width: 720px; }
   /* タブ */
@@ -310,8 +310,8 @@
   <div class="footer">株式会社 Bonheur Lelien｜運営者専用ページ</div>
 </div>
 
-<script src="js/config.js?v=41"></script>
-<script src="js/common.js?v=41"></script>
+<script src="js/config.js?v=42"></script>
+<script src="js/common.js?v=42"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script>
@@ -779,13 +779,14 @@ async function toggleTestPay() {
 /* --- 管理操作（状態変更→通知も自動で飛ぶ） --- */
 const ACTION_DEFS = {
   '決済案内中':   [{ st: '確定', label: '✔ 確定にする', cls: 'abtn-ok', msg: '確定にします。本人に「確定」のLINE通知が届きます。よろしいですか？' },
+                   { st: 'キャンセル待ち', label: '⏳ 待機に移す', cls: 'abtn-back', msg: 'この方をキャンセル待ちの最後尾に移します。\n待機番号は自動で振られます。\n本人にキャンセル待ちのLINE通知が届きます。よろしいですか？' },
                    { st: 'キャンセル済', label: '✕ キャンセル', cls: 'abtn-cancel', msg: 'キャンセルにします。本人に通知が届き、待機1番の方が自動で繰上がります。よろしいですか？' }],
   '振込報告済み': [{ st: '確定', label: '✔ 入金確認→確定', cls: 'abtn-ok', deposit: true },
                    { st: 'キャンセル済', label: '✕ キャンセル', cls: 'abtn-cancel', msg: 'キャンセルにします。本人に通知が届き、待機1番の方が自動で繰上がります。よろしいですか？' }],
   'キャンセル待ち': [{ st: 'キャンセル済', label: '✕ キャンセル', cls: 'abtn-cancel', msg: '待機からキャンセルにします。本人に通知が届きます。よろしいですか？' }],
   '期限切れ':     [{ st: '決済案内中', label: '↩ 復帰させる', cls: 'abtn-back', msg: '決済案内中に戻します（期限は今から3日）。LINE通知は飛びません。よろしいですか？' }],
   'キャンセル済': [{ st: '決済案内中', label: '↩ 復帰させる', cls: 'abtn-back', msg: '決済案内中に戻します（期限は今から3日）。LINE通知は飛びません。よろしいですか？' }],
-  '確定':         [{ st: 'キャンセル済', label: '✕ キャンセル', cls: 'abtn-cancel', msg: '【注意】確定済みの方をキャンセルにします。返金なしルールのため、事前に本人と合意のうえ実行してください。本人にキャンセル通知が届き、待機1番の方が繰上がります。本当によろしいですか？' }]
+  '確定':         [{ st: 'キャンセル済', label: '✕ キャンセル', cls: 'abtn-cancel', msg: '【注意】確定済みの方をキャンセルにします。\n開催1週間前までは全額返金の規定です。返金が必要かどうかを確認し、本人と合意のうえ実行してください（返金の操作は別途Stripe等で手動です）。\n本人にキャンセル通知が届き、待機1番の方が繰上がります。本当によろしいですか？' }]
 };
 
 /** 振込確定専用：入金確認の呼びかけ＋名義照合＋2段階確認 */

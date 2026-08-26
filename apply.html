@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>受付フォーム｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=41">
+<link rel="stylesheet" href="css/style.css?v=42">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -225,8 +225,8 @@
 
 </div>
 
-<script src="js/config.js?v=41"></script>
-<script src="js/common.js?v=41"></script>
+<script src="js/config.js?v=42"></script>
+<script src="js/common.js?v=42"></script>
 <script>
 let uid = getUid();
 const seminarKey = new URLSearchParams(location.search).get('seminar');
@@ -547,6 +547,11 @@ document.getElementById('apply-form').addEventListener('submit', async (e) => {
     if (!res.ok) {
       // 受付開始前（URL直打ち等）→ カウントダウン画面へ
       if (res.error === 'not_open_yet') { renderNotOpen_(res.open_at); return; }
+      // 申込の締切（開催前日23:59）を過ぎている
+      if (res.error === 'closed') {
+        showError('受付は終了いたしました。お問い合わせは主催者までお願いいたします。');
+        return;
+      }
       if (res.error === 'busy') {
         alert('ただいま大変混み合っております。\n恐れ入りますが、もう一度「申し込む」を押してくださいませ。\n\n※二重にお申込みになることはございません。');
         return;

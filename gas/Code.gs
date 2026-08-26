@@ -1,3 +1,13 @@
+/*** 神谷梓さん 受付管理システム GAS v8.8 ****************************
+ * 【v8.8 追加 2026-08-26】
+ *   ① 申込の締切 close_at を追加（開催前日23:59）。
+ *      セルフ=9/17 23:59 ／ マーケ=9/28 23:59（初回開催の前日）
+ *      締切を過ぎると submit_application が error:'closed' を返す。
+ *      ゲートのオンオフとは無関係に効く（開催後の申込を止めるため）。
+ *   ② 管理アプリから「キャンセル待ちに移す」ができるように。
+ *      待機番号は自動で最後尾に振るので、繰上げの順番は狂わない。
+ *   ③ 返金の文言をLP（開催1週間前まで全額返金）に合わせた（アプリ側）
+ *
 /*** 神谷梓さん 受付管理システム GAS v8.7 ****************************
  * 【v8.7 変更 2026-08-21】フリガナはカタカナのみ
  *   ・normalizeKana_ … 半角カナ・ひらがなをカタカナへ、スペースもそろえる
@@ -184,14 +194,14 @@ var PROLINE_URLS = {
 var SEMINARS = {
   /* dates は開催日のメモです（自動送信には使いません） */
   'self_priority':   { sheet: '📋 セルフ先行',  capacity: 20, payment: 'cash',    open_at: '2026-08-20 00:00',  // 先行は8/20から受付中
-                       dates: ['2026-09-18'] },
+                       close_at: '2026-09-17 23:59', dates: ['2026-09-18'] },
   'self_general':    { sheet: '📋 セルフ一般',  capacity: 30, payment: 'prepaid', open_at: '2026-08-24 21:00',
-                       dates: ['2026-09-18'] },
+                       close_at: '2026-09-17 23:59', dates: ['2026-09-18'] },
   'marke_priority':  { sheet: '📋 マーケ先行',  capacity: 5,  payment: 'prepaid', open_at: '2026-09-05 21:00',
-                       dates: ['2026-09-29', '2026-10-29', '2026-11-25'] },
+                       close_at: '2026-09-28 23:59', dates: ['2026-09-29', '2026-10-29', '2026-11-25'] },
   // マーケは先行枠なしの一般募集のみ（2026-08-17変更・15名）。先行枠は使わないが定義は温存
   'marke_general':   { sheet: '📋 マーケ一般',  capacity: 15, payment: 'prepaid', open_at: '2026-09-05 21:00',
-                       dates: ['2026-09-29', '2026-10-29', '2026-11-25'] }
+                       close_at: '2026-09-28 23:59', dates: ['2026-09-29', '2026-10-29', '2026-11-25'] }
 };
 
 var DEADLINE_DAYS = 3;   // 決済期限（日数）
@@ -516,6 +526,28 @@ function adminUpdateStatus_(p) {
       }
       moveScenario_(uid, 'キャンセル完了');
 
+    } else if (newStatus === 'キャンセル待ち') {
+      /* 空席があっても、ご本人の希望で待機に回すとき用（v8.8）。
+         待機番号は【いまの最大＋1】を自動で振るので、順番は狂わない。
+         ※空席があるうちは自動繰上げは起きない（繰上げはキャンセル・期限切れが
+           起きたときに動くため）。すぐ席をお渡しするなら管理画面の
+           「⬆ 待機1番を繰上げる」を押す。 */
+      var maxWait = 0;
+      var lastRowW = sh.getLastRow();
+      if (lastRowW >= DATA_START_ROW) {
+        var dataW = sh.getRange(DATA_START_ROW, 7, lastRowW - DATA_START_ROW + 1, 2).getValues();
+        for (var w = 0; w < dataW.length; w++) {
+          if (dataW[w][0] === 'キャンセル待ち') {
+            var wnw = Number(dataW[w][1]);
+            if (wnw > maxWait) maxWait = wnw;
+          }
+        }
+      }
+      sh.getRange(row, 6).setValue('');              // 決済期限はクリア
+      sh.getRange(row, 7).setValue('キャンセル待ち');
+      sh.getRange(row, 8).setValue(maxWait + 1);     // 最後尾に並ぶ
+      moveScenario_(uid, 'キャンセル待ち');
+
     } else if (newStatus === '決済案内中') {
       // 復帰（期限切れ・キャンセル済からの救済など）：期限は今から3日
       sh.getRange(row, 6).setValue(formatDate_(new Date(now.getTime() + DEADLINE_DAYS * 86400000)));
@@ -650,6 +682,15 @@ function adminSetGate_(p) {
 }
 
 /** 募集開始日時をDateで返す（未設定・不正ならnull） */
+/** 申込の締切日時。close_at が無ければ「締切なし」 */
+function closeAtDate_(config) {
+  if (!config || !config.close_at) return null;
+  var s = String(config.close_at).trim().replace(' ', 'T');
+  if (s.length === 16) s += ':00';
+  var d = new Date(s + '+09:00');   // 日本時間として確定させる
+  return isNaN(d.getTime()) ? null : d;
+}
+
 function openAtDate_(config) {
   if (!config || !config.open_at) return null;
   var s = String(config.open_at).trim().replace(' ', 'T');
@@ -662,11 +703,16 @@ function openAtDate_(config) {
 function gateInfo_(seminarKey) {
   var config = SEMINARS[seminarKey];
   var openAt = openAtDate_(config);
+  var closeAt = closeAtDate_(config);
   var gateOn = isGateOn_();
+  var now = new Date().getTime();
   return {
     gate_on: gateOn,
-    is_open: (!gateOn || !openAt || new Date().getTime() >= openAt.getTime()),
-    open_at: (config && config.open_at) ? String(config.open_at) : ''
+    is_open: (!gateOn || !openAt || now >= openAt.getTime()),
+    // 締切はゲートのオンオフに関係なく効く（開催後の申込を止めるためのもの）
+    is_closed: (!!closeAt && now > closeAt.getTime()),
+    open_at: (config && config.open_at) ? String(config.open_at) : '',
+    close_at: (config && config.close_at) ? String(config.close_at) : ''
   };
 }
 
@@ -687,6 +733,10 @@ function submitApplication_(p, dryRun) {
   var gate = gateInfo_(seminarKey);
   if (!gate.is_open && !dryRun) {
     return out_({ ok: false, error: 'not_open_yet', open_at: gate.open_at });
+  }
+  // 申込の締切（開催前日23:59）を過ぎていたら受け付けない
+  if (gate.is_closed && !dryRun) {
+    return out_({ ok: false, error: 'closed', close_at: gate.close_at });
   }
 
   var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(config.sheet);

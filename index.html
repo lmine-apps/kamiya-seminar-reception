@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=41">
+<link rel="stylesheet" href="css/style.css?v=42">
 </head>
 <body>
 <div class="container">
@@ -208,7 +208,8 @@
       <h2>本当にキャンセルされますか？</h2>
       <div class="note-box" style="border-left-color:#c96f5e; background:#fdf3ef;">
         <strong>ご注意ください</strong><br>
-        ・<strong>決済完了後の返金は一切ございません</strong>（キャンセルされてもご返金はできかねます）<br>
+        ・お支払い済みの場合、<strong>開催日の1週間前まで</strong>のキャンセルは<strong>全額ご返金</strong>いたします<br>
+        ・<strong>それ以降のご返金はいたしかねます</strong><br>
         ・キャンセル後にお席を元に戻すことはできません（空きが出た方に順次ご案内するため）
       </div>
       <form id="cancel-confirm-form">
@@ -218,7 +219,7 @@
         </div>
         <div class="form-group" style="display:flex; align-items:flex-start; gap:8px;">
           <input type="checkbox" id="cancel-agree" style="width:auto; margin-top:5px;">
-          <label for="cancel-agree" style="font-weight:400; font-size:13px; margin:0;">返金がないことを理解した上で、キャンセルを希望します</label>
+          <label for="cancel-agree" style="font-weight:400; font-size:13px; margin:0;">上記のキャンセル規定を確認した上で、キャンセルを希望します</label>
         </div>
         <button type="submit" class="btn btn-primary" id="btn-cancel-final" disabled
           style="background:linear-gradient(135deg,#c96f5e,#a85545); box-shadow:0 4px 14px rgba(168,85,69,.3);">キャンセルを確定する</button>
@@ -264,8 +265,8 @@
 
 </div>
 
-<script src="js/config.js?v=41"></script>
-<script src="js/common.js?v=41"></script>
+<script src="js/config.js?v=42"></script>
+<script src="js/common.js?v=42"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
