@@ -1,3 +1,12 @@
+/*** 神谷梓さん 受付管理システム GAS v8.9 ****************************
+ * 【v8.9 追加 2026-08-26】マーケティングセミナー向け
+ *   ① キャンセル待ち専用の入口。申込に mode=wait を付けて送ると、
+ *      空席があっても最初からキャンセル待ちに入る（待機番号は自動採番）。
+ *      通常の入口（mode無し）は従来どおり：空席あり→決済案内中／満席→待機。
+ *   ② インスタのユーザー名を【P列】に追加（マーケのみ必須・フォーム側で判定）。
+ *      @やURLを貼られても、ユーザー名だけにして保存する。
+ *      ※列は必ず末尾に足すこと。途中に挿入すると全部の番号がずれる。
+ *
 /*** 神谷梓さん 受付管理システム GAS v8.8 ****************************
  * 【v8.8 追加 2026-08-26】（v8.8.1で get_capacity にも締切情報を追加）
  *   ① 申込の締切 close_at を追加（開催前日23:59）。
@@ -168,6 +177,7 @@
  * 【列構成（各セミナーシート・10行目からデータ）】
  *  A:uid B:名前 C:メール D:電話 E:申込日時 F:期限 G:状態 H:待機順
  *  I:決済日時 J:決済方法 K:備考 L:生年月日 M:職業 N:お悩み O:読み仮名
+ *  P:インスタユーザー名（マーケのみ・v8.9で末尾に追加）
  *  ※読み仮名(O)は後から足した列。既存の並びを崩さないよう末尾に置いてある。
  *    列を増やすときも必ず末尾に足すこと（途中に挿入すると全部の番号がずれる）
  ***********************************************************/
@@ -206,8 +216,9 @@ var SEMINARS = {
 
 var DEADLINE_DAYS = 3;   // 決済期限（日数）
 var DATA_START_ROW = 10; // データ開始行
-var KANA_COL = 15;       // O列＝読み仮名（v8.5で末尾に追加）
-var LAST_COL = 15;       // O列まで
+var KANA_COL  = 15;      // O列＝読み仮名（v8.5で末尾に追加）
+var INSTA_COL = 16;      // P列＝インスタユーザー名（v8.9で末尾に追加・マーケのみ）
+var LAST_COL  = 16;      // P列まで
 
 // ========== エンドポイント ==========
 function doGet(e)  { return handleRequest_(e); }
@@ -572,6 +583,21 @@ function adminUpdateStatus_(p) {
  *   ・ひらがな → カタカナ
  *   ・全角スペース → 半角、連続スペースは1つに
  */
+/** インスタのユーザー名を必要とするセミナーか（マーケのみ） */
+function needsInsta_(seminarKey) {
+  return String(seminarKey || '').indexOf('marke') === 0;
+}
+
+/** インスタのユーザー名を整える（@や余分な空白・URLを外す） */
+function normalizeInsta_(v) {
+  var t = String(v || '').trim();
+  try { t = t.normalize('NFKC'); } catch (_) {}
+  t = t.replace(/^https?:\/\/(www\.)?instagram\.com\//i, '');  // URLを貼られた場合
+  t = t.replace(/[\/?#].*$/, '');                                 // 後ろの余計な部分
+  t = t.replace(/^@+/, '').trim();                                // 先頭の@
+  return t.slice(0, 40);
+}
+
 function normalizeKana_(v) {
   var t = String(v || '');
   try { t = t.normalize('NFKC'); } catch (_) {}
@@ -641,6 +667,7 @@ function getStatus_(p) {
     wait_number: row[7] || null,
     name: row[1] || '',
     kana: row[14] || '',
+    insta: row[15] || '',
     // 読み仮名がまだ無い方には、アプリで入力をお願いする（v8.5）
     need_kana: !String(row[14] || '').trim() && ['確定', '決済案内中', '振込報告済み', 'キャンセル待ち'].indexOf(String(row[6])) !== -1,
     payment_completed: row[6] === '確定',
@@ -781,8 +808,13 @@ function submitApplication_(p, dryRun) {
       return out_({ ok: true, already: true, status: exStatus, row: exRow });
     }
 
+    /* キャンセル待ち専用の入口から来た方（mode=wait）は、
+       空席があっても最初からキャンセル待ちに入れる。
+       ※お客さまが自分で選んだ場合だけ。通常の入口では従来どおり。 */
+    var wantWait = (String(p.mode || '') === 'wait');
+
     var now = new Date();
-    if (occupied < config.capacity) {
+    if (!wantWait && occupied < config.capacity) {
       if (config.payment === 'cash') {
         // セルフ先行：当日現金 → 即確定
         status = '確定';       deadline = '';  waitNum = '';  scenarioName = '確定';
@@ -802,6 +834,7 @@ function submitApplication_(p, dryRun) {
         seminar: seminarKey, rows_read: rows.length,
         occupied: occupied, capacity: config.capacity,
         would_status: status, would_wait: waitNum, would_scenario: scenarioName,
+        want_wait: wantWait,
         lock_held_ms: new Date().getTime() - lockedAt
       });
     }
@@ -823,9 +856,10 @@ function submitApplication_(p, dryRun) {
       p.birthday || '',
       p.job || '',
       p.worries || '',
-      normalizeKana_(p.kana)   // O:読み仮名（表記をそろえるだけ。
+      normalizeKana_(p.kana),  // O:読み仮名（表記をそろえるだけ。
                                //   カタカナでなくても申込は止めない＝席を落とさない。
                                //   形式のチェックはフォーム側で行う）
+      normalizeInsta_(p.insta)  // P:インスタユーザー名（マーケのみ・@は外して保存）
     ]);
     lockHeld = new Date().getTime() - lockedAt;
   } finally {
@@ -1570,7 +1604,7 @@ function onOpen() {
       .addItem('📣 お知らせをLINEで送る', 'sendNewsNow')
       .addItem('📣 お知らせシートを用意する', 'setupNewsSheet')
       .addSeparator()
-      .addItem('🈁 読み仮名の列を用意する', 'setupKanaColumn')
+      .addItem('🈁 追加項目の列を用意する（読み仮名・インスタ）', 'setupKanaColumn')
       .addItem('📊 集計エリアを再設置', 'setupSummaryFormulas')
       .addItem('📖 操作マニュアルを再生成', 'setupManualSheet')
       .addToUi();
@@ -1756,19 +1790,23 @@ function setupKanaColumn() {
     }
     if (!headRow) headRow = DATA_START_ROW - 2;   // 見つからなければ従来の8行目
 
-    var cell = sh.getRange(headRow, KANA_COL);
-    if (String(cell.getValue()).indexOf('読み仮名') === -1) {
-      var sample = sh.getRange(headRow, 8);       // H列（待機順）の見た目に合わせる
-      cell.setValue('読み仮名')
-        .setFontWeight(sample.getFontWeight())
-        .setBackground(sample.getBackground())
-        .setFontSize(sample.getFontSize());
+    var sample = sh.getRange(headRow, 8);        // H列（待機順）の見た目に合わせる
+    function head_(col, label, width) {
+      var cell = sh.getRange(headRow, col);
+      if (String(cell.getValue()).indexOf(label) === -1) {
+        cell.setValue(label)
+          .setFontWeight(sample.getFontWeight())
+          .setBackground(sample.getBackground())
+          .setFontSize(sample.getFontSize());
+      }
+      sh.setColumnWidth(col, width);
     }
-    sh.setColumnWidth(KANA_COL, 130);
+    head_(KANA_COL, '読み仮名', 130);
+    head_(INSTA_COL, 'インスタ', 150);
     done.push(SEMINARS[key].sheet.replace('📋 ', ''));
   });
 
-  return '🈁 読み仮名の列(O列)を用意しました：' + done.join('・');
+  return '🈁 追加項目の列（O:読み仮名／P:インスタ）を用意しました：' + done.join('・');
 }
 
 function setupSummaryFormulas() {

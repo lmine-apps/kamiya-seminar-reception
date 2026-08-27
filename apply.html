@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>受付フォーム｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=42">
+<link rel="stylesheet" href="css/style.css?v=43">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -138,6 +138,12 @@
           <label>メールアドレス<span class="req">必須</span></label>
           <input type="email" name="email" required placeholder="example@email.com" inputmode="email">
         </div>
+        <div class="form-group" id="grp-insta" style="display:none;">
+          <label>Instagramのユーザー名<span class="req">必須</span></label>
+          <input type="text" name="insta" id="f-insta" placeholder="azusa_kamiya24"
+                 autocomplete="off" inputmode="url">
+          <p class="form-note">＠は不要です。プロフィールURLを貼っていただいても構いません</p>
+        </div>
         <div class="form-group">
           <label>ご職業</label>
           <input type="text" name="job" placeholder="例：セラピスト、会社員 など">
@@ -225,11 +231,16 @@
 
 </div>
 
-<script src="js/config.js?v=42"></script>
-<script src="js/common.js?v=42"></script>
+<script src="js/config.js?v=43"></script>
+<script src="js/common.js?v=43"></script>
 <script>
 let uid = getUid();
 const seminarKey = new URLSearchParams(location.search).get('seminar');
+/* ?mode=wait … キャンセル待ち専用の入口。空席があっても最初から待機に入る。
+   マーケティングセミナー用に、通常の入口とは別のURLを配るための仕組み。 */
+const WAIT_ENTRY = new URLSearchParams(location.search).get('mode') === 'wait';
+/* インスタのユーザ名はマーケティングセミナーだけ必須 */
+const NEEDS_INSTA = String(seminarKey || '').indexOf('marke') === 0;
 const sem = CONFIG.SEMINARS[seminarKey];
 
 // 特別枠（ゲスト受付）: LINE友だち追加なしの急遽・特別対応用
@@ -330,6 +341,12 @@ function init() {
   document.getElementById('form-payment').textContent =
     sem.payment === 'cash' ? '当日 会場にて現金' : 'クレジットカード／銀行振込';
 
+  // マーケはインスタのユーザー名を必須で伺う
+  if (NEEDS_INSTA) {
+    document.getElementById('grp-insta').style.display = '';
+    document.getElementById('f-insta').required = true;
+  }
+
   showScreen('screen-form');
 
   // 受付開始前かどうかの確認が済むまでは送信ボタンを押せないようにする
@@ -368,7 +385,9 @@ function init() {
     releaseSubmit();
     if (res.ok) {
       const note = document.getElementById('capacity-note');
-      if (res.available > 0) {
+      if (WAIT_ENTRY) {
+        enterWaitEntryMode();          // 専用入口：空席の有無にかかわらず待機
+      } else if (res.available > 0) {
         note.innerHTML = '<span style="font-size:16px; font-weight:700; color:#9c6f5f;">残席：' + res.available + ' 席</span><br>' +
           '<span style="font-size:12px; color:#8a7d76;">※残席数は目安です。反映までに時間差が生じる場合があります。</span>';
       } else if (isGuest) {
@@ -420,6 +439,18 @@ function showGateOpenButton_() {
     btn.textContent = 'お申込み画面をご用意しています…';
     location.reload();
   };
+}
+
+/** キャンセル待ち専用の入口から来た方（空席があっても待機に入る）。
+    「知らないうちに待機になっていた」を防ぐため、はっきりお伝えする。 */
+function enterWaitEntryMode() {
+  waitlistMode = true;
+  document.getElementById('capacity-note').innerHTML =
+    '<span style="font-size:16px; font-weight:700; color:#9c6f5f;">キャンセル待ちのお申込みです</span><br>' +
+    'こちらは<strong>キャンセル待ち専用</strong>の受付フォームです。<br>' +
+    '<span style="font-size:12px; color:#8a7d76;">お席が空きましたら、お待ちの順にLINEでお知らせいたします' +
+    '（お手続き期限は3日以内）。<br>いますぐご参加をご希望の場合は、通常の受付フォームからお申込みくださいませ。</span>';
+  document.getElementById('btn-submit').textContent = 'キャンセル待ちで申し込む';
 }
 
 /** 満席時：キャンセル待ちモード（ユーザーが認識した上で送信できるように） */
@@ -524,6 +555,21 @@ document.getElementById('apply-form').addEventListener('submit', async (e) => {
     }
   }
 
+  // マーケはインスタのユーザー名が必須
+  if (NEEDS_INSTA) {
+    const insEl = document.getElementById('f-insta');
+    const v = String(insEl.value || '').trim()
+      .replace(/^https?:\/\/(www\.)?instagram\.com\//i, '')
+      .replace(/[\/?#].*$/, '')
+      .replace(/^@+/, '').trim();
+    insEl.value = v;
+    if (!v) {
+      alert('Instagramのユーザー名をご入力くださいませ。\n\n（例）azusa_kamiya24');
+      insEl.focus();
+      return;
+    }
+  }
+
   const btn = document.getElementById('btn-submit');
   btn.disabled = true;
   btn.textContent = '送信中…';
@@ -537,6 +583,8 @@ document.getElementById('apply-form').addEventListener('submit', async (e) => {
       seminar: seminarKey,
       name: fd.get('name'),
       kana: toKatakana_(fd.get('kana')),
+      insta: fd.get('insta') || '',
+      mode: WAIT_ENTRY ? 'wait' : '',
       phone: fd.get('phone'),
       birthday: fd.get('birthday'),
       email: fd.get('email'),
@@ -588,7 +636,7 @@ document.getElementById('apply-form').addEventListener('submit', async (e) => {
       }
       document.getElementById('done-wait-num').textContent = res.waitNum || '-';
       // 「空席のつもりで送信→実は満席」のレアケースだけお詫びを表示
-      document.getElementById('done-waiting-race-note').style.display = waitlistMode ? 'none' : '';
+      document.getElementById('done-waiting-race-note').style.display = (waitlistMode || WAIT_ENTRY) ? 'none' : '';
       showScreen('screen-done-waiting');
     } else {
       showScreen('screen-already');
