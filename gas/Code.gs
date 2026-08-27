@@ -1,3 +1,14 @@
+/*** 神谷梓さん 受付管理システム GAS v9.0 ****************************
+ * 【v9.0 追加 2026-08-26】繰り上げまわりの手当て
+ *   ① 空席があるのにキャンセル待ちの方がいると、運営のスマホへお知らせ。
+ *      1日1回まで／朝9時〜夜9時のあいだだけ（remindPromote_）。
+ *      満席後のキャンセルは従来どおり自動で繰り上がるので通知しない。
+ *   ② キャンセル待ちの方を「決済案内中」に変えると、繰り上げとして扱う。
+ *      期限3日＋後ろの方の番号を詰める＋⑤「空きができました」を送る。
+ *      → 管理アプリから【お一人を指名して】繰り上げられる。
+ *   ⚠️ スプシのG列を手で書き換えても、この処理は動きません（LINEも飛びません）。
+ *      繰り上げは必ず管理アプリのボタンから行ってください。
+ *
 /*** 神谷梓さん 受付管理システム GAS v8.9 ****************************
  * 【v8.9 追加 2026-08-26】マーケティングセミナー向け
  *   ① キャンセル待ち専用の入口。申込に mode=wait を付けて送ると、
@@ -561,9 +572,21 @@ function adminUpdateStatus_(p) {
 
     } else if (newStatus === '決済案内中') {
       // 復帰（期限切れ・キャンセル済からの救済など）：期限は今から3日
+      var prevWaitNum = Number(sh.getRange(row, 8).getValue());
       sh.getRange(row, 6).setValue(formatDate_(new Date(now.getTime() + DEADLINE_DAYS * 86400000)));
       sh.getRange(row, 7).setValue('決済案内中');
       sh.getRange(row, 8).setValue('');
+
+      /* キャンセル待ちからの繰り上げ（v9.0）。
+         自動繰り上げ（promoteNextWaiting_）と同じ後始末をここでも行う：
+         後ろの方の待機番号を1つずつ詰めて、ご本人へ⑤「空きができました」を送る。
+         ※お一人を指名して繰り上げられるようにするための分岐。 */
+      if (prev === 'キャンセル待ち') {
+        if (prevWaitNum > 0) renumberWaiting_(sh, prevWaitNum);
+        moveScenario_(uid, '空きできました');
+        notifyOps_('⬆ 繰上げました',
+          (sh.getRange(row, 2).getValue() || 'どなたか') + ' さんを繰上げました（' + config.sheet + '）。');
+      }
 
     } else {
       return out_({ ok: false, error: 'unknown status: ' + newStatus });
@@ -1300,6 +1323,58 @@ function onEdit(e) {
 }
 
 // ========== ④時限トリガー：3日期限チェック ==========
+/**
+ * 空席があるのにキャンセル待ちの方がいるとき、運営へお知らせする（v9.0）。
+ * 満席後のキャンセルは自動で繰り上がるが、
+ * 「空席が残っている状態」だけは手動で繰り上げる必要があるため、その気づき用。
+ * ・1日1回まで（同じ日に何度も鳴らさない）
+ * ・朝9時〜夜9時のあいだだけ
+ */
+var PROMOTE_HINT_FROM = 9;   // この時刻より前は鳴らさない
+var PROMOTE_HINT_TO   = 21;  // この時刻以降は鳴らさない
+
+function remindPromote_() {
+  var hour = Number(Utilities.formatDate(new Date(), 'Asia/Tokyo', 'H'));
+  if (hour < PROMOTE_HINT_FROM || hour >= PROMOTE_HINT_TO) return 0;
+
+  var today = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
+  var props = PropertiesService.getScriptProperties();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sent = 0;
+
+  Object.keys(SEMINARS).forEach(function (key) {
+    var config = SEMINARS[key];
+    var sh = ss.getSheetByName(config.sheet);
+    if (!sh) return;
+
+    var lastRow = sh.getLastRow();
+    if (lastRow < DATA_START_ROW) return;
+    var col = sh.getRange(DATA_START_ROW, 7, lastRow - DATA_START_ROW + 1, 1).getValues();
+
+    var occupied = 0, waiting = 0;
+    for (var i = 0; i < col.length; i++) {
+      var st = col[i][0];
+      if (st === '確定' || st === '決済案内中' || st === '振込報告済み') occupied++;
+      else if (st === 'キャンセル待ち') waiting++;
+    }
+
+    var free = config.capacity - occupied;
+    if (free <= 0 || waiting <= 0) return;   // 満席なら自動で回るので不要
+
+    var mark = 'PROMOTE_HINT_' + key + '_' + today;
+    if (props.getProperty(mark)) return;     // 今日はもう鳴らした
+    props.setProperty(mark, '1');
+
+    notifyOps_('⏳ 繰上げできる方がいます',
+      config.sheet.replace('📋 ', '') + 'に空席が' + free + 'つあり、' +
+      'キャンセル待ちの方が' + waiting + '名お待ちです。' +
+      '管理アプリの「⬆ 待機1番を繰上げる」からご案内できます。');
+    logAction_('promote_hint', '', config.sheet, '空席' + free + '／待機' + waiting, '運営へ通知');
+    sent++;
+  });
+  return sent;
+}
+
 function checkExpired() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var now = new Date();
@@ -1338,6 +1413,9 @@ function checkExpired() {
     notifyOps_('⏰ 期限切れ処理を行いました',
       expiredCount + '件のお申込みが期限切れになりました。待機の方がいる場合は自動で繰上げています。');
   }
+
+  // ⏳ 空席があるのに待機の方がいたら、運営へお知らせ（1日1回まで）
+  try { remindPromote_(); } catch (err) { logAction_('error', '', '', 'remindPromote failed: ' + err, ''); }
 
   // 📣 予約されたお知らせ（時刻を過ぎたものを送る）
   try { sendScheduledNews_(); } catch (err) { logAction_('error', '', '', 'news failed: ' + err, ''); }
