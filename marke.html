@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>マーケティングセミナー 受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=46">
+<link rel="stylesheet" href="css/style.css?v=47">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -44,7 +44,13 @@
       <div class="note-box" id="order-note" style="border-left-color:#b5761f; background:#fdf7f0;">
         <strong>お申込み順ではございません</strong><br>
         <strong>お支払いが完了した順</strong>に、先着15名様のご参加が確定いたします。<br>
-        <span style="font-size:12px; color:#8a7d76;">お申込み後、続けてお支払いへお進みくださいませ。15名様に達した時点で受付は終了となります。</span>
+        <span style="font-size:13px;">お申込みのあと、続けてお支払いへお進みくださいませ。</span>
+        <div style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(181,118,31,.25);">
+          <strong style="color:#c96f5e;">お支払いが間に合わなかった場合</strong><br>
+          <span style="font-size:13px;">お手続きの間に15名様に達しますと、<strong>決済画面に進んでもお支払いいただけません</strong>
+          （エラーが表示されます）。その場合は<strong>キャンセル待ち</strong>としてお申込みいただけますので、
+          恐れ入りますがそのままお進みくださいませ。</span>
+        </div>
       </div>
 
       <form id="apply-form">
@@ -106,7 +112,8 @@
       </p>
       <div class="note-box" style="border-left-color:#c96f5e; background:#fdf3ef;">
         <strong>まだご参加は確定しておりません</strong><br>
-        <span style="font-size:13px;">下のボタンからお支払いをお済ませくださいませ。</span>
+        <span style="font-size:13px;">下のボタンから、お早めにお支払いをお済ませくださいませ。<br>
+        15名様に達しますと、決済画面でお支払いいただけなくなります。</span>
       </div>
       <a class="btn btn-primary" id="btn-pay" href="#" style="margin-top:16px;">お支払いへ進む</a>
       <div id="pay-unavailable" style="display:none;" class="note-box">
@@ -232,8 +239,8 @@
 
 </div>
 
-<script src="js/config.js?v=46"></script>
-<script src="js/common.js?v=46"></script>
+<script src="js/config.js?v=47"></script>
+<script src="js/common.js?v=47"></script>
 <script>
 /* =====================================================================
  * マーケティングセミナー：LINEを使わない受付（2026-08-27〜）
@@ -418,6 +425,7 @@ function startWaitMode() {
     note.innerHTML = '<strong>キャンセル待ちのお申込みです</strong><br>' +
       '<span style="font-size:13px;">この時点ではお支払いは発生いたしません。' +
       'お席が空きましたら、神谷より直接ご連絡いたします。</span>';
+    note.style.borderLeftColor = '#9c6f5f';
   }
   const btn = document.getElementById('btn-submit');
   if (btn) btn.textContent = 'キャンセル待ちで申し込む';
