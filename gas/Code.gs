@@ -1,3 +1,8 @@
+/*** 神谷梓さん 受付管理システム GAS v9.2 ****************************
+ * 【v9.2 追加 2026-08-27】決済待ちのまま満席になった方の逃げ道
+ *   ・marke_to_wait … ご本人がキャンセル待ちへ移れる。
+ *     お支払いいただいてから「満席でした」となるのを避けるため。
+ *
 /*** 神谷梓さん 受付管理システム GAS v9.1 ****************************
  * 【v9.1 追加 2026-08-27】マーケをLINEなしで受け付ける
  *   Instagram → 受付アプリ → カード決済、という流れに変更されたため。
@@ -308,6 +313,7 @@ function handleRequest_(e) {
     if (action === 'submit_marke')         return submitMarke_(p);
     if (action === 'marke_paid')           return markePaid_(p);
     if (action === 'marke_lookup')         return markeLookup_(p);
+    if (action === 'marke_to_wait')        return markeToWait_(p);
 
     return out_({ ok: false, error: 'unknown action: ' + action });
   } catch (err) {
@@ -975,6 +981,61 @@ function markePaid_(p) {
       (name || 'お名前未記入') + ' 様が満席後に決済されました。返金のご確認をお願いします。');
   }
   return out_({ ok: true, status: status, wait_num: waitNum, app_id: appId });
+}
+
+/**
+ * 「決済待ち」のまま満席になってしまった方が、ご自分でキャンセル待ちへ移る。
+ * お支払いいただいてから「満席でした」となるのを避けるための逃げ道。
+ */
+function markeToWait_(p) {
+  var seminarKey = p.seminar || 'marke_general';
+  var config = SEMINARS[seminarKey];
+  if (!config) return out_({ ok: false, error: 'unknown seminar' });
+  var appId = String(p.app_id || '').trim();
+  if (!appId) return out_({ ok: false, error: 'app_id required' });
+
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(config.sheet);
+  if (!sh) return out_({ ok: false, error: 'sheet not found' });
+
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(LOCK_WAIT_MS)) return out_({ ok: false, error: 'busy', retry: true });
+
+  var waitNum = 0, name = '';
+  try {
+    var lastRow = sh.getLastRow();
+    if (lastRow < DATA_START_ROW) return out_({ ok: false, error: 'not found' });
+    var rows = sh.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, 8).getValues();
+
+    var myIdx = -1, maxWait = 0;
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (String(r[0]) === appId) { myIdx = i; name = String(r[1]); }
+      if (r[6] === 'キャンセル待ち') {
+        var wn = Number(r[7]);
+        if (wn > maxWait) maxWait = wn;
+      }
+    }
+    if (myIdx === -1) return out_({ ok: false, error: 'not found' });
+
+    var cur = String(rows[myIdx][6]);
+    if (cur === 'キャンセル待ち') {
+      return out_({ ok: true, already: true, status: 'キャンセル待ち', wait_num: Number(rows[myIdx][7]) || '' });
+    }
+    // 決済待ちの方だけ。すでに確定した方は動かさない
+    if (cur !== MARKE_PENDING) return out_({ ok: false, error: 'not_pending', status: cur });
+
+    waitNum = maxWait + 1;
+    sh.getRange(DATA_START_ROW + myIdx, 7).setValue('キャンセル待ち');
+    sh.getRange(DATA_START_ROW + myIdx, 8).setValue(waitNum);
+  } finally {
+    lock.releaseLock();
+  }
+
+  capacityCacheClear_(seminarKey);
+  logAction_('marke_to_wait', appId, config.sheet, '決済待ち → キャンセル待ち', 'ご本人が選択');
+  notifyOps_('⏳ キャンセル待ちへ移られました（' + config.sheet.replace('📋 ', '') + '）',
+    (name || 'お名前未記入') + ' 様が、満席のためキャンセル待ち' + waitNum + '番目に入りました。');
+  return out_({ ok: true, status: 'キャンセル待ち', wait_num: waitNum });
 }
 
 /**

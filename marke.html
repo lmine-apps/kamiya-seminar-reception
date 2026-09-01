@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>マーケティングセミナー 受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=45">
+<link rel="stylesheet" href="css/style.css?v=46">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -111,6 +111,14 @@
       <a class="btn btn-primary" id="btn-pay" href="#" style="margin-top:16px;">お支払いへ進む</a>
       <div id="pay-unavailable" style="display:none;" class="note-box">
         ただいまお支払いページをご用意しております。恐れ入りますが、しばらくしてからお試しくださいませ。
+      </div>
+      <div id="pay-full" style="display:none;">
+        <div class="note-box" style="border-left-color:#c96f5e; background:#fdf3ef;">
+          <strong>申し訳ございません。満席となりました</strong><br>
+          <span style="font-size:13px;">お手続きの間に定員に達してしまいました。
+          このままお支払いいただいてもご参加いただけません。</span>
+        </div>
+        <button class="btn btn-primary" id="btn-to-wait" style="margin-top:12px;">キャンセル待ちに切り替える</button>
       </div>
       <div id="mypage-box"></div>
     </div>
@@ -224,8 +232,8 @@
 
 </div>
 
-<script src="js/config.js?v=45"></script>
-<script src="js/common.js?v=45"></script>
+<script src="js/config.js?v=46"></script>
+<script src="js/common.js?v=46"></script>
 <script>
 /* =====================================================================
  * マーケティングセミナー：LINEを使わない受付（2026-08-27〜）
@@ -318,6 +326,7 @@ function renderStatus_(st) {
     preparePay_();
     showScreen('screen-topay');
     showMyPage_('mypage-box', appId);
+    checkStillOpen_();   // お手続きの間に満席になっていないか
   } else {
     // キャンセル済・期限切れなど → もう一度お申込みいただける
     showScreen('screen-form');
@@ -341,6 +350,41 @@ function preparePay_() {
     const sep = link.indexOf('?') === -1 ? '?' : '&';
     btn.href = link + sep + 'client_reference_id=' + encodeURIComponent(appId);
   }
+}
+
+/** お支払い画面を出したあと、まだ空席があるか確かめる */
+async function checkStillOpen_() {
+  try {
+    const res = await apiGet('get_capacity', { seminar: SEM_KEY });
+    if (!res.ok || res.available > 0) return;
+    // 満席。お支払いボタンを隠して、キャンセル待ちへの切替をご案内する
+    const pay = document.getElementById('btn-pay');
+    const na = document.getElementById('pay-unavailable');
+    const full = document.getElementById('pay-full');
+    if (pay) pay.style.display = 'none';
+    if (na) na.style.display = 'none';
+    if (full) full.style.display = '';
+  } catch (_) {}
+}
+
+/** ご本人の希望で、キャンセル待ちへ移る */
+async function toWait_() {
+  const btn = document.getElementById('btn-to-wait');
+  if (btn) { btn.disabled = true; btn.textContent = '手続き中…'; }
+  try {
+    const res = await apiPost('marke_to_wait', { seminar: SEM_KEY, app_id: appId }, 35000);
+    if (res && res.ok) {
+      const n = document.getElementById('w-num');
+      if (n) n.textContent = res.wait_num || '-';
+      showScreen('screen-waiting');
+      showMyPage_('mypage-box-wait', appId);
+      return;
+    }
+    alert('うまく切り替えられませんでした。恐れ入りますが、もう一度お試しくださいませ。');
+  } catch (_) {
+    alert('通信が不安定なようです。少し時間をおいてお試しくださいませ。');
+  }
+  if (btn) { btn.disabled = false; btn.textContent = 'キャンセル待ちに切り替える'; }
 }
 
 /** 満席かどうかを見て、フォームの出し方を決める */
@@ -486,6 +530,8 @@ document.getElementById('lookup-form').addEventListener('submit', async (e) => {
     msg.textContent = '通信が不安定なようです。少し時間をおいてお試しくださいませ。';
   }
 });
+
+document.getElementById('btn-to-wait').addEventListener('click', toWait_);
 
 /* ============ 起動 ============ */
 async function init() {
