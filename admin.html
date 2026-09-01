@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="受付管理">
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=50">
+<link rel="stylesheet" href="css/style.css?v=51">
 <style>
   .container { max-width: 720px; }
   /* タブ */
@@ -312,8 +312,8 @@
   <div class="footer">株式会社 Bonheur Lelien｜運営者専用ページ</div>
 </div>
 
-<script src="js/config.js?v=50"></script>
-<script src="js/common.js?v=50"></script>
+<script src="js/config.js?v=51"></script>
+<script src="js/common.js?v=51"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script>
@@ -910,6 +910,15 @@ function renderRoster() {
     // ゲスト受付（LINE未登録）は目立つマークを表示
     const guestMark = String(r.uid || '').indexOf('guest_') === 0
       ? '<div class="sub" style="color:#c97b3d; font-weight:700;">👤 LINEなし特別受付（LINE通知は届きません）</div>' : '';
+    // フリガナ（当日の受付・振込名義の照合用）
+    const kanaLine = r.kana ? '<div class="sub">' + esc(r.kana) + '</div>' : '';
+    // インスタ：押すとその方のプロフィールが開く（DMを送るため）
+    const insta = String(r.insta || '').trim();
+    const instaLine = insta
+      ? '<div class="sub"><a href="https://www.instagram.com/' + encodeURIComponent(insta) + '/" ' +
+        'target="_blank" rel="noopener" style="color:#c13584; font-weight:700; text-decoration:none;">' +
+        '\u{1F4F7} @' + esc(insta) + ' へDM</a></div>'
+      : '';
     const actions = (ACTION_DEFS[r.status] || []).map(a => {
       if (a.deposit) {
         return '<button class="abtn ' + a.cls + '" onclick=\'doConfirmDeposit(' + JSON.stringify(r.uid) + ',' +
@@ -919,7 +928,7 @@ function renderRoster() {
         JSON.stringify(a.st) + ',' + JSON.stringify(a.msg) + ')\'>' + a.label + '</button>';
     }).join('');
     return '<tr>' +
-      '<td><span class="nm">' + esc(r.name || '（無記名）') + '</span>' + method + memoLine + guestMark + '</td>' +
+      '<td><span class="nm">' + esc(r.name || '（無記名）') + '</span>' + kanaLine + instaLine + method + memoLine + guestMark + '</td>' +
       '<td>' + badge + '</td>' +
       '<td>' + daysLeftLabel(r.deadline, r.status) + (r.deadline && r.status === '決済案内中' ? '<div class="sub">' + shortDate(r.deadline) + 'まで</div>' : '') + '</td>' +
       '<td class="sub">' + shortDate(r.applied) + '</td>' +
