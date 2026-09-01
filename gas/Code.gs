@@ -1,3 +1,9 @@
+/*** 神谷梓さん 受付管理システム GAS v9.5 ****************************
+ * 【v9.5 追加 2026-09-01】受付開始ゲートの戻し忘れ防止
+ *   OFFにしてから30分たつと、自動でONへ戻る（運営へお知らせも飛ぶ）。
+ *   OFFのままだと募集開始日時より前に申し込めてしまうため、
+ *   実際に2度、戻し忘れの状態が発生したことを受けての対策。
+ *
 /*** 神谷梓さん 受付管理システム GAS v9.4 ****************************
  * 【v9.4 修正 2026-08-27】席を持っていない方のキャンセルで繰り上げないように
  *   「決済待ち」は残席に数えないため、その方がキャンセルしても席は空かない。
@@ -751,17 +757,45 @@ function adminSetTestPay_(p) {
 // ========== 【v6.7】受付開始ゲート（募集開始前は申し込めないようにする） ==========
 // デフォルトはON。ONの間、SEMINARSのopen_atより前は受付フォームがカウントダウン画面になる。
 // 事前テストのときだけ管理画面のスイッチでOFFにする（OFFでも動作に支障はないが、フライング申込が可能になる）
+/* ゲートをOFFにできる時間の上限。テストは数分で終わるので、
+   これを過ぎたら自動でONへ戻す（戻し忘れると募集開始前に申し込まれてしまうため） */
+var GATE_OFF_MINUTES = 30;
+
 function isGateOn_() {
   try {
-    return PropertiesService.getScriptProperties().getProperty('RECEPTION_GATE') !== '0';
+    var props = PropertiesService.getScriptProperties();
+    if (props.getProperty('RECEPTION_GATE') !== '0') return true;
+
+    // OFFになっている。期限を過ぎていたら自動でONに戻す
+    var until = Number(props.getProperty('GATE_OFF_UNTIL') || 0);
+    if (!until || new Date().getTime() > until) {
+      props.setProperty('RECEPTION_GATE', '1');
+      props.deleteProperty('GATE_OFF_UNTIL');
+      try {
+        logAction_('reception_gate', '', '', 'ON', GATE_OFF_MINUTES + '分たったので自動で戻しました');
+        notifyOps_('⏳ 受付開始ゲートを自動でONに戻しました',
+          'OFFのまま' + GATE_OFF_MINUTES + '分が過ぎたため、安全のためONに戻しました。' +
+          'テスト中でしたら、もう一度OFFにしてください。');
+      } catch (_) {}
+      return true;
+    }
+    return false;
   } catch (_) { return true; }
 }
 
 function adminSetGate_(p) {
   var v = String(p.value) === '0' ? '0' : '1';
-  PropertiesService.getScriptProperties().setProperty('RECEPTION_GATE', v);
-  logAction_('reception_gate', '', '', v === '1' ? 'ON' : 'OFF', '管理画面から切替');
-  return out_({ ok: true, gate_on: v === '1' });
+  var props = PropertiesService.getScriptProperties();
+  props.setProperty('RECEPTION_GATE', v);
+  if (v === '0') {
+    // OFFにするときは期限をつける。過ぎたら isGateOn_ が自動でONへ戻す
+    props.setProperty('GATE_OFF_UNTIL', String(new Date().getTime() + GATE_OFF_MINUTES * 60000));
+  } else {
+    props.deleteProperty('GATE_OFF_UNTIL');
+  }
+  logAction_('reception_gate', '', '', v === '1' ? 'ON' : 'OFF',
+    '管理画面から切替' + (v === '0' ? '（' + GATE_OFF_MINUTES + '分で自動的にONへ戻ります）' : ''));
+  return out_({ ok: true, gate_on: v === '1', off_minutes: (v === '0' ? GATE_OFF_MINUTES : 0) });
 }
 
 /** 募集開始日時をDateで返す（未設定・不正ならnull） */
