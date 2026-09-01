@@ -1,3 +1,8 @@
+/*** 神谷梓さん 受付管理システム GAS v9.4 ****************************
+ * 【v9.4 修正 2026-08-27】席を持っていない方のキャンセルで繰り上げないように
+ *   「決済待ち」は残席に数えないため、その方がキャンセルしても席は空かない。
+ *   なのに繰り上げてしまうと定員を1つ超えてしまう。holdsSeat_ で判定するようにした。
+ *
 /*** 神谷梓さん 受付管理システム GAS v9.3 ****************************
  * 【v9.3 追加 2026-08-27】📊 マーケ名簿（見やすい並びの一覧）
  *   ・「📋 マーケ一般」の列の並びは、システムが番号で見ているため動かせない
@@ -571,7 +576,8 @@ function adminUpdateStatus_(p) {
         renumberWaiting_(sh, myNum);
       } else {
         sh.getRange(row, 8).setValue('');
-        promoteNextWaiting_(sh);
+        // 席を持っていた方のときだけ繰り上げる（決済待ちは席を持っていない）
+        if (holdsSeat_(prev)) promoteNextWaiting_(sh);
       }
       moveScenario_(uid, 'キャンセル完了');
 
@@ -813,6 +819,15 @@ function gateInfo_(seminarKey) {
  * ===================================================================== */
 
 var MARKE_PENDING = '決済待ち';   // 申込済み・未決済。残席には数えない
+
+/**
+ * その状態が「席を持っている」かどうか。
+ * 残席の数え方と必ずそろえること（確定・決済案内中・振込報告済み）。
+ * 「決済待ち」は席を持たないので、キャンセルされても繰り上げは起こさない。
+ */
+function holdsSeat_(status) {
+  return ['確定', '決済案内中', '振込報告済み'].indexOf(String(status)) !== -1;
+}
 
 /** 申込ID（LINEのuidの代わり）。まぎらわしい文字は使わない */
 function newAppId_() {
@@ -1388,8 +1403,9 @@ function cancelApplication_(p) {
       var myNum = Number(found.data[7]);
       sh.getRange(row, 8).setValue('');
       renumberWaiting_(sh, myNum);
-    } else {
-      // 席を持っていた場合：待機1番を繰上げ
+    } else if (holdsSeat_(prevStatus)) {
+      // 席を持っていた場合だけ、待機1番を繰上げる
+      // （決済待ちの方は席を持っていないので、繰り上げると定員を超えてしまう）
       promoteNextWaiting_(sh);
     }
 
@@ -1610,12 +1626,14 @@ function onEdit(e) {
     var uid = sh.getRange(range.getRow(), 1).getValue();
 
     if (newValue === 'キャンセル済' || newValue === '期限切れ') {
+      // 変更前の状態が「席を持っていた」ときだけ繰り上げる（下で判定）
+      var prevHeld = String(e.oldValue || '');
       // 期限切れシナリオ通知（本人向け）
       if (newValue === '期限切れ') {
         moveScenario_(uid, '期限切れ');
       }
-      // 待機順1番を繰り上げ
-      promoteNextWaiting_(sh);
+      // 待機順1番を繰り上げ（席を持っていた方のときだけ）
+      if (!prevHeld || holdsSeat_(prevHeld)) promoteNextWaiting_(sh);
       logAction_('manual_status_change', uid, sheetName, '→ ' + newValue, '');
     }
 

@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>マーケティングセミナー 受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=48">
+<link rel="stylesheet" href="css/style.css?v=49">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -166,7 +166,14 @@
       </table>
       <a class="btn btn-outline" id="d-map" href="#" target="_blank" rel="noopener" style="margin-top:14px;">地図を見る</a>
     </div>
+    <div id="news-done"></div>
+    <div id="home-done"></div>
     <div id="mypage-box-done"></div>
+    <div class="card">
+      <button class="btn btn-text" id="btn-cancel-confirmed" style="font-size:12px;">
+        ご参加をキャンセルされたい場合はこちら
+      </button>
+    </div>
   </div>
 
   <!-- ============ キャンセル待ち ============ -->
@@ -183,7 +190,50 @@
         <span style="font-size:13px;">この時点ではお支払いは発生いたしません。順番がまわってきましたら、あらためてご案内いたします。</span>
       </div>
     </div>
+    <div id="news-wait"></div>
+    <div id="home-wait"></div>
     <div id="mypage-box-wait"></div>
+    <div class="card">
+      <button class="btn btn-text" id="btn-cancel-waiting" style="font-size:12px;">
+        キャンセル待ちを取り消される場合はこちら
+      </button>
+    </div>
+  </div>
+
+  <!-- ============ キャンセルのお手続き ============ -->
+  <div class="screen" id="screen-cancel-confirm">
+    <div class="badge-wrap"><span class="badge warn">キャンセルのお手続き</span></div>
+    <div class="card">
+      <h2>本当にキャンセルされますか？</h2>
+      <div class="note-box" style="border-left-color:#c96f5e; background:#fdf3ef;">
+        <strong>ご注意ください</strong><br>
+        ・お支払い済みの場合、<strong>開催日の1週間前まで</strong>のキャンセルは<strong>全額ご返金</strong>いたします<br>
+        ・<strong>それ以降のご返金はいたしかねます</strong><br>
+        ・キャンセル後にお席を元に戻すことはできません（空きが出た方に順次ご案内するため）
+      </div>
+      <form id="cancel-confirm-form">
+        <div class="form-group">
+          <label>キャンセルの理由<span class="req">必須</span></label>
+          <textarea name="reason" required placeholder="例：どうしても外せない予定が入ってしまったため"></textarea>
+        </div>
+        <div class="form-group" style="display:flex; align-items:flex-start; gap:8px;">
+          <input type="checkbox" id="cancel-agree" style="width:auto; margin-top:5px;">
+          <label for="cancel-agree" style="font-weight:400; font-size:13px; margin:0;">上記のキャンセル規定を確認した上で、キャンセルを希望します</label>
+        </div>
+        <button type="submit" class="btn btn-primary" id="btn-cancel-final" disabled
+          style="background:linear-gradient(135deg,#c96f5e,#a85545); box-shadow:0 4px 14px rgba(168,85,69,.3);">キャンセルを確定する</button>
+        <button type="button" class="btn btn-text" id="btn-cancel-back">戻る（キャンセルしない）</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ キャンセル完了 ============ -->
+  <div class="screen" id="screen-cancelled">
+    <div class="card">
+      <span class="icon-large">🕊</span>
+      <h2>キャンセルを承りました</h2>
+      <p class="message-center">お手続きが完了いたしました。<br>またのご縁を心よりお待ちしております。</p>
+    </div>
   </div>
 
   <!-- ============ 照会 ============ -->
@@ -256,8 +306,8 @@
 
 </div>
 
-<script src="js/config.js?v=48"></script>
-<script src="js/common.js?v=48"></script>
+<script src="js/config.js?v=49"></script>
+<script src="js/common.js?v=49"></script>
 <script>
 /* =====================================================================
  * マーケティングセミナー：LINEを使わない受付（2026-08-27〜）
@@ -316,6 +366,38 @@ function showMyPage_(boxId, id) {
   if (el) el.innerHTML = myPageHtml_(id);
 }
 
+/** 📣 お知らせを表示（該当するものをすべて） */
+function renderNews_(boxId, news) {
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  const list = Array.isArray(news) ? news : (news ? [news] : []);
+  const items = list.filter(n => n && (n.title || n.body));
+  if (!items.length) { box.innerHTML = ''; return; }
+  box.innerHTML = items.map(n =>
+    '<div class="card" style="border-left:3px solid #bd9a58; text-align:left;">' +
+      '<div style="font-size:11px; font-weight:700; letter-spacing:.12em; color:#bd9a58;">\u{1F4E3} お知らせ</div>' +
+      (n.title ? '<div style="font-size:15px; font-weight:700; margin-top:5px; line-height:1.6;">' + esc(n.title) + '</div>' : '') +
+      (n.body ? '<div style="font-size:13px; line-height:1.9; margin-top:6px; color:#8a7d76; white-space:pre-line;">' + esc(n.body) + '</div>' : '') +
+    '</div>'
+  ).join('');
+}
+
+/** 📱 ホーム画面に追加するご案内（次から1タップで開ける） */
+function renderHomeHint_(boxId) {
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  box.innerHTML =
+    '<div class="note-box" style="border-left-color:#7da87d; background:#f4f8f4;">' +
+      '<strong style="color:#5c8a5c;">\u{1F4F1} ホーム画面に追加しておくと便利です</strong><br>' +
+      '<span style="font-size:13px;">次からは<strong>1タップでこのページ</strong>を開けます。' +
+      'お知らせや当日のご案内も、ここからご確認いただけます。</span>' +
+      '<div style="font-size:13px; margin-top:8px; line-height:1.9;">' +
+        '<strong>iPhone</strong>：下の<strong>共有ボタン</strong>（□に↑）→「<strong>ホーム画面に追加</strong>」<br>' +
+        '<strong>Android</strong>：右上の<strong>⋮</strong>→「<strong>ホーム画面に追加</strong>」' +
+      '</div>' +
+    '</div>';
+}
+
 /** ①お申込み → ②お支払い → ③ご参加確定 の進み具合を出す */
 function drawSteps_(current, allDone) {
   ['steps-form', 'steps-topay', 'steps-done'].forEach(id => {
@@ -347,11 +429,15 @@ function renderStatus_(st) {
   const s = st.status;
   if (s === '確定') {
     drawSteps_(3, true);
+    renderNews_('news-done', st.news);
+    renderHomeHint_('home-done');
     showScreen('screen-done');
     showMyPage_('mypage-box-done', appId);
   } else if (s === 'キャンセル待ち') {
     const n = document.getElementById('w-num');
     if (n) n.textContent = st.wait_number || '-';
+    renderNews_('news-wait', st.news);
+    renderHomeHint_('home-wait');
     showScreen('screen-waiting');
     showMyPage_('mypage-box-wait', appId);
   } else if (s === '決済待ち') {
@@ -409,8 +495,10 @@ async function toWait_() {
     if (res && res.ok) {
       const n = document.getElementById('w-num');
       if (n) n.textContent = res.wait_num || '-';
+      renderHomeHint_('home-wait');
       showScreen('screen-waiting');
       showMyPage_('mypage-box-wait', appId);
+      refreshAndRender_();
       return;
     }
     alert('うまく切り替えられませんでした。恐れ入りますが、もう一度お試しくださいませ。');
@@ -519,8 +607,10 @@ document.getElementById('apply-form').addEventListener('submit', async (e) => {
     if (res.status === 'キャンセル待ち') {
       const n = document.getElementById('w-num');
       if (n) n.textContent = res.wait_num || '-';
+      renderHomeHint_('home-wait');
       showScreen('screen-waiting');
       showMyPage_('mypage-box-wait', appId);
+      refreshAndRender_();          // お知らせを拾いに行く
     } else if (res.status === '確定') {
       drawSteps_(3, true);
       showScreen('screen-done');
@@ -537,6 +627,55 @@ document.getElementById('apply-form').addEventListener('submit', async (e) => {
   } finally {
     btn.disabled = false;
     btn.textContent = label;
+  }
+});
+
+/** 送信直後・決済直後に、最新の状態を取り直して画面を作る
+    （お知らせは get_status からしか取れないため） */
+async function refreshAndRender_() {
+  try {
+    const st = await apiGet('get_status', { uid: appId, seminar: SEM_KEY });
+    if (st && st.ok && st.status && st.status !== '未登録') { renderStatus_(st); return true; }
+  } catch (_) {}
+  return false;
+}
+
+/* ============ キャンセルのお手続き ============ */
+let cancelBackTo = 'screen-done';
+
+document.getElementById('btn-cancel-confirmed').addEventListener('click', () => {
+  cancelBackTo = 'screen-done';
+  showScreen('screen-cancel-confirm');
+});
+document.getElementById('btn-cancel-waiting').addEventListener('click', () => {
+  cancelBackTo = 'screen-waiting';
+  showScreen('screen-cancel-confirm');
+});
+document.getElementById('btn-cancel-back').addEventListener('click', () => showScreen(cancelBackTo));
+document.getElementById('cancel-agree').addEventListener('change', (e) => {
+  document.getElementById('btn-cancel-final').disabled = !e.target.checked;
+});
+
+document.getElementById('cancel-confirm-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const reason = String(new FormData(e.target).get('reason') || '').trim();
+  if (!reason) return;
+  if (!confirm('本当にキャンセルしてよろしいですか？\nこの操作は取り消せません。')) return;
+
+  const btn = document.getElementById('btn-cancel-final');
+  btn.disabled = true;
+  btn.textContent = '処理中…';
+  try {
+    const res = await apiPost('cancel_application', {
+      uid: appId, reason: reason, confirm_no_refund: '1'
+    }, 35000);
+    if (res && res.ok) { showScreen('screen-cancelled'); return; }
+    showError((res && res.error) || '');
+  } catch (err) {
+    showError(String(err));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'キャンセルを確定する';
   }
 });
 
@@ -583,12 +722,16 @@ async function init() {
         if (res.status === 'キャンセル待ち') {
           const n = document.getElementById('w-num');
           if (n) n.textContent = res.wait_num || '-';
+          renderHomeHint_('home-wait');
           showScreen('screen-waiting');
           showMyPage_('mypage-box-wait', appId);
+          refreshAndRender_();
         } else {
           drawSteps_(3, true);
+          renderHomeHint_('home-done');
           showScreen('screen-done');
           showMyPage_('mypage-box-done', appId);
+          refreshAndRender_();      // お知らせを拾いに行く
         }
         return;
       }
