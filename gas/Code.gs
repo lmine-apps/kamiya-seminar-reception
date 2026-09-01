@@ -1,3 +1,10 @@
+/*** 神谷梓さん 受付管理システム GAS v9.3 ****************************
+ * 【v9.3 追加 2026-08-27】📊 マーケ名簿（見やすい並びの一覧）
+ *   ・「📋 マーケ一般」の列の並びは、システムが番号で見ているため動かせない
+ *     （G列＝状態、H列＝待機順などがずれると全部止まる）。
+ *   ・そこで見る用のシートをQUERYで別に作る。中身は自動で同期される。
+ *     並び：お名前／読み仮名／メール／インスタ／生年月日／お電話／状態／…
+ *
 /*** 神谷梓さん 受付管理システム GAS v9.2 ****************************
  * 【v9.2 追加 2026-08-27】決済待ちのまま満席になった方の逃げ道
  *   ・marke_to_wait … ご本人がキャンセル待ちへ移れる。
@@ -1983,6 +1990,7 @@ function onOpen() {
       .addItem('📣 お知らせをLINEで送る', 'sendNewsNow')
       .addItem('📣 お知らせシートを用意する', 'setupNewsSheet')
       .addSeparator()
+      .addItem('📊 マーケ名簿を作り直す', 'setupMarkeRoster')
       .addItem('🈁 追加項目の列を用意する（読み仮名・インスタ）', 'setupKanaColumn')
       .addItem('📊 集計エリアを再設置', 'setupSummaryFormulas')
       .addItem('📖 操作マニュアルを再生成', 'setupManualSheet')
@@ -2153,6 +2161,54 @@ function setupMasterLists() {
  *   ・お申込みのデータには一切触れない
  * 何度実行しても大丈夫。
  */
+/**
+ * 📊 マーケ名簿（見やすい並びの一覧）を作り直す。
+ *
+ * 「📋 マーケ一般」の列の並びはシステムが番号で見ているため動かせない。
+ * そこで、見る用のシートをQUERYで作る。中身は常に自動で同期される。
+ *   並び：お名前／読み仮名／メール／インスタ／生年月日／お電話／状態／…
+ *
+ * ⚠️ このシートは【見るだけ】。ここを書き換えても本体には反映されない。
+ *    状態を変えるときは「📋 マーケ一般」か管理アプリから。
+ */
+var MARKE_ROSTER_SHEET = '📊 マーケ名簿';
+
+function setupMarkeRoster() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var src = SEMINARS['marke_general'].sheet;
+
+  var sh = ss.getSheetByName(MARKE_ROSTER_SHEET);
+  if (!sh) { sh = ss.insertSheet(MARKE_ROSTER_SHEET); } else { sh.clear(); }
+
+  var HEAD = ['お名前', '読み仮名', 'メール', 'インスタ', '生年月日', 'お電話',
+              '状態', '待機順', 'お申込み日時', 'お支払い日時', 'ご職業', 'お悩み', '備考', '申込ID'];
+
+  sh.getRange(1, 1, 1, HEAD.length).merge()
+    .setValue('📊 マーケ名簿（見やすい並び・自動反映）')
+    .setFontSize(13).setFontWeight('bold').setFontColor('#fff')
+    .setBackground('#9c6f5f').setHorizontalAlignment('center');
+  sh.getRange(2, 1, 1, HEAD.length).merge()
+    .setValue('※「📋 マーケ一般」から自動で反映されます。ここを書き換えても本体には反映されません（さわらないでください）')
+    .setFontSize(9).setFontColor('#888').setHorizontalAlignment('center');
+  sh.getRange(4, 1, 1, HEAD.length).setValues([HEAD])
+    .setFontWeight('bold').setBackground('#f8f4ea').setFontSize(10);
+  sh.setFrozenRows(4);
+
+  /* 列の対応（📋 マーケ一般 の A〜P）
+     Col1=uid Col2=名前 Col3=メール Col4=電話 Col5=申込日時 Col6=期限
+     Col7=状態 Col8=待機順 Col9=決済日時 Col10=決済方法 Col11=備考
+     Col12=生年月日 Col13=職業 Col14=お悩み Col15=読み仮名 Col16=インスタ */
+  var q = "=IFERROR(QUERY('" + src + "'!A10:P1000,"
+        + '"select Col2, Col15, Col3, Col16, Col12, Col4, Col7, Col8, Col5, Col9, Col13, Col14, Col11, Col1 '
+        + 'where Col1 is not null order by Col5",0),"まだお申込みはありません")';
+  sh.getRange(5, 1).setFormula(q);
+
+  var widths = [130, 130, 210, 150, 110, 130, 110, 70, 140, 140, 130, 260, 180, 120];
+  for (var c = 0; c < widths.length; c++) sh.setColumnWidth(c + 1, widths[c]);
+
+  return '📊 マーケ名簿を作り直しました';
+}
+
 function setupKanaColumn() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var done = [];
