@@ -14,6 +14,13 @@ const CONFIG = {
     self_priority:  '',   // 当日現金のため不要
     self_general:   'o0KefDZWky'
   },
+  // マーケティングセミナー（2026-08-27〜 LINEを使わない方式）
+  // 秘書さんに作っていただくStripeの決済リンクをここに入れる。
+  // 空のあいだは、お支払いボタンの代わりに「ご用意しております」と表示される。
+  //   ・支払い回数の上限を 15 に設定
+  //   ・決済後のリダイレクト先を marke.html?paid=1 に設定
+  STRIPE_MARKE_LINK: '',
+
   STRIPE_URLS: {
     marke_priority: 'https://gr8dq5cg.autosns.app/pd/dZ7LuNr8e4',
     marke_general:  'https://gr8dq5cg.autosns.app/pd/dZ7LuNr8e4',

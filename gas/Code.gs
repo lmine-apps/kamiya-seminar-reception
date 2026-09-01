@@ -1,3 +1,13 @@
+/*** 神谷梓さん 受付管理システム GAS v9.1 ****************************
+ * 【v9.1 追加 2026-08-27】マーケをLINEなしで受け付ける
+ *   Instagram → 受付アプリ → カード決済、という流れに変更されたため。
+ *   ・submit_marke  … uidの代わりに【申込ID】を発行してA列へ。
+ *                     状態は「決済待ち」＝残席に数えない（席を押さえない）。
+ *   ・marke_paid    … 決済後に「確定」へ。定員を超えていたら待機＋要返金の記録。
+ *   ・marke_lookup  … メールアドレス＋生年月日でご自身の申込を探す。
+ *                     （LINEが無いので、これがアプリを開く鍵になる）
+ *   ⚠️ セルフ（LINE経由）の処理には一切手を入れていない。
+ *
 /*** 神谷梓さん 受付管理システム GAS v9.0 ****************************
  * 【v9.0 追加 2026-08-26】繰り上げまわりの手当て
  *   ① 空席があるのにキャンセル待ちの方がいると、運営のスマホへお知らせ。
@@ -294,6 +304,10 @@ function handleRequest_(e) {
     if (action === 'get_capacity')         return getCapacity_(p);
     if (action === 'cancel_application')   return cancelApplication_(p);
     if (action === 'save_kana')            return saveKana_(p);
+    // --- v9.1 マーケ（LINEを通らない申込） ---
+    if (action === 'submit_marke')         return submitMarke_(p);
+    if (action === 'marke_paid')           return markePaid_(p);
+    if (action === 'marke_lookup')         return markeLookup_(p);
 
     return out_({ ok: false, error: 'unknown action: ' + action });
   } catch (err) {
@@ -692,7 +706,7 @@ function getStatus_(p) {
     kana: row[14] || '',
     insta: row[15] || '',
     // 読み仮名がまだ無い方には、アプリで入力をお願いする（v8.5）
-    need_kana: !String(row[14] || '').trim() && ['確定', '決済案内中', '振込報告済み', 'キャンセル待ち'].indexOf(String(row[6])) !== -1,
+    need_kana: !String(row[14] || '').trim() && ['確定', '決済案内中', '振込報告済み', 'キャンセル待ち', MARKE_PENDING].indexOf(String(row[6])) !== -1,
     payment_completed: row[6] === '確定',
     payment_method: row[9] || '',
     test_pay: isTestPayOn_(),
@@ -773,6 +787,232 @@ function gateInfo_(seminarKey) {
  *   行の追加もLINE送信も一切しない。本番稼働中に混雑テストをするための入口で、
  *   管理キーが要る（admin_submit_dryrun）。お客さまからは呼べない。
  */
+/* =====================================================================
+ * マーケティングセミナー（2026-08-27〜 LINEを使わない方式）
+ *
+ * 【従来との違い】
+ *   ・LINEを通らないので uid が無い。代わりに【申込ID】を発行してA列に入れる。
+ *     A列は「本人を見分ける鍵」でしかないので、中身がuidでも申込IDでも同じに動く。
+ *   ・申込の時点では席を押さえない（状態＝「決済待ち」／残席に数えない）。
+ *     Stripeの決済リンク側で15件の上限をかけ、支払いが済んだ順に「確定」にする。
+ *   ・通知はしない。神谷さんがDMでご案内し、お客さまがご自分でアプリを開く。
+ *     開く鍵は「メールアドレス＋生年月日」（markeLookup_）。
+ * ===================================================================== */
+
+var MARKE_PENDING = '決済待ち';   // 申込済み・未決済。残席には数えない
+
+/** 申込ID（LINEのuidの代わり）。まぎらわしい文字は使わない */
+function newAppId_() {
+  var chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+  var t = '';
+  for (var i = 0; i < 8; i++) t += chars.charAt(Math.floor(Math.random() * chars.length));
+  return 'MK-' + t;
+}
+
+/** 生年月日の表記をそろえる（yyyy-MM-dd の文字列にする） */
+function normalizeBirthday_(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, 'Asia/Tokyo', 'yyyy-MM-dd');
+  var t = String(v || '').trim();
+  var m = t.match(/^(\d{4})[-\/年]\s*(\d{1,2})[-\/月]\s*(\d{1,2})/);
+  if (!m) return t;
+  return m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2);
+}
+
+function normalizeEmail_(v) {
+  return String(v || '').trim().toLowerCase();
+}
+
+/**
+ * マーケの申込を受け付ける。
+ *   mode=wait … キャンセル待ちとして登録（決済なし）
+ *   それ以外  … 「決済待ち」で登録。席は押さえない
+ */
+function submitMarke_(p) {
+  var seminarKey = p.seminar || 'marke_general';
+  var config = SEMINARS[seminarKey];
+  if (!config) return out_({ ok: false, error: 'unknown seminar' });
+
+  var email = normalizeEmail_(p.email);
+  var birthday = normalizeBirthday_(p.birthday);
+  if (!email)    return out_({ ok: false, error: 'email required' });
+  if (!birthday) return out_({ ok: false, error: 'birthday required' });
+
+  var gate = gateInfo_(seminarKey);
+  if (!gate.is_open)  return out_({ ok: false, error: 'not_open_yet', open_at: gate.open_at });
+  if (gate.is_closed) return out_({ ok: false, error: 'closed', close_at: gate.close_at });
+
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(config.sheet);
+  if (!sh) return out_({ ok: false, error: 'sheet not found' });
+
+  var wantWait = (String(p.mode || '') === 'wait');
+
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(LOCK_WAIT_MS)) return out_({ ok: false, error: 'busy', retry: true });
+
+  var appId = '', status = '', waitNum = '';
+  try {
+    var lastRow = sh.getLastRow();
+    var rows = (lastRow >= DATA_START_ROW)
+      ? sh.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, 8).getValues()
+      : [];
+
+    var maxWait = 0, used = {};
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (r[0]) used[String(r[0])] = true;
+      // 同じメールアドレスで、まだ生きているお申込みがあればそちらを返す
+      if (normalizeEmail_(r[2]) === email &&
+          ['キャンセル済', '期限切れ'].indexOf(String(r[6])) === -1) {
+        return out_({ ok: true, already: true, app_id: String(r[0]), status: String(r[6]) });
+      }
+      if (r[6] === 'キャンセル待ち') {
+        var wn = Number(r[7]);
+        if (wn > maxWait) maxWait = wn;
+      }
+    }
+
+    do { appId = newAppId_(); } while (used[appId]);
+
+    if (wantWait) { status = 'キャンセル待ち'; waitNum = maxWait + 1; }
+    else          { status = MARKE_PENDING;    waitNum = ''; }
+
+    sh.appendRow([
+      appId,
+      p.name || '',
+      p.email || '',
+      p.phone || '',
+      formatDate_(new Date()),
+      '',            // F:決済期限（決済待ちは期限なし。Stripe側で締め切る）
+      status,
+      waitNum,
+      '', '', '',    // I:決済日時 J:決済方法 K:備考
+      birthday,
+      p.job || '',
+      p.worries || '',
+      normalizeKana_(p.kana),
+      normalizeInsta_(p.insta)
+    ]);
+  } finally {
+    lock.releaseLock();
+  }
+
+  capacityCacheClear_(seminarKey);
+  logAction_('marke_apply', appId, config.sheet, '→ ' + status, 'アプリ（LINEなし）');
+  if (status === 'キャンセル待ち') {
+    notifyOps_('⏳ キャンセル待ちのお申込み（' + config.sheet.replace('📋 ', '') + '）',
+      (p.name || 'お名前未記入') + ' 様が待機' + waitNum + '番目に入りました。');
+  }
+  return out_({ ok: true, app_id: appId, status: status, wait_num: waitNum });
+}
+
+/**
+ * Stripeの決済が終わって戻ってきたとき、「確定」にする。
+ * ※Stripe側でも15件で締め切るが、万一同時決済で溢れた場合の保険として
+ *   ここでも定員を数え、超えていたらキャンセル待ちに回す。
+ */
+function markePaid_(p) {
+  var seminarKey = p.seminar || 'marke_general';
+  var config = SEMINARS[seminarKey];
+  if (!config) return out_({ ok: false, error: 'unknown seminar' });
+  var appId = String(p.app_id || '').trim();
+  if (!appId) return out_({ ok: false, error: 'app_id required' });
+
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(config.sheet);
+  if (!sh) return out_({ ok: false, error: 'sheet not found' });
+
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(LOCK_WAIT_MS)) return out_({ ok: false, error: 'busy', retry: true });
+
+  var status = '', waitNum = '', name = '';
+  try {
+    var lastRow = sh.getLastRow();
+    if (lastRow < DATA_START_ROW) return out_({ ok: false, error: 'not found' });
+    var rows = sh.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, 8).getValues();
+
+    var myIdx = -1, confirmed = 0, maxWait = 0;
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (String(r[0]) === appId) { myIdx = i; name = String(r[1]); }
+      if (r[6] === '確定') confirmed++;
+      else if (r[6] === 'キャンセル待ち') {
+        var wn = Number(r[7]);
+        if (wn > maxWait) maxWait = wn;
+      }
+    }
+    if (myIdx === -1) return out_({ ok: false, error: 'not found' });
+
+    var row = DATA_START_ROW + myIdx;
+    var prev = String(rows[myIdx][6]);
+    if (prev === '確定') {
+      return out_({ ok: true, already: true, status: '確定', app_id: appId });
+    }
+
+    if (confirmed < config.capacity) {
+      status = '確定'; waitNum = '';
+      sh.getRange(row, 6).setValue('');
+      sh.getRange(row, 7).setValue('確定');
+      sh.getRange(row, 8).setValue('');
+      sh.getRange(row, 9).setValue(formatDate_(new Date()));
+      sh.getRange(row, 10).setValue('カード');
+    } else {
+      // 溢れた場合（Stripeの上限をすり抜けたとき）。返金のご案内が必要
+      status = 'キャンセル待ち'; waitNum = maxWait + 1;
+      sh.getRange(row, 7).setValue('キャンセル待ち');
+      sh.getRange(row, 8).setValue(waitNum);
+      sh.getRange(row, 11).setValue('⚠️満席後の決済／要返金確認 ' + formatDate_(new Date()));
+    }
+  } finally {
+    lock.releaseLock();
+  }
+
+  capacityCacheClear_(seminarKey);
+  logAction_('marke_paid', appId, config.sheet, '→ ' + status, 'カード決済後');
+  if (status === '確定') {
+    notifyOps_('🌸 お支払い完了（' + config.sheet.replace('📋 ', '') + '）',
+      (name || 'お名前未記入') + ' 様のお支払いが完了し、ご参加が確定しました。');
+  } else {
+    notifyOps_('⚠️ 満席後のお支払いです（' + config.sheet.replace('📋 ', '') + '）',
+      (name || 'お名前未記入') + ' 様が満席後に決済されました。返金のご確認をお願いします。');
+  }
+  return out_({ ok: true, status: status, wait_num: waitNum, app_id: appId });
+}
+
+/**
+ * メールアドレス＋生年月日で、ご自身のお申込みを探す。
+ * ※メールだけだと他人が開けてしまうため、必ず2つ揃ったときだけ返す。
+ */
+function markeLookup_(p) {
+  var email = normalizeEmail_(p.email);
+  var birthday = normalizeBirthday_(p.birthday);
+  if (!email || !birthday) return out_({ ok: false, error: 'email and birthday required' });
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var found = null;
+
+  Object.keys(SEMINARS).forEach(function (key) {
+    if (found) return;
+    if (String(key).indexOf('marke') !== 0) return;   // マーケのみ
+    var sh = ss.getSheetByName(SEMINARS[key].sheet);
+    if (!sh) return;
+    var lastRow = sh.getLastRow();
+    if (lastRow < DATA_START_ROW) return;
+    var rows = sh.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, LAST_COL).getValues();
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (!r[0]) continue;
+      if (normalizeEmail_(r[2]) !== email) continue;
+      if (normalizeBirthday_(r[11]) !== birthday) continue;
+      found = { key: key, app_id: String(r[0]) };
+      return;
+    }
+  });
+
+  // 見つからない理由（メール違い／生年月日違い）は伝えない
+  if (!found) return out_({ ok: false, error: 'not_found' });
+  logAction_('marke_lookup', found.app_id, SEMINARS[found.key].sheet, '照会成功', '');
+  return out_({ ok: true, app_id: found.app_id, seminar: found.key });
+}
+
 function submitApplication_(p, dryRun) {
   var seminarKey = p.seminar;
   var config = SEMINARS[seminarKey];

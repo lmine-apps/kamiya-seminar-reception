@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="robots" content="noindex">
+<title>マーケティングセミナー 受付｜Bonheur Lelien</title>
+<link rel="icon" type="image/png" href="assets/favicon-32.png">
+<link rel="stylesheet" href="css/style.css?v=45">
+</head>
+<body class="page-photo-bg">
+<div class="container">
+
+  <div class="header">
+    <img src="assets/logo.png" alt="A'z" class="brand-logo">
+    <div class="brand">BONHEUR LELIEN</div>
+    <h1>マーケティングセミナー</h1>
+    <div class="divider"></div>
+  </div>
+
+  <!-- ローディング -->
+  <div id="loading" style="display:none;">
+    <div class="spinner"></div>
+    <div id="loading-msg">読み込んでいます…</div>
+  </div>
+
+  <!-- ============ 申込フォーム ============ -->
+  <div class="screen" id="screen-form">
+    <div class="card">
+      <h2 id="sem-title">マーケティングセミナー</h2>
+      <table class="info-table">
+        <tr><th>日程</th><td id="sem-schedule"></td></tr>
+        <tr><th>会場</th><td id="sem-venue"></td></tr>
+        <tr><th>受講料</th><td id="sem-price"></td></tr>
+        <tr><th>お支払い</th><td>クレジットカード</td></tr>
+      </table>
+      <p class="form-note" id="capacity-note" style="text-align:center; margin-top:10px;"></p>
+    </div>
+
+    <div class="card">
+      <div class="note-box" id="order-note" style="border-left-color:#b5761f; background:#fdf7f0;">
+        <strong>お申込み順ではございません</strong><br>
+        <strong>お支払いが完了した順</strong>に、先着15名様のご参加が確定いたします。<br>
+        <span style="font-size:12px; color:#8a7d76;">お申込み後、続けてお支払いへお進みくださいませ。15名様に達した時点で受付は終了となります。</span>
+      </div>
+
+      <form id="apply-form">
+        <div class="form-group">
+          <label>お名前<span class="req">必須</span></label>
+          <input type="text" name="name" required placeholder="山田 花子">
+        </div>
+        <div class="form-group">
+          <label>お名前（フリガナ）<span class="req">必須</span></label>
+          <input type="text" name="kana" id="f-kana" required placeholder="ヤマダ ハナコ" autocomplete="off" inputmode="katakana">
+          <p class="form-note">カタカナでご記入ください。漢字ではなく<b>読み方</b>をお願いいたします</p>
+        </div>
+        <div class="form-group">
+          <label>お電話番号<span class="req">必須</span></label>
+          <input type="tel" name="phone" required placeholder="090-1234-5678" inputmode="tel">
+        </div>
+        <div class="form-group">
+          <label>生年月日<span class="req">必須</span></label>
+          <input type="date" name="birthday" id="f-birthday" required>
+          <p class="form-note">あとからご確認いただく際の<b>合言葉</b>になります</p>
+        </div>
+        <div class="form-group">
+          <label>メールアドレス<span class="req">必須</span></label>
+          <input type="email" name="email" id="f-email" required placeholder="example@email.com" inputmode="email">
+          <p class="form-note">あとからご確認いただく際の<b>合言葉</b>になります</p>
+        </div>
+        <div class="form-group">
+          <label>Instagramのユーザー名<span class="req">必須</span></label>
+          <input type="text" name="insta" id="f-insta" required placeholder="azusa_kamiya24" autocomplete="off">
+          <p class="form-note">＠は不要です。プロフィールURLを貼っていただいても構いません</p>
+        </div>
+        <div class="form-group">
+          <label>ご職業</label>
+          <input type="text" name="job" placeholder="例：セラピスト、会社員 など">
+        </div>
+        <div class="form-group">
+          <label>いま感じているお悩み<span class="req">必須</span></label>
+          <textarea name="worries" required placeholder="お気軽にお書きくださいませ"></textarea>
+        </div>
+        <div class="note-box">
+          お預かりした個人情報は、セミナー運営のご連絡のみに使用いたします。
+        </div>
+        <button type="submit" class="btn btn-primary" id="btn-submit">この内容で申し込む</button>
+      </form>
+      <button class="btn btn-text" onclick="showScreen('screen-lookup')" style="margin-top:6px;">
+        すでにお申込みの方はこちら
+      </button>
+    </div>
+  </div>
+
+  <!-- ============ お支払いへ ============ -->
+  <div class="screen" id="screen-topay">
+    <div class="card">
+      <span class="icon-large">💳</span>
+      <h2>お支払いへお進みください</h2>
+      <p class="message-center">
+        お申込みを承りました。<br>
+        <strong>お支払いが完了した順</strong>に、<br>先着15名様のご参加が確定いたします。
+      </p>
+      <div class="note-box" style="border-left-color:#c96f5e; background:#fdf3ef;">
+        <strong>まだご参加は確定しておりません</strong><br>
+        <span style="font-size:13px;">下のボタンからお支払いをお済ませくださいませ。</span>
+      </div>
+      <a class="btn btn-primary" id="btn-pay" href="#" style="margin-top:16px;">お支払いへ進む</a>
+      <div id="pay-unavailable" style="display:none;" class="note-box">
+        ただいまお支払いページをご用意しております。恐れ入りますが、しばらくしてからお試しくださいませ。
+      </div>
+      <div id="mypage-box"></div>
+    </div>
+  </div>
+
+  <!-- ============ ご参加確定 ============ -->
+  <div class="screen" id="screen-done">
+    <div class="badge-wrap"><span class="badge">ご参加確定</span></div>
+    <div class="card">
+      <span class="icon-large">🌸</span>
+      <h2>ご参加が確定いたしました</h2>
+      <p class="message-center">お支払いをご確認いたしました。<br>当日お会いできますのを楽しみにしております。</p>
+    </div>
+    <div class="card">
+      <h2>当日のご案内</h2>
+      <table class="info-table">
+        <tr><th>日程</th><td id="d-schedule"></td></tr>
+        <tr><th>会場</th><td id="d-venue"></td></tr>
+        <tr><th>住所</th><td id="d-address"></td></tr>
+        <tr><th>持ち物</th><td id="d-items"></td></tr>
+      </table>
+      <a class="btn btn-outline" id="d-map" href="#" target="_blank" rel="noopener" style="margin-top:14px;">地図を見る</a>
+    </div>
+    <div id="mypage-box-done"></div>
+  </div>
+
+  <!-- ============ キャンセル待ち ============ -->
+  <div class="screen" id="screen-waiting">
+    <div class="badge-wrap"><span class="badge warn">キャンセル待ち</span></div>
+    <div class="card">
+      <span class="icon-large">🕊</span>
+      <h2>キャンセル待ちで承りました</h2>
+      <p class="message-center">
+        お待ちの順番は <strong id="w-num">-</strong> 番目です。<br>
+        お席が空きましたら、<strong>神谷より直接ご連絡</strong>いたします。
+      </p>
+      <div class="note-box">
+        <span style="font-size:13px;">この時点ではお支払いは発生いたしません。順番がまわってきましたら、あらためてご案内いたします。</span>
+      </div>
+    </div>
+    <div id="mypage-box-wait"></div>
+  </div>
+
+  <!-- ============ 照会 ============ -->
+  <div class="screen" id="screen-lookup">
+    <div class="card">
+      <span class="icon-large">🔎</span>
+      <h2>お申込み内容の確認</h2>
+      <p class="message-center">お申込みのときにご記入いただいた<br><strong>メールアドレス</strong>と<strong>生年月日</strong>をご入力ください。</p>
+      <form id="lookup-form">
+        <div class="form-group">
+          <label>メールアドレス<span class="req">必須</span></label>
+          <input type="email" name="email" required placeholder="example@email.com" inputmode="email">
+        </div>
+        <div class="form-group">
+          <label>生年月日<span class="req">必須</span></label>
+          <input type="date" name="birthday" required>
+        </div>
+        <p class="form-note" id="lookup-msg" style="text-align:center; color:#c96f5e;"></p>
+        <button type="submit" class="btn btn-primary">確認する</button>
+      </form>
+      <button class="btn btn-text" onclick="showScreen('screen-form')" style="margin-top:6px;">戻る</button>
+    </div>
+  </div>
+
+  <!-- ============ 受付開始前 ============ -->
+  <div class="screen" id="screen-notopen">
+    <div class="card">
+      <span class="icon-large">⏳</span>
+      <h2>受付開始までお待ちください</h2>
+      <p class="message-center">
+        <strong id="no-title">マーケティングセミナー</strong><br>
+        <span style="font-size:13px; color:#8a7d76;" id="no-schedule"></span>
+      </p>
+      <div class="note-box" style="border-left-color:#7da87d; background:#f4f8f4;">
+        受付開始：<strong id="no-openat"></strong><br>
+        <span style="font-size:13px;">お時間になりましたら、このページを開き直してくださいませ。</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 受付終了 ============ -->
+  <div class="screen" id="screen-closed">
+    <div class="card">
+      <span class="icon-large">🙏</span>
+      <h2>受付は終了いたしました</h2>
+      <p class="message-center">たくさんのお申込みをありがとうございました。<br>お問い合わせは主催者までお願いいたします。</p>
+    </div>
+  </div>
+
+  <!-- ============ 満席 ============ -->
+  <div class="screen" id="screen-full">
+    <div class="card">
+      <span class="icon-large">🙏</span>
+      <h2>満席となりました</h2>
+      <p class="message-center">おかげさまで定員に達しました。<br>キャンセル待ちをご希望の方は、下からお申込みいただけます。</p>
+      <button class="btn btn-primary" onclick="startWaitMode()" style="margin-top:16px;">キャンセル待ちに申し込む</button>
+    </div>
+  </div>
+
+  <!-- ============ エラー ============ -->
+  <div class="screen" id="screen-error">
+    <div class="card">
+      <span class="icon-large">🙏</span>
+      <h2>送信できませんでした</h2>
+      <p class="message-center">通信状況をご確認のうえ、<br>もう一度お試しくださいませ。</p>
+      <p class="form-note" id="error-detail" style="text-align:center;"></p>
+      <button class="btn btn-outline" onclick="location.reload();" style="margin-top:16px;">やり直す</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="js/config.js?v=45"></script>
+<script src="js/common.js?v=45"></script>
+<script>
+/* =====================================================================
+ * マーケティングセミナー：LINEを使わない受付（2026-08-27〜）
+ *   ・LINEのuidが無いので、申込IDをGASに発行してもらい localStorage に持つ
+ *   ・端末が変わったときは「メールアドレス＋生年月日」で照会して取り戻す
+ *   ・申込では席を押さえない。Stripeでお支払いが済んだ順に15名が確定
+ * ===================================================================== */
+
+const SEM_KEY = 'marke_general';
+const STORE_KEY = 'kamiya_marke_id';
+const params = new URLSearchParams(location.search);
+const sem = (typeof CONFIG !== 'undefined' && CONFIG.SEMINARS) ? CONFIG.SEMINARS[SEM_KEY] : null;
+
+let appId = params.get('id') || readStore_();
+let waitMode = params.get('mode') === 'wait';
+
+function readStore_() { try { return localStorage.getItem(STORE_KEY) || ''; } catch (_) { return ''; } }
+function writeStore_(v) { try { localStorage.setItem(STORE_KEY, v); } catch (_) {} }
+
+function esc(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/** フリガナの表記をそろえる（半角カナ→全角、ひらがな→カタカナ） */
+function toKatakana_(v) {
+  let t = String(v || '');
+  try { t = t.normalize('NFKC'); } catch (_) {}
+  t = t.replace(/[ぁ-ゖ]/g, c => String.fromCharCode(c.charCodeAt(0) + 0x60));
+  return t.replace(/\s+/g, ' ').trim();
+}
+function isKana_(v) { return /^[ァ-ヶー・ ]+$/.test(String(v || '')); }
+
+/** Instagramのユーザー名だけ取り出す（@やURLを外す） */
+function cleanInsta_(v) {
+  return String(v || '').trim()
+    .replace(/^https?:\/\/(www\.)?instagram\.com\//i, '')
+    .replace(/[\/?#].*$/, '')
+    .replace(/^@+/, '').trim();
+}
+
+/** ご自身のページのURL（控えていただく用） */
+function myPageHtml_(id) {
+  const url = location.origin + location.pathname + '?id=' + encodeURIComponent(id);
+  return '<div class="note-box" style="margin-top:14px;">' +
+    '<strong>このページをあとから開くには</strong><br>' +
+    '<span style="font-size:13px;">下のURLを保存しておいてください。お使いの端末を変えた場合は、' +
+    'トップから<b>メールアドレスと生年月日</b>でもご確認いただけます。</span>' +
+    '<div style="margin-top:8px; font-size:12px; word-break:break-all; color:#8a7d76;">' + esc(url) + '</div>' +
+    '<div style="font-size:11px; color:#b3a79e; margin-top:6px;">受付番号：' + esc(id) + '</div>' +
+    '</div>';
+}
+function showMyPage_(boxId, id) {
+  const el = document.getElementById(boxId);
+  if (el) el.innerHTML = myPageHtml_(id);
+}
+
+/** セミナー情報を画面に流し込む */
+function fillSeminar_() {
+  if (!sem) return;
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  set('sem-title', sem.title);
+  set('sem-schedule', sem.schedule);
+  set('sem-venue', sem.venue ? sem.venue.name : '');
+  set('sem-price', sem.price);
+  set('no-title', sem.title);
+  set('no-schedule', sem.schedule);
+  set('d-schedule', sem.schedule);
+  set('d-venue', sem.venue ? sem.venue.name : '');
+  set('d-address', sem.venue ? sem.venue.address : '');
+  set('d-items', sem.items || '筆記用具');
+  const map = document.getElementById('d-map');
+  if (map && sem.venue && sem.venue.mapUrl) map.href = sem.venue.mapUrl;
+}
+
+/** 状態に応じた画面を出す */
+function renderStatus_(st) {
+  if (!st || !st.ok) { showScreen('screen-form'); return; }
+  const s = st.status;
+  if (s === '確定') {
+    showScreen('screen-done');
+    showMyPage_('mypage-box-done', appId);
+  } else if (s === 'キャンセル待ち') {
+    const n = document.getElementById('w-num');
+    if (n) n.textContent = st.wait_number || '-';
+    showScreen('screen-waiting');
+    showMyPage_('mypage-box-wait', appId);
+  } else if (s === '決済待ち') {
+    preparePay_();
+    showScreen('screen-topay');
+    showMyPage_('mypage-box', appId);
+  } else {
+    // キャンセル済・期限切れなど → もう一度お申込みいただける
+    showScreen('screen-form');
+  }
+}
+
+/** 決済ボタンの用意 */
+function preparePay_() {
+  const btn = document.getElementById('btn-pay');
+  const na = document.getElementById('pay-unavailable');
+  const link = (typeof CONFIG !== 'undefined') ? (CONFIG.STRIPE_MARKE_LINK || '') : '';
+  if (!link) {
+    if (btn) btn.style.display = 'none';
+    if (na) na.style.display = '';
+    return;
+  }
+  if (na) na.style.display = 'none';
+  if (btn) {
+    btn.style.display = '';
+    // 決済後、このページに戻ってきたときに分かるよう申込IDを持たせる
+    const sep = link.indexOf('?') === -1 ? '?' : '&';
+    btn.href = link + sep + 'client_reference_id=' + encodeURIComponent(appId);
+  }
+}
+
+/** 満席かどうかを見て、フォームの出し方を決める */
+async function loadCapacity_() {
+  const note = document.getElementById('capacity-note');
+  try {
+    const res = await apiGet('get_capacity', { seminar: SEM_KEY });
+    if (!res.ok) return;
+    if (res.is_open === false) {
+      const o = document.getElementById('no-openat');
+      if (o && res.open_at) o.textContent = res.open_at;
+      showScreen('screen-notopen');
+      return;
+    }
+    if (res.is_closed) { showScreen('screen-closed'); return; }
+    if (!waitMode && res.available <= 0) { showScreen('screen-full'); return; }
+    if (note) {
+      note.innerHTML = waitMode
+        ? '<span style="font-size:15px; font-weight:700; color:#9c6f5f;">キャンセル待ちのお申込みです</span>'
+        : '<span style="font-size:16px; font-weight:700; color:#9c6f5f;">残席：' + res.available + ' 席</span>' +
+          '<br><span style="font-size:12px; color:#8a7d76;">※お支払いが完了した順に確定いたします</span>';
+    }
+  } catch (_) { /* 取れなくても申込は止めない */ }
+}
+
+/** キャンセル待ちモードに切り替える */
+function startWaitMode() {
+  waitMode = true;
+  const note = document.getElementById('order-note');
+  if (note) {
+    note.innerHTML = '<strong>キャンセル待ちのお申込みです</strong><br>' +
+      '<span style="font-size:13px;">この時点ではお支払いは発生いたしません。' +
+      'お席が空きましたら、神谷より直接ご連絡いたします。</span>';
+  }
+  const btn = document.getElementById('btn-submit');
+  if (btn) btn.textContent = 'キャンセル待ちで申し込む';
+  const cap = document.getElementById('capacity-note');
+  if (cap) cap.innerHTML = '<span style="font-size:15px; font-weight:700; color:#9c6f5f;">キャンセル待ちのお申込みです</span>';
+  showScreen('screen-form');
+}
+
+/* ============ 申込フォームの送信 ============ */
+document.getElementById('apply-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const kanaEl = document.getElementById('f-kana');
+  kanaEl.value = toKatakana_(kanaEl.value);
+  if (!isKana_(kanaEl.value)) {
+    alert('フリガナはカタカナでご入力くださいませ。\n\n（例）ヤマダ ハナコ');
+    kanaEl.focus(); kanaEl.select();
+    return;
+  }
+  const insEl = document.getElementById('f-insta');
+  insEl.value = cleanInsta_(insEl.value);
+  if (!insEl.value) {
+    alert('Instagramのユーザー名をご入力くださいませ。\n\n（例）azusa_kamiya24');
+    insEl.focus();
+    return;
+  }
+
+  const btn = document.getElementById('btn-submit');
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '送信中…';
+  showLoading(true);
+
+  const fd = new FormData(e.target);
+  try {
+    const res = await apiPost('submit_marke', {
+      seminar: SEM_KEY,
+      mode: waitMode ? 'wait' : '',
+      name: fd.get('name'),
+      kana: kanaEl.value,
+      phone: fd.get('phone'),
+      birthday: fd.get('birthday'),
+      email: fd.get('email'),
+      insta: insEl.value,
+      job: fd.get('job'),
+      worries: fd.get('worries')
+    }, 35000);
+    showLoading(false);
+
+    if (!res || !res.ok) {
+      const err = res ? res.error : '';
+      if (err === 'not_open_yet') { showScreen('screen-notopen'); return; }
+      if (err === 'closed') { showScreen('screen-closed'); return; }
+      if (err === 'busy') {
+        alert('ただいま大変混み合っております。\n恐れ入りますが、もう一度お試しくださいませ。\n\n※二重にお申込みになることはございません。');
+        return;
+      }
+      showError(err || '');
+      return;
+    }
+
+    appId = res.app_id;
+    writeStore_(appId);
+
+    if (res.status === 'キャンセル待ち') {
+      const n = document.getElementById('w-num');
+      if (n) n.textContent = res.wait_num || '-';
+      showScreen('screen-waiting');
+      showMyPage_('mypage-box-wait', appId);
+    } else if (res.status === '確定') {
+      showScreen('screen-done');
+      showMyPage_('mypage-box-done', appId);
+    } else {
+      preparePay_();
+      showScreen('screen-topay');
+      showMyPage_('mypage-box', appId);
+    }
+  } catch (err) {
+    showLoading(false);
+    showError(String(err));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+});
+
+/* ============ 照会（メール＋生年月日） ============ */
+document.getElementById('lookup-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById('lookup-msg');
+  msg.textContent = '';
+  showLoading(true);
+  const fd = new FormData(e.target);
+  try {
+    const res = await apiPost('marke_lookup', {
+      email: fd.get('email'),
+      birthday: fd.get('birthday')
+    }, 35000);
+    showLoading(false);
+    if (!res || !res.ok) {
+      msg.textContent = 'お申込みが見つかりませんでした。ご入力内容をお確かめくださいませ。';
+      return;
+    }
+    appId = res.app_id;
+    writeStore_(appId);
+    const st = await apiGet('get_status', { uid: appId, seminar: SEM_KEY });
+    renderStatus_(st);
+  } catch (_) {
+    showLoading(false);
+    msg.textContent = '通信が不安定なようです。少し時間をおいてお試しくださいませ。';
+  }
+});
+
+/* ============ 起動 ============ */
+async function init() {
+  fillSeminar_();
+
+  // Stripeから戻ってきた（?paid=1）
+  if (params.get('paid') === '1' && appId) {
+    showLoading(true);
+    try {
+      const res = await apiPost('marke_paid', { seminar: SEM_KEY, app_id: appId }, 35000);
+      showLoading(false);
+      if (res && res.ok) {
+        if (res.status === 'キャンセル待ち') {
+          const n = document.getElementById('w-num');
+          if (n) n.textContent = res.wait_num || '-';
+          showScreen('screen-waiting');
+          showMyPage_('mypage-box-wait', appId);
+        } else {
+          showScreen('screen-done');
+          showMyPage_('mypage-box-done', appId);
+        }
+        return;
+      }
+    } catch (_) { showLoading(false); }
+  }
+
+  // 申込IDがあれば、その方の状態を出す
+  if (appId) {
+    showLoading(true);
+    try {
+      const st = await apiGet('get_status', { uid: appId, seminar: SEM_KEY });
+      showLoading(false);
+      if (st && st.ok && st.status && st.status !== '未登録') {
+        renderStatus_(st);
+        return;
+      }
+    } catch (_) { showLoading(false); }
+  }
+
+  if (waitMode) startWaitMode();
+  else showScreen('screen-form');
+  loadCapacity_();
+}
+
+init();
+</script>
+</body>
+</html>

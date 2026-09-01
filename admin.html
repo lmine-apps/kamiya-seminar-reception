@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="受付管理">
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=44">
+<link rel="stylesheet" href="css/style.css?v=45">
 <style>
   .container { max-width: 720px; }
   /* タブ */
@@ -63,6 +63,7 @@
   .st-kakutei   { background:#e7f0e7; color:#5c8a5c; }
   .st-kessai    { background:#fdeee3; color:#c97b3d; }
   .st-furikomi  { background:#e5edf7; color:#4a6fa5; }
+  .st-machi     { background:#fdf1e6; color:#b5761f; }
   .st-taiki     { background:#efe5f5; color:#8a5ca5; }
   .st-kigen     { background:#eeeae7; color:#9a8f88; }
   .st-cancel    { background:#eeeae7; color:#9a8f88; }
@@ -262,6 +263,7 @@
         <tr><th><span class="st st-kessai">決済案内中</span></th><td>席は確保済み・お支払い待ち（期限3日）</td></tr>
         <tr><th><span class="st st-furikomi">振込報告済み</span></th><td>お客さまが「振り込んだ」と報告済み → 入金確認してください</td></tr>
         <tr><th><span class="st st-kakutei">確定</span></th><td>お支払い確認済み・参加確定</td></tr>
+        <tr><th><span class="st st-machi">決済待ち</span></th><td>マーケのお申込み済み・まだお支払いがない方。<b>残席には数えません</b>（お支払いが済んだ順に確定）</td></tr>
         <tr><th><span class="st st-taiki">キャンセル待ち</span></th><td>満席のため待機中（番号順に自動繰上げ）</td></tr>
         <tr><th><span class="st st-kigen">期限切れ</span></th><td>3日以内にお支払いがなかった方</td></tr>
         <tr><th><span class="st st-cancel">キャンセル済</span></th><td>ご本人キャンセル or 運営キャンセル（アプリからの場合、理由はスプシ備考列に記録）</td></tr>
@@ -310,8 +312,8 @@
   <div class="footer">株式会社 Bonheur Lelien｜運営者専用ページ</div>
 </div>
 
-<script src="js/config.js?v=44"></script>
-<script src="js/common.js?v=44"></script>
+<script src="js/config.js?v=45"></script>
+<script src="js/common.js?v=45"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script>
@@ -323,9 +325,10 @@ const SEM_LABELS = {
 };
 const STATUS_CLASS = {
   '確定': 'st-kakutei', '決済案内中': 'st-kessai', '振込報告済み': 'st-furikomi',
-  'キャンセル待ち': 'st-taiki', '期限切れ': 'st-kigen', 'キャンセル済': 'st-cancel'
+  'キャンセル待ち': 'st-taiki', '期限切れ': 'st-kigen', 'キャンセル済': 'st-cancel',
+  '決済待ち': 'st-machi'
 };
-const FILTERS = ['すべて', '確定', '決済案内中', '振込報告済み', 'キャンセル待ち', '期限切れ', 'キャンセル済'];
+const FILTERS = ['すべて', '確定', '決済待ち', '決済案内中', '振込報告済み', 'キャンセル待ち', '期限切れ', 'キャンセル済'];
 
 let adminKey = null;
 let summaryData = null;
@@ -783,6 +786,9 @@ const ACTION_DEFS = {
                    { st: 'キャンセル済', label: '✕ キャンセル', cls: 'abtn-cancel', msg: 'キャンセルにします。本人に通知が届き、待機1番の方が自動で繰上がります。よろしいですか？' }],
   '振込報告済み': [{ st: '確定', label: '✔ 入金確認→確定', cls: 'abtn-ok', deposit: true },
                    { st: 'キャンセル済', label: '✕ キャンセル', cls: 'abtn-cancel', msg: 'キャンセルにします。本人に通知が届き、待機1番の方が自動で繰上がります。よろしいですか？' }],
+  '決済待ち':     [{ st: '確定', label: '✔ 確定にする', cls: 'abtn-ok', msg: 'この方を確定にします。\nStripeでお支払いを確認してから押してください。\n（LINE通知は飛びません。マーケはご連絡を神谷さんのDMで行うためです）\nよろしいですか？' },
+                   { st: 'キャンセル待ち', label: '⏳ 待機に移す', cls: 'abtn-back', msg: 'この方をキャンセル待ちの最後尾に移します。\n待機番号は自動で振られます。よろしいですか？' },
+                   { st: 'キャンセル済', label: '✕ キャンセル', cls: 'abtn-cancel', msg: 'キャンセルにします。よろしいですか？' }],
   'キャンセル待ち': [{ st: '決済案内中', label: '⬆ 繰上げる', cls: 'abtn-ok', msg: 'この方を繰上げて「決済案内中」にします。\nお支払いの期限は今から3日です。\n本人に⑤「空きができました」のLINEが届き、後ろの方の待機番号は自動で詰まります。\nよろしいですか？' },
                      { st: 'キャンセル済', label: '✕ キャンセル', cls: 'abtn-cancel', msg: '待機からキャンセルにします。本人に通知が届きます。よろしいですか？' }],
   '期限切れ':     [{ st: '決済案内中', label: '↩ 復帰させる', cls: 'abtn-back', msg: '決済案内中に戻します（期限は今から3日）。LINE通知は飛びません。よろしいですか？' }],
