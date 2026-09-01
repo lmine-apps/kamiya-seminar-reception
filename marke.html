@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>マーケティングセミナー 受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=47">
+<link rel="stylesheet" href="css/style.css?v=48">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -29,6 +29,7 @@
 
   <!-- ============ 申込フォーム ============ -->
   <div class="screen" id="screen-form">
+    <div id="steps-form"></div>
     <div class="card">
       <h2 id="sem-title">マーケティングセミナー</h2>
       <table class="info-table">
@@ -42,14 +43,22 @@
 
     <div class="card">
       <div class="note-box" id="order-note" style="border-left-color:#b5761f; background:#fdf7f0;">
-        <strong>お申込み順ではございません</strong><br>
-        <strong>お支払いが完了した順</strong>に、先着15名様のご参加が確定いたします。<br>
-        <span style="font-size:13px;">お申込みのあと、続けてお支払いへお進みくださいませ。</span>
-        <div style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(181,118,31,.25);">
-          <strong style="color:#c96f5e;">お支払いが間に合わなかった場合</strong><br>
-          <span style="font-size:13px;">お手続きの間に15名様に達しますと、<strong>決済画面に進んでもお支払いいただけません</strong>
-          （エラーが表示されます）。その場合は<strong>キャンセル待ち</strong>としてお申込みいただけますので、
-          恐れ入りますがそのままお進みくださいませ。</span>
+        <div style="font-size:15px; font-weight:700; color:#b5761f;">お申込み順ではございません</div>
+        <div style="font-size:17px; font-weight:700; line-height:1.7; margin-top:6px; color:#9c6f5f;">
+          お支払いが完了した順に<br>先着15名様が確定いたします
+        </div>
+        <div style="font-size:13px; margin-top:8px;">お申込みのあと、続けてお支払いへお進みくださいませ。</div>
+
+        <div style="margin-top:14px; padding:12px 14px; border-radius:10px;
+                    background:#fdeeea; border:1px solid rgba(201,111,94,.35);">
+          <div style="font-size:15px; font-weight:700; color:#c96f5e;">⚠️ お支払いが間に合わなかった場合</div>
+          <div style="font-size:13px; line-height:1.9; margin-top:6px;">
+            お手続きの間に15名様に達しますと、<br>
+            <strong style="color:#c96f5e; font-size:14px;">決済画面に進んでもお支払いいただけません</strong>
+            （エラーが表示されます）。<br>
+            その場合は<strong>キャンセル待ち</strong>としてお申込みいただけますので、
+            恐れ入りますがそのままお進みくださいませ。
+          </div>
         </div>
       </div>
 
@@ -103,6 +112,7 @@
 
   <!-- ============ お支払いへ ============ -->
   <div class="screen" id="screen-topay">
+    <div id="steps-topay"></div>
     <div class="card">
       <span class="icon-large">💳</span>
       <h2>お支払いへお進みください</h2>
@@ -116,6 +126,12 @@
         15名様に達しますと、決済画面でお支払いいただけなくなります。</span>
       </div>
       <a class="btn btn-primary" id="btn-pay" href="#" style="margin-top:16px;">お支払いへ進む</a>
+      <div class="note-box" style="border-left-color:#7da87d; background:#f4f8f4; margin-top:14px;">
+        <strong style="color:#5c8a5c;">この画面は閉じても大丈夫です</strong><br>
+        <span style="font-size:13px;">同じ端末でこのページを開き直すと、<strong>お支払いの続きから</strong>再開できます。
+        最初からご入力し直す必要はございません。<br>
+        端末を変えた場合は、<strong>メールアドレスと生年月日</strong>でご確認いただけます。</span>
+      </div>
       <div id="pay-unavailable" style="display:none;" class="note-box">
         ただいまお支払いページをご用意しております。恐れ入りますが、しばらくしてからお試しくださいませ。
       </div>
@@ -133,6 +149,7 @@
 
   <!-- ============ ご参加確定 ============ -->
   <div class="screen" id="screen-done">
+    <div id="steps-done"></div>
     <div class="badge-wrap"><span class="badge">ご参加確定</span></div>
     <div class="card">
       <span class="icon-large">🌸</span>
@@ -239,8 +256,8 @@
 
 </div>
 
-<script src="js/config.js?v=47"></script>
-<script src="js/common.js?v=47"></script>
+<script src="js/config.js?v=48"></script>
+<script src="js/common.js?v=48"></script>
 <script>
 /* =====================================================================
  * マーケティングセミナー：LINEを使わない受付（2026-08-27〜）
@@ -299,6 +316,13 @@ function showMyPage_(boxId, id) {
   if (el) el.innerHTML = myPageHtml_(id);
 }
 
+/** ①お申込み → ②お支払い → ③ご参加確定 の進み具合を出す */
+function drawSteps_(current, allDone) {
+  ['steps-form', 'steps-topay', 'steps-done'].forEach(id => {
+    if (document.getElementById(id)) renderSteps(id, current, false, !!allDone);
+  });
+}
+
 /** セミナー情報を画面に流し込む */
 function fillSeminar_() {
   if (!sem) return;
@@ -322,6 +346,7 @@ function renderStatus_(st) {
   if (!st || !st.ok) { showScreen('screen-form'); return; }
   const s = st.status;
   if (s === '確定') {
+    drawSteps_(3, true);
     showScreen('screen-done');
     showMyPage_('mypage-box-done', appId);
   } else if (s === 'キャンセル待ち') {
@@ -330,6 +355,7 @@ function renderStatus_(st) {
     showScreen('screen-waiting');
     showMyPage_('mypage-box-wait', appId);
   } else if (s === '決済待ち') {
+    drawSteps_(2, false);
     preparePay_();
     showScreen('screen-topay');
     showMyPage_('mypage-box', appId);
@@ -496,9 +522,11 @@ document.getElementById('apply-form').addEventListener('submit', async (e) => {
       showScreen('screen-waiting');
       showMyPage_('mypage-box-wait', appId);
     } else if (res.status === '確定') {
+      drawSteps_(3, true);
       showScreen('screen-done');
       showMyPage_('mypage-box-done', appId);
     } else {
+      drawSteps_(2, false);
       preparePay_();
       showScreen('screen-topay');
       showMyPage_('mypage-box', appId);
@@ -558,6 +586,7 @@ async function init() {
           showScreen('screen-waiting');
           showMyPage_('mypage-box-wait', appId);
         } else {
+          drawSteps_(3, true);
           showScreen('screen-done');
           showMyPage_('mypage-box-done', appId);
         }
@@ -579,6 +608,7 @@ async function init() {
     } catch (_) { showLoading(false); }
   }
 
+  drawSteps_(1, false);
   if (waitMode) startWaitMode();
   else showScreen('screen-form');
   loadCapacity_();
