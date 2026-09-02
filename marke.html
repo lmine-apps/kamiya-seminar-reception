@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>マーケティングセミナー 受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=52">
+<link rel="stylesheet" href="css/style.css?v=53">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -118,12 +118,15 @@
       <h2>お支払いへお進みください</h2>
       <p class="message-center">
         お申込みを承りました。<br>
-        <strong>お支払いが完了した順</strong>に、<br>先着15名様のご参加が確定いたします。
+        <strong>お席をお取りしております。</strong>
       </p>
       <div class="note-box" style="border-left-color:#c96f5e; background:#fdf3ef;">
-        <strong>まだご参加は確定しておりません</strong><br>
-        <span style="font-size:13px;">下のボタンから、お早めにお支払いをお済ませくださいませ。<br>
-        15名様に達しますと、決済画面でお支払いいただけなくなります。</span>
+        <strong>お席の確保に、お時間がございます</strong><br>
+        <span style="font-size:13px;">
+          残り <strong id="hold-left" style="font-size:19px;">--:--</strong> でお席の確保が切れ、<br>
+          ほかの方にお席をお譲りすることになります。<br>
+          お手数ですが、このままお支払いをお済ませくださいませ。
+        </span>
       </div>
       <a class="btn btn-primary" id="btn-pay" href="#" style="margin-top:16px;">お支払いへ進む</a>
       <div class="note-box" style="border-left-color:#7da87d; background:#f4f8f4; margin-top:14px;">
@@ -134,6 +137,14 @@
       </div>
       <div id="pay-unavailable" style="display:none;" class="note-box">
         ただいまお支払いページをご用意しております。恐れ入りますが、しばらくしてからお試しくださいませ。
+      </div>
+      <div id="pay-expired" style="display:none;">
+        <div class="note-box" style="border-left-color:#c96f5e; background:#fdf3ef;">
+          <strong>お席の確保時間が過ぎました</strong><br>
+          <span style="font-size:13px;">恐れ入りますが、下のボタンからもう一度お手続きをお願いいたします。
+          空席がございましたら、そのままお支払いにお進みいただけます。</span>
+        </div>
+        <button class="btn btn-primary" id="btn-rehold" style="margin-top:12px;">お席を取り直す</button>
       </div>
       <div id="pay-full" style="display:none;">
         <div class="note-box" style="border-left-color:#c96f5e; background:#fdf3ef;">
@@ -306,8 +317,8 @@
 
 </div>
 
-<script src="js/config.js?v=52"></script>
-<script src="js/common.js?v=52"></script>
+<script src="js/config.js?v=53"></script>
+<script src="js/common.js?v=53"></script>
 <script>
 /* =====================================================================
  * マーケティングセミナー：LINEを使わない受付（2026-08-27〜）
@@ -445,11 +456,46 @@ function renderStatus_(st) {
     preparePay_();
     showScreen('screen-topay');
     showMyPage_('mypage-box', appId);
-    checkStillOpen_();   // お手続きの間に満席になっていないか
+    startHoldCountdown_(st.deadline);   // お席の確保の残り時間
   } else {
     // キャンセル済・期限切れなど → もう一度お申込みいただける
     showScreen('screen-form');
   }
+}
+
+/* ============ お席の確保（残り時間） ============
+   受付できた時点でお席を確保しているので、
+   その残り時間をお見せして、切れたら取り直していただく。 */
+let holdTimer = null;
+
+function startHoldCountdown_(untilText) {
+  stopHoldCountdown_();
+  const el = document.getElementById('hold-left');
+  const until = untilText ? new Date(String(untilText).replace(/-/g, '/')) : null;
+  if (!el || !until || isNaN(until.getTime())) { if (el) el.textContent = '--:--'; return; }
+
+  const tick = () => {
+    const left = Math.floor((until.getTime() - Date.now()) / 1000);
+    if (left <= 0) { stopHoldCountdown_(); showHoldExpired_(); return; }
+    const m = Math.floor(left / 60), sec = left % 60;
+    el.textContent = m + ':' + ('0' + sec).slice(-2);
+  };
+  tick();
+  holdTimer = setInterval(tick, 1000);
+}
+
+function stopHoldCountdown_() {
+  if (holdTimer) { clearInterval(holdTimer); holdTimer = null; }
+}
+
+/** 確保が切れたときの画面 */
+function showHoldExpired_() {
+  const pay = document.getElementById('btn-pay');
+  const na = document.getElementById('pay-unavailable');
+  const exp = document.getElementById('pay-expired');
+  if (pay) pay.style.display = 'none';
+  if (na) na.style.display = 'none';
+  if (exp) exp.style.display = '';
 }
 
 /** 決済ボタンの用意 */
@@ -480,19 +526,29 @@ function preparePay_() {
         const label = btn.textContent;
         btn.textContent = 'お席を確認しています…';
         btn.style.pointerEvents = 'none';
-        let full = false;
+        let expired = false;
         try {
-          const res = await apiGet('get_capacity', { seminar: SEM_KEY });
-          full = !!(res && res.ok && res.available <= 0);
+          const st = await apiGet('get_status', { uid: appId, seminar: SEM_KEY });
+          if (st && st.ok && st.status === '決済待ち') {
+            const until = st.deadline ? new Date(String(st.deadline).replace(/-/g, '/')) : null;
+            expired = !until || isNaN(until.getTime()) || until.getTime() <= Date.now();
+          }
         } catch (_) { /* 確認できなければ止めない（サーバー側で最終判定） */ }
         btn.textContent = label;
         btn.style.pointerEvents = '';
-        if (full) { checkStillOpen_(); return; }   // 満席の案内に切り替える
+        if (expired) { showHoldExpired_(); return; }
         location.href = href;
       });
     }
   }
 }
+
+/** お席を取り直す（確保が切れた方） */
+document.getElementById('btn-rehold').addEventListener('click', () => {
+  const exp = document.getElementById('pay-expired');
+  if (exp) exp.style.display = 'none';
+  showScreen('screen-form');
+});
 
 /** お支払い画面を出したあと、まだ空席があるか確かめる */
 async function checkStillOpen_() {
@@ -620,6 +676,8 @@ document.getElementById('apply-form').addEventListener('submit', async (e) => {
         alert('ただいま大変混み合っております。\n恐れ入りますが、もう一度お試しくださいませ。\n\n※二重にお申込みになることはございません。');
         return;
       }
+      // 満席。お支払いには進んでいただけないので、キャンセル待ちのご案内へ
+      if (err === 'full') { showScreen('screen-full'); return; }
       showError(err || '');
       return;
     }
@@ -643,6 +701,7 @@ document.getElementById('apply-form').addEventListener('submit', async (e) => {
       preparePay_();
       showScreen('screen-topay');
       showMyPage_('mypage-box', appId);
+      startHoldCountdown_(res.hold_until);
     }
   } catch (err) {
     showLoading(false);

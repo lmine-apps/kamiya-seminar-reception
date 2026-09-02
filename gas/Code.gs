@@ -1,3 +1,14 @@
+/*** 神谷梓さん 受付管理システム GAS v10.0 ***************************
+ * 【v10.0 2026-09-02】マーケ：受付できた時点でお席を確保する
+ *   これまでは「お支払いが済んだ人」だけを残席から引いていたため、
+ *   同時に何人も決済画面へ入れてしまい、16人目がお支払いできてしまう
+ *   （＝返金のお願いをする）可能性が残っていた。
+ *
+ *   これからは、受付できた時点で MARKE_HOLD_MIN 分だけお席を確保する。
+ *   確保中の方も残席から引くので、15人ぶん埋まったら16人目は受付の段階で
+ *   「満席」になり、決済ページに入れない。
+ *   確保時間を過ぎてもお支払いがなければ、checkExpired が席を戻す。
+ *
 /*** 神谷梓さん 受付管理システム GAS v9.6 ****************************
  * 【v9.6 追加 2026-09-01】管理アプリの名簿にフリガナとインスタを載せる
  *   キャンセル待ちの方へDMを送るとき、名簿からそのままInstagramへ飛べるように。
@@ -588,7 +599,7 @@ function adminUpdateStatus_(p) {
         renumberWaiting_(sh, myNum);
       } else {
         sh.getRange(row, 8).setValue('');
-        // 席を持っていた方のときだけ繰り上げる（決済待ちは席を持っていない）
+        // 席を持っていた方のときだけ繰り上げる（v10.0：決済待ちも席を持つ）
         if (holdsSeat_(prev)) promoteNextWaiting_(sh);
       }
       moveScenario_(uid, 'キャンセル完了');
@@ -852,21 +863,44 @@ function gateInfo_(seminarKey) {
  * 【従来との違い】
  *   ・LINEを通らないので uid が無い。代わりに【申込ID】を発行してA列に入れる。
  *     A列は「本人を見分ける鍵」でしかないので、中身がuidでも申込IDでも同じに動く。
- *   ・申込の時点では席を押さえない（状態＝「決済待ち」／残席に数えない）。
- *     Stripeの決済リンク側で15件の上限をかけ、支払いが済んだ順に「確定」にする。
+ *   ・受付できた時点でお席を MARKE_HOLD_MIN 分だけ確保する（状態＝「決済待ち」）。
+ *     確保中の方も残席から引くので、15人分埋まると16人目は受付の段階で
+ *     「満席」になり、決済ページに入れない（v10.0）。
  *   ・通知はしない。神谷さんがDMでご案内し、お客さまがご自分でアプリを開く。
  *     開く鍵は「メールアドレス＋生年月日」（markeLookup_）。
  * ===================================================================== */
 
-var MARKE_PENDING = '決済待ち';   // 申込済み・未決済。残席には数えない
+var MARKE_PENDING = '決済待ち';   // 受付済み・未決済。お席を確保している
+var MARKE_HOLD_MIN = 20;          // 受付後、お席を確保しておく時間（分）
 
 /**
  * その状態が「席を持っている」かどうか。
- * 残席の数え方と必ずそろえること（確定・決済案内中・振込報告済み）。
- * 「決済待ち」は席を持たないので、キャンセルされても繰り上げは起こさない。
+ * 「決済待ち」も席を持つ（v10.0）。確保時間を過ぎたものは checkExpired が
+ * 「期限切れ」に落とすので、ここでは持っている扱いのまま（多めに数える側に倒す）。
  */
 function holdsSeat_(status) {
-  return ['確定', '決済案内中', '振込報告済み'].indexOf(String(status)) !== -1;
+  return ['確定', '決済案内中', '振込報告済み', MARKE_PENDING].indexOf(String(status)) !== -1;
+}
+
+/**
+ * その行が「いま席を押さえているか」を、確保期限まで見て判定する。
+ * 残席を数えるところは、すべてこれを通すこと。
+ *   status   … G列
+ *   deadline … F列（決済待ちのときだけ意味を持つ）
+ */
+function seatHeld_(status, deadline, now) {
+  var st = String(status);
+  if (['確定', '決済案内中', '振込報告済み'].indexOf(st) !== -1) return true;
+  if (st !== MARKE_PENDING) return false;
+  if (!deadline) return false;                    // 期限なしの古い行は席を持たない
+  var dl = new Date(deadline);
+  if (isNaN(dl.getTime())) return false;
+  return dl > (now || new Date());
+}
+
+/** お席の確保期限（いまから MARKE_HOLD_MIN 分後） */
+function markeHoldUntil_() {
+  return new Date(Date.now() + MARKE_HOLD_MIN * 60000);
 }
 
 /** 申込ID（LINEのuidの代わり）。まぎらわしい文字は使わない */
@@ -917,32 +951,67 @@ function submitMarke_(p) {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(LOCK_WAIT_MS)) return out_({ ok: false, error: 'busy', retry: true });
 
-  var appId = '', status = '', waitNum = '';
+  var appId = '', status = '', waitNum = '', holdUntil = null;
   try {
+    var now = new Date();
     var lastRow = sh.getLastRow();
     var rows = (lastRow >= DATA_START_ROW)
       ? sh.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, 8).getValues()
       : [];
 
-    var maxWait = 0, used = {};
+    var maxWait = 0, used = {}, seats = 0, dupIdx = -1;
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i];
       if (r[0]) used[String(r[0])] = true;
-      // 同じメールアドレスで、まだ生きているお申込みがあればそちらを返す
-      if (normalizeEmail_(r[2]) === email &&
+      // 同じメールアドレスで、まだ生きているお申込みがないか
+      if (dupIdx === -1 && normalizeEmail_(r[2]) === email &&
           ['キャンセル済', '期限切れ'].indexOf(String(r[6])) === -1) {
-        return out_({ ok: true, already: true, app_id: String(r[0]), status: String(r[6]) });
+        dupIdx = i;
       }
-      if (r[6] === 'キャンセル待ち') {
+      if (seatHeld_(r[6], r[5], now)) seats++;
+      else if (r[6] === 'キャンセル待ち') {
         var wn = Number(r[7]);
         if (wn > maxWait) maxWait = wn;
       }
     }
 
+    // ---- すでにお申込みがある方 --------------------------------------
+    if (dupIdx !== -1) {
+      var dupRow = DATA_START_ROW + dupIdx;
+      var dupSt  = String(rows[dupIdx][6]);
+      if (dupSt !== MARKE_PENDING) {
+        return out_({ ok: true, already: true, app_id: String(rows[dupIdx][0]), status: dupSt });
+      }
+      // 決済待ち。確保が生きていればそのまま、切れていれば取り直す
+      if (seatHeld_(dupSt, rows[dupIdx][5], now)) {
+        return out_({ ok: true, already: true, app_id: String(rows[dupIdx][0]), status: dupSt,
+                      hold_until: formatDateValue_(rows[dupIdx][5]) });
+      }
+      if (seats >= config.capacity) {
+        return out_({ ok: false, error: 'full', app_id: String(rows[dupIdx][0]) });
+      }
+      var again = markeHoldUntil_();
+      sh.getRange(dupRow, 6).setValue(formatDate_(again));
+      capacityCacheClear_(seminarKey);
+      return out_({ ok: true, already: true, app_id: String(rows[dupIdx][0]), status: MARKE_PENDING,
+                    hold_until: formatDate_(again) });
+    }
+
+    // ---- 満席のときは受け付けない（＝決済ページに入れない）------------
+    if (!wantWait && seats >= config.capacity) {
+      return out_({ ok: false, error: 'full' });
+    }
+
     do { appId = newAppId_(); } while (used[appId]);
 
-    if (wantWait) { status = 'キャンセル待ち'; waitNum = maxWait + 1; }
-    else          { status = MARKE_PENDING;    waitNum = ''; }
+    var deadlineCell = '';
+    if (wantWait) {
+      status = 'キャンセル待ち'; waitNum = maxWait + 1;
+    } else {
+      status = MARKE_PENDING; waitNum = '';
+      holdUntil = markeHoldUntil_();
+      deadlineCell = formatDate_(holdUntil);
+    }
 
     sh.appendRow([
       appId,
@@ -950,7 +1019,7 @@ function submitMarke_(p) {
       p.email || '',
       p.phone || '',
       formatDate_(new Date()),
-      '',            // F:決済期限（決済待ちは期限なし。Stripe側で締め切る）
+      deadlineCell,  // F:お席の確保期限（決済待ちのみ）
       status,
       waitNum,
       '', '', '',    // I:決済日時 J:決済方法 K:備考
@@ -970,13 +1039,15 @@ function submitMarke_(p) {
     notifyOps_('⏳ キャンセル待ちのお申込み（' + config.sheet.replace('📋 ', '') + '）',
       (p.name || 'お名前未記入') + ' 様が待機' + waitNum + '番目に入りました。');
   }
-  return out_({ ok: true, app_id: appId, status: status, wait_num: waitNum });
+  return out_({ ok: true, app_id: appId, status: status, wait_num: waitNum,
+                hold_until: holdUntil ? formatDate_(holdUntil) : null,
+                hold_minutes: MARKE_HOLD_MIN });
 }
 
 /**
  * Stripeの決済が終わって戻ってきたとき、「確定」にする。
- * ※Stripe側でも15件で締め切るが、万一同時決済で溢れた場合の保険として
- *   ここでも定員を数え、超えていたらキャンセル待ちに回す。
+ * ※ご自分のお席の確保が生きていれば、必ず「確定」になる。
+ *   確保が切れたあとにお支払いされた場合だけ、保険としてキャンセル待ちに回す。
  */
 function markePaid_(p) {
   var seminarKey = p.seminar || 'marke_general';
@@ -997,11 +1068,12 @@ function markePaid_(p) {
     if (lastRow < DATA_START_ROW) return out_({ ok: false, error: 'not found' });
     var rows = sh.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, 8).getValues();
 
-    var myIdx = -1, confirmed = 0, maxWait = 0;
+    var now = new Date();
+    var myIdx = -1, others = 0, maxWait = 0;
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i];
-      if (String(r[0]) === appId) { myIdx = i; name = String(r[1]); }
-      if (r[6] === '確定') confirmed++;
+      if (String(r[0]) === appId) { myIdx = i; name = String(r[1]); continue; }
+      if (seatHeld_(r[6], r[5], now)) others++;   // ご自分以外が押さえている席
       else if (r[6] === 'キャンセル待ち') {
         var wn = Number(r[7]);
         if (wn > maxWait) maxWait = wn;
@@ -1009,13 +1081,17 @@ function markePaid_(p) {
     }
     if (myIdx === -1) return out_({ ok: false, error: 'not found' });
 
+    // ご自分のお席の確保が生きていれば、それを確定に変えるだけ（必ず入れる）
+    var myHold = seatHeld_(rows[myIdx][6], rows[myIdx][5], now);
+    var confirmed = myHold ? 0 : others;
+
     var row = DATA_START_ROW + myIdx;
     var prev = String(rows[myIdx][6]);
     if (prev === '確定') {
       return out_({ ok: true, already: true, status: '確定', app_id: appId });
     }
 
-    if (confirmed < config.capacity) {
+    if (myHold || confirmed < config.capacity) {
       status = '確定'; waitNum = '';
       sh.getRange(row, 6).setValue('');
       sh.getRange(row, 7).setValue('確定');
@@ -1023,7 +1099,7 @@ function markePaid_(p) {
       sh.getRange(row, 9).setValue(formatDate_(new Date()));
       sh.getRange(row, 10).setValue('カード');
     } else {
-      // 溢れた場合（Stripeの上限をすり抜けたとき）。返金のご案内が必要
+      // 万一の保険。お席の確保が切れたあとにお支払いされた場合など。返金のご案内が必要
       status = 'キャンセル待ち'; waitNum = maxWait + 1;
       sh.getRange(row, 7).setValue('キャンセル待ち');
       sh.getRange(row, 8).setValue(waitNum);
@@ -1398,10 +1474,12 @@ function capacityCounts_(seminarKey) {
   var lastRow = sh.getLastRow();
   var confirmed = 0, waiting = 0;
   if (lastRow >= DATA_START_ROW) {
-    var col = sh.getRange(DATA_START_ROW, 7, lastRow - DATA_START_ROW + 1, 1).getValues();
+    // F列（お席の確保期限）とG列（状態）をまとめて読む
+    var col = sh.getRange(DATA_START_ROW, 6, lastRow - DATA_START_ROW + 1, 2).getValues();
+    var now = new Date();
     for (var i = 0; i < col.length; i++) {
-      var st = col[i][0];
-      if (st === '確定' || st === '決済案内中' || st === '振込報告済み') confirmed++;
+      var st = col[i][1];
+      if (seatHeld_(st, col[i][0], now)) confirmed++;
       else if (st === 'キャンセル待ち') waiting++;
     }
   }
@@ -1445,7 +1523,7 @@ function cancelApplication_(p) {
       renumberWaiting_(sh, myNum);
     } else if (holdsSeat_(prevStatus)) {
       // 席を持っていた場合だけ、待機1番を繰上げる
-      // （決済待ちの方は席を持っていないので、繰り上げると定員を超えてしまう）
+      // （v10.0：決済待ちの方もお席を確保しているので、ここに含まれる）
       promoteNextWaiting_(sh);
     }
 
@@ -1760,6 +1838,19 @@ function checkExpired() {
       var deadline = data[i][5];
       var status = data[i][6];
 
+      // マーケ：お席の確保時間を過ぎた「決済待ち」を外す（v10.0）
+      if (status === MARKE_PENDING && deadline) {
+        var hd = new Date(deadline);
+        if (!isNaN(hd.getTime()) && hd < now) {
+          var hrow = DATA_START_ROW + i;
+          sh.getRange(hrow, 7).setValue('期限切れ');
+          logAction_('marke_hold_expired', uid, sh.getName(), '決済待ち → 期限切れ',
+                     'お席の確保時間（' + MARKE_HOLD_MIN + '分）を過ぎたため');
+          expiredCount++;
+        }
+        continue;
+      }
+
       if (status === '決済案内中' && deadline) {
         var dl = new Date(deadline);
         if (dl < now) {
@@ -1806,6 +1897,21 @@ function manualPromote_(p) {
 function promoteNextWaiting_(sh) {
   var lastRow = sh.getLastRow();
   if (lastRow < DATA_START_ROW) return;
+
+  /* マーケ一般は自動で繰り上げない（v10.0）。
+     公式LINEを使わないため「空きました」のご案内が自動では届かず、
+     勝手に「決済案内中」へ動かすとお客さまが気づけないまま期限を迎えてしまう。
+     お席が空いたことだけを運営へお知らせし、ご案内の仕方は神谷さんにお任せする。 */
+  if (sh.getName() === SEMINARS['marke_general'].sheet) {
+    var waitingCount = countByStatuses_(sh, ['キャンセル待ち']);
+    if (waitingCount > 0) {
+      notifyOps_('🪑 お席が1つ空きました（マーケ一般）',
+        'キャンセル待ちの方が' + waitingCount + '名いらっしゃいます。管理アプリからご案内をお願いいたします。\n' +
+        '※ Stripeの決済リンクの「支払い回数の上限」を 1 つ上げてください。');
+    }
+    logAction_('marke_seat_open', '', sh.getName(), '空席1（自動繰上げはしません）', '');
+    return;
+  }
 
   var data = sh.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, 11).getValues();
   var minWaitIdx = -1;
