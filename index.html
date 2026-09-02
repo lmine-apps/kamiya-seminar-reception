@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=56">
+<link rel="stylesheet" href="css/style.css?v=57">
 </head>
 <body>
 <div class="container">
@@ -113,8 +113,10 @@
       <div id="pay-methods"></div>
 
       <div class="note-box" style="border-left-color:#7da87d; background:#f4f8f4;">
+        <span id="pay-close-note">
         💡 <strong style="font-size:15px; color:#5c8a5c;">この画面は閉じても大丈夫です</strong><br>
         LINEのトーク履歴にあるボタンをもう一度タップすれば、いつでもこの画面に戻ってこられます（再度のお申込みにはなりません。お席は期限まで確保されています）。
+        </span>
       </div>
 
       <div class="note-box">
@@ -265,8 +267,8 @@
 
 </div>
 
-<script src="js/config.js?v=56"></script>
-<script src="js/common.js?v=56"></script>
+<script src="js/config.js?v=57"></script>
+<script src="js/common.js?v=57"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -468,6 +470,16 @@ function renderPayment(st, sem) {
     startFlipCountdown(st.deadline, 'pay-countdown-box');
   } else {
     document.getElementById('pay-countdown-box').style.display = 'none';
+  }
+
+  /* 「閉じても大丈夫」は、お支払い期限が3日あるセルフ向けの文言。
+     期限が20分のマーケでそのまま出すと、離れてよいと受け取られてしまう。 */
+  const closeNote = document.getElementById('pay-close-note');
+  if (closeNote && sem.paymentChoice) {
+    closeNote.innerHTML =
+      '⏳ <strong style="font-size:15px; color:#c96f5e;">お時間が経つと、お席はお譲りいたします</strong><br>' +
+      'この画面を閉じても、LINEのトーク履歴にあるボタンから戻ってこられます' +
+      '（再度のお申込みにはなりません）。ただし、<strong>お支払い期限は止まりません。</strong>';
   }
 
   // 支払い方法出し分け
