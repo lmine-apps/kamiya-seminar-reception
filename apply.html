@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>受付フォーム｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=66">
+<link rel="stylesheet" href="css/style.css?v=67">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -170,6 +170,12 @@
         お席を確保いたしました。<br>
         続けて、お支払いのお手続きを<br>お願いいたします。
       </p>
+      <div id="done-countdown" style="display:none; margin-top:14px; padding:12px;
+           border-radius:10px; background:#fdf3ef; border:1px solid #f0d9d0;">
+        <div style="font-size:12px; color:#8a7d76; letter-spacing:.08em;">お支払い期限まで</div>
+        <div style="font-size:30px; font-weight:700; color:#c96f5e; letter-spacing:.04em;
+             font-variant-numeric:tabular-nums;" id="done-countdown-time">--:--</div>
+      </div>
       <a class="btn btn-primary" id="btn-to-payment" href="index.html" style="margin-top:16px;">お支払いに進む</a>
       <div id="guest-note-payment"></div>
       <div class="note-box" id="done-payment-note" style="border-left-color:#7da87d; background:#f4f8f4; font-size:12px;">
@@ -232,8 +238,8 @@
 
 </div>
 
-<script src="js/config.js?v=66"></script>
-<script src="js/common.js?v=66"></script>
+<script src="js/config.js?v=67"></script>
+<script src="js/common.js?v=67"></script>
 <script>
 let uid = getUid();
 const seminarKey = new URLSearchParams(location.search).get('seminar');
@@ -447,6 +453,33 @@ function showGateOpenButton_() {
   };
 }
 
+/* 受付完了ページの残り時間（v67）。
+   「お支払いに進む」を押す前から、お時間が進んでいることが見えるようにする。 */
+let doneCountdownTimer_ = null;
+function startDoneCountdown_(deadlineStr) {
+  if (doneCountdownTimer_) clearInterval(doneCountdownTimer_);
+  const box = document.getElementById('done-countdown');
+  const el = document.getElementById('done-countdown-time');
+  if (!box || !el || !deadlineStr) return;
+
+  const until = new Date(String(deadlineStr).replace(/-/g, '/'));   // Safari対策
+  if (isNaN(until.getTime())) return;
+  box.style.display = '';
+
+  const tick = () => {
+    const left = Math.floor((until.getTime() - Date.now()) / 1000);
+    if (left <= 0) {
+      clearInterval(doneCountdownTimer_);
+      el.textContent = '0:00';
+      return;
+    }
+    const m = Math.floor(left / 60), s = left % 60;
+    el.textContent = m + ':' + ('0' + s).slice(-2);
+  };
+  tick();
+  doneCountdownTimer_ = setInterval(tick, 1000);
+}
+
 /** 「1440」→「24時間」のように読みやすくする（期限の長さはセミナーごとに違う） */
 function fmtMin_(m) {
   const n = Number(m);
@@ -649,6 +682,7 @@ document.getElementById('apply-form').addEventListener('submit', async (e) => {
       /* 「いますぐでなくても大丈夫」は、お支払い期限が3日あるセルフ向けの文言。
          期限が20分のマーケでそのまま出すと、真逆のことを伝えてしまう（v63）。 */
       if (sem.paymentChoice) {
+        startDoneCountdown_(res.deadline);   // この画面でも残り時間をお見せする（v67）
         const lead = document.getElementById('done-payment-lead');
         if (lead) {
           lead.innerHTML = 'お席を確保いたしました。<br>' +

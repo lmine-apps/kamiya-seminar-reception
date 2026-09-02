@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=66">
+<link rel="stylesheet" href="css/style.css?v=67">
 </head>
 <body>
 <div class="container">
@@ -312,8 +312,8 @@
 
 </div>
 
-<script src="js/config.js?v=66"></script>
-<script src="js/common.js?v=66"></script>
+<script src="js/config.js?v=67"></script>
+<script src="js/common.js?v=67"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -570,8 +570,15 @@ function renderPayment(st, sem) {
     const onlyCard = (chosenMethod === 'カード');
     const onlyBank = (chosenMethod === '銀行振込');
     if (onlyCard || onlyBank) {
+      const pc2 = sem.paymentChoice || {};
       html += '<div class="note-box" style="border-left-color:#9c6f5f; background:#fdf6f2;">' +
         '<strong>' + esc(chosenMethod) + '</strong>でお手続き中です。' +
+        // 振込をお選びの方には、ここで初めて期限と注意点をお伝えする
+        (onlyBank
+          ? '<br><span style="font-size:13px;">お支払い期限は<strong>上の残り時間</strong>のとおりです。' +
+            (pc2.bank && pc2.bank.afterNote
+              ? '<br>※ ' + esc(pc2.bank.afterNote) : '') + '</span>'
+          : '') +
         '<button type="button" class="btn btn-text" onclick="changeMethod_()" ' +
         'style="margin:6px 0 0; padding:0; font-size:13px;">お支払い方法を変更する</button>' +
         '</div>';
@@ -640,13 +647,15 @@ function renderMethodChoice_(sem, st) {
     card: (st && st.deadline_min)      || pc.card.fallback,
     bank: (st && st.bank_deadline_min) || pc.bank.fallback
   };
+  /* カードを主役（塗りボタン）、振込を控えめ（枠ボタン）にする。
+     ほとんどの方がカードでお支払いになるため、迷いを減らす。 */
   const btn = (key, icon, o) =>
-    '<button type="button" class="btn btn-primary" data-method="' + key + '" ' +
+    '<button type="button" class="btn ' + (key === 'card' ? 'btn-primary' : 'btn-outline') + '" ' +
+    'data-method="' + key + '" ' +
     'onclick="chooseMethod_(this)" style="margin-top:10px; text-align:left; line-height:1.5;">' +
     icon + ' ' + esc(o.label) +
     '<br><span style="font-size:12px; font-weight:400; opacity:.9;">' +
     esc(String(o.note).replace('{T}', fmtMinutes_(mins[key]))) + '</span>' +
-    (o.extra ? '<br><span style="font-size:11px; font-weight:400; opacity:.85;">※ ' + esc(o.extra) + '</span>' : '') +
     '</button>';
 
   document.getElementById('pay-methods').innerHTML =
@@ -654,9 +663,8 @@ function renderMethodChoice_(sem, st) {
     '<div class="note-box" style="border-left-color:#c96f5e; background:#fdf3ef;">' +
     '<strong>上の残り時間は、すでに進んでいます。</strong><br>' +
     '<span style="font-size:13px;">' +
-    'カードでお支払いの場合の期限です。<strong>銀行振込</strong>をお選びいただくと、' +
-    '受付から<strong>' + fmtMinutes_(mins.bank) + '</strong>に延びます。<br>' +
-    'この時間を過ぎますと、お待ちの方にお席をお譲りいたします。お早めにお選びくださいませ。' +
+    'この時間を過ぎますと、お待ちの方にお席をお譲りいたします。<br>' +
+    'お早めにお選びくださいませ。' +
     '</span></div>' +
     btn('card', '💳', pc.card) +
     btn('bank', '🏦', pc.bank);
