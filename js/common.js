@@ -145,12 +145,28 @@ function startFlipCountdown(deadlineStr, rootId) {
     });
   }
 
+  /* 残りが短いときに「00 DAYS 00 HOURS」と並ぶのは分かりにくいので、
+     必要な単位だけをお見せする。単位のうしろの「:」も一緒に隠す。 */
+  function setUnitVisible(unitName, show) {
+    const container = root.querySelector('[data-unit="' + unitName + '"]');
+    if (!container) return;
+    const unit = container.closest('.luxury-countdown__unit');
+    if (!unit) return;
+    unit.style.display = show ? '' : 'none';
+    const sep = unit.nextElementSibling;
+    if (sep && sep.classList.contains('luxury-countdown__separator')) {
+      sep.style.display = show ? '' : 'none';
+    }
+  }
+
   function tick() {
     const diff = deadline.getTime() - Date.now();
     if (diff <= 0) {
       root.classList.add('is-expired');
       return;
     }
+    setUnitVisible('days',  diff >= 86400000);   // 1日未満なら「日」は出さない
+    setUnitVisible('hours', diff >= 3600000);    // 1時間未満なら「時間」も出さない
     updateDigits('days',    Math.floor(diff / 86400000));
     updateDigits('hours',   Math.floor(diff % 86400000 / 3600000));
     updateDigits('minutes', Math.floor(diff % 3600000 / 60000));

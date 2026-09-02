@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=55">
+<link rel="stylesheet" href="css/style.css?v=56">
 </head>
 <body>
 <div class="container">
@@ -265,8 +265,8 @@
 
 </div>
 
-<script src="js/config.js?v=55"></script>
-<script src="js/common.js?v=55"></script>
+<script src="js/config.js?v=56"></script>
+<script src="js/common.js?v=56"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -572,15 +572,19 @@ function renderMethodChoice_(sem) {
   document.getElementById('pay-methods').innerHTML =
     '<h3>お支払い方法をお選びください</h3>' +
     '<div class="note-box" style="border-left-color:#c96f5e; background:#fdf3ef;">' +
-    '<strong>お選びいただくと、お支払い期限が決まります。</strong><br>' +
-    '<span style="font-size:13px;">期限までにご確認できない場合は、お待ちの方にお席をお譲りいたします。</span>' +
-    '</div>' +
+    '<strong>上の残り時間は、すでに進んでいます。</strong><br>' +
+    '<span style="font-size:13px;">' +
+    'カードでお支払いの場合の期限です。<strong>銀行振込</strong>をお選びいただくと、' +
+    'そこから<strong>24時間</strong>に延びます。<br>' +
+    'この時間を過ぎますと、お待ちの方にお席をお譲りいたします。お早めにお選びくださいませ。' +
+    '</span></div>' +
     btn('card', '💳', pc.card) +
     btn('bank', '🏦', pc.bank);
 
-  // 選ぶまでは期限のカウントダウンを出さない（まだ決まっていないため）
+  /* 期限は受付できた瞬間から動いている。
+     隠すとお客さまが残り時間を知らないまま切れてしまうので、必ずお見せする。 */
   const cd = document.getElementById('pay-countdown-box');
-  if (cd) cd.style.display = 'none';
+  if (cd) cd.style.display = '';
 }
 
 /** 選ばれた方法をサーバーへ伝え、期限を確定させる */
@@ -747,7 +751,8 @@ let demoState_ = null;
 function demoShow_(kind) {
   if (waitPollTimer) clearInterval(waitPollTimer);
   const pad = n => String(n).padStart(2, '0');
-  const d = new Date(Date.now() + 2 * 86400000 + 3 * 3600000 + 15 * 60000);
+  // マーケの見本は実際と同じ「20分きざみ」に合わせる（残り18分の状態を見せる）
+  const d = new Date(Date.now() + 18 * 60000);
   const dl = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' +
     pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
   const base = { ok: true, uid: 'DEMO', name: 'デモ 花子',
