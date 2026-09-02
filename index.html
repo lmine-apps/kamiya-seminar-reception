@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=61">
+<link rel="stylesheet" href="css/style.css?v=62">
 </head>
 <body>
 <div class="container">
@@ -196,6 +196,12 @@
         <tr id="conf-payment-row" style="display:none;"><th>お支払い</th><td id="conf-payment"></td></tr>
       </table>
       <a class="btn btn-outline" id="conf-map-link" href="#" target="_blank" rel="noopener" style="margin-top:16px;">会場の地図を見る</a>
+      <div class="note-box" id="conf-crossed-note" style="display:none; border-left-color:#7da87d; background:#f4f8f4;">
+        💡 <strong style="color:#5c8a5c;">キャンセルのお知らせが届いた方へ</strong><br>
+        <span style="font-size:13px;">お手続きと行き違いになったものです。
+        <strong>この画面が出ていれば、ご参加は確定しております。</strong>そのままお待ちくださいませ。<br>
+        ご不安な点がございましたら、LINEのチャットにてお気軽にお問い合わせください。</span>
+      </div>
       <div class="note-box">
         開催日が近づきましたら、改めてLINEにてご案内いたします。当日お会いできますこと、心より楽しみにしております。
       </div>
@@ -247,12 +253,19 @@
         <strong>すでにお支払いをお済ませの方へ</strong><br>
         <span style="font-size:13px;">
           お手続きと行き違いになっている場合がございます。<br>
-          お心当たりのある方は、下記よりお知らせくださいませ。<br>
           <strong>ご入金が確認できましたら、そのままご参加いただけます。</strong>
         </span>
+        <div id="expired-watch" style="margin-top:10px; font-size:13px; color:#8a7d76;">
+          <span id="expired-watch-text">💳 カードでお支払いの方は、確認が届くのをお待ちしております…</span>
+        </div>
       </div>
-      <button class="btn btn-outline" id="btn-expired-bank" style="margin-top:10px;">お振込がお済みの方はこちら</button>
-      <button class="btn btn-outline" id="btn-expired-card" style="margin-top:10px;">カードでお支払い済みの方はこちら</button>
+      <div id="expired-manual" style="display:none;">
+        <p class="form-note" style="text-align:center; margin-top:12px;">
+          お支払いがお済みなのに画面が変わらない場合は、下記よりお知らせくださいませ。
+        </p>
+        <button class="btn btn-outline" id="btn-expired-bank" style="margin-top:6px;">お振込がお済みの方はこちら</button>
+        <button class="btn btn-outline" id="btn-expired-card" style="margin-top:10px;">カードでお支払い済みの方はこちら</button>
+      </div>
 
       <div class="note-box" style="margin-top:16px;">
         上記にあてはまらない場合で、引き続きご検討いただけるときは、LINEのチャットにてご連絡くださいませ。状況に応じて、再度お席をご案内できる場合がございます。
@@ -281,8 +294,8 @@
 
 </div>
 
-<script src="js/config.js?v=61"></script>
-<script src="js/common.js?v=61"></script>
+<script src="js/config.js?v=62"></script>
+<script src="js/common.js?v=62"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -448,6 +461,8 @@ function render(st) {
       renderConfirmed(st, sem);
       break;
     case '期限切れ':
+      // お支払いの反映を待つ（済んでいれば自動で確定の画面に変わる）
+      startExpiredWatch_();
       showScreen('screen-expired');
       break;
     case 'キャンセル済':
@@ -696,6 +711,11 @@ function renderWaiting(st, sem) {
 
 /** 参加確定 */
 function renderConfirmed(st, sem) {
+  stopExpiredWatch_();
+  /* キャンセルのお知らせと行き違った方に、この画面が正しいことをお伝えする。
+     期限の短いセミナー（マーケ）でだけ起こりうるので、そのときだけ出す。 */
+  const crossed = document.getElementById('conf-crossed-note');
+  if (crossed) crossed.style.display = sem.paymentChoice ? '' : 'none';
   renderSteps('steps-confirmed', 3, sem.payment === 'cash', true);
   document.getElementById('confirmed-name-line').textContent =
     st.name ? st.name + ' さま' : '';
@@ -761,6 +781,47 @@ document.getElementById('cancel-confirm-form').addEventListener('submit', async 
 });
 
 /** カード決済完了のご連絡（お客さま申告） */
+/* ============ 期限切れ画面：お支払いの反映を自動で待つ（v62） ============
+   カード決済が済んでいれば、プロラインからGASへ通知が飛んで自動で「確定」になる。
+   反映まで少し時間がかかるので、その間この画面を開いたまま待てるようにする。
+   一定時間たっても変わらなければ、手動でご連絡いただくボタンをお見せする。 */
+let expiredPollTimer = null;
+const EXPIRED_POLL_MS    = 8000;    // 8秒ごとに確認
+const EXPIRED_POLL_LIMIT = 15;      // 2分ほど待つ
+
+function startExpiredWatch_() {
+  stopExpiredWatch_();
+  const txt = document.getElementById('expired-watch-text');
+  const manual = document.getElementById('expired-manual');
+  let tries = 0;
+
+  expiredPollTimer = setInterval(async () => {
+    tries++;
+    if (tries > EXPIRED_POLL_LIMIT) {
+      stopExpiredWatch_();
+      if (txt) txt.textContent = '確認が届きませんでした。お支払いがお済みの場合は、下記よりお知らせくださいませ。';
+      if (manual) manual.style.display = '';
+      return;
+    }
+    try {
+      const res = await apiGet('get_status', { uid: uid, seminar: savedSeminar() });
+      // 確定・振込報告済みに変わっていたら、その画面へ切り替える
+      if (res.ok && res.status && res.status !== '期限切れ') {
+        stopExpiredWatch_();
+        currentStatus = res;
+        render(res);
+      }
+    } catch (_) {}
+  }, EXPIRED_POLL_MS);
+
+  // 待っているあいだも手動の道は残す（1分後にお見せする）
+  setTimeout(() => { if (manual && expiredPollTimer) manual.style.display = ''; }, 60000);
+}
+
+function stopExpiredWatch_() {
+  if (expiredPollTimer) { clearInterval(expiredPollTimer); expiredPollTimer = null; }
+}
+
 /* 期限切れの方が、お支払い済みのご連絡をするための導線（v61） */
 let bankReportBackTo = 'screen-payment';
 
