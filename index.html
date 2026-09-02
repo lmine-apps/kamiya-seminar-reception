@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=69">
+<link rel="stylesheet" href="css/style.css?v=70">
 </head>
 <body>
 <div class="container">
@@ -270,6 +270,7 @@
       <!-- ここでの救済は【期限内にすでにお支払いを済ませていた方】だけが対象。
            「これから振り込めば参加できる」と読まれると、満席後のご入金を
            招いてしまい、ご返金のお手続きが発生する（2026-09-02 修正）。 -->
+      <div id="expired-rescue">
       <div class="note-box" style="border-left-color:#9c6f5f; background:#fdf6f2;">
         <strong>期限内に、すでにお支払いをお済ませだった方へ</strong><br>
         <span style="font-size:13px;">
@@ -286,6 +287,7 @@
         </p>
         <button class="btn btn-outline" id="btn-expired-bank" style="margin-top:6px;">期限内にお振込がお済みだった方</button>
         <button class="btn btn-outline" id="btn-expired-card" style="margin-top:10px;">期限内にカードでお支払い済みだった方</button>
+      </div>
       </div>
 
       <div class="note-box" style="margin-top:16px; border-left-color:#c96f5e; background:#fdf3ef;">
@@ -320,8 +322,8 @@
 
 </div>
 
-<script src="js/config.js?v=69"></script>
-<script src="js/common.js?v=69"></script>
+<script src="js/config.js?v=70"></script>
+<script src="js/common.js?v=70"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -487,8 +489,7 @@ function render(st) {
       renderConfirmed(st, sem);
       break;
     case '期限切れ':
-      // お支払いの反映を待つ（済んでいれば自動で確定の画面に変わる）
-      startExpiredWatch_();
+      renderExpired_(st, sem);
       showScreen('screen-expired');
       break;
     case 'キャンセル済':
@@ -832,6 +833,38 @@ document.getElementById('cancel-confirm-form').addEventListener('submit', async 
 });
 
 /** カード決済完了のご連絡（お客さま申告） */
+/**
+ * 期限切れ画面を、その方が選んだお支払い方法に合わせて整える（v70）。
+ * 救済の対象は【期限内にすでにお支払いを済ませていた方】だけ。
+ * まだお支払い方法を選んでいない方は、お支払いそのものが発生していないので、
+ * 救済の案内をお見せしない（「いまから払えば入れる」と読まれないため）。
+ */
+function renderExpired_(st, sem) {
+  const method = String(st.payment_method || '').replace('（変更）', '');
+  const rescue = document.getElementById('expired-rescue');
+  const watchTxt = document.getElementById('expired-watch-text');
+  const bankBtn = document.getElementById('btn-expired-bank');
+  const cardBtn = document.getElementById('btn-expired-card');
+
+  if (!method) {
+    // お支払い方法を選ぶ前に期限切れになった方
+    if (rescue) rescue.style.display = 'none';
+    stopExpiredWatch_();
+    return;
+  }
+
+  if (rescue) rescue.style.display = '';
+  const isCard = (method === 'カード');
+  if (bankBtn) bankBtn.style.display = isCard ? 'none' : '';
+  if (cardBtn) cardBtn.style.display = isCard ? '' : 'none';
+  if (watchTxt) {
+    watchTxt.textContent = isCard
+      ? '💳 カードでお支払いの確認が届くのを、お待ちしております…'
+      : '🏦 お振込のご確認をお待ちしております…';
+  }
+  startExpiredWatch_();
+}
+
 /* ============ 期限切れ画面：お支払いの反映を自動で待つ（v62） ============
    カード決済が済んでいれば、プロラインからGASへ通知が飛んで自動で「確定」になる。
    反映まで少し時間がかかるので、その間この画面を開いたまま待てるようにする。
