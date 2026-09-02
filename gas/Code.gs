@@ -1,3 +1,9 @@
+/*** 神谷梓さん 受付管理システム GAS v10.4 ***************************
+ * 【v10.4 2026-09-02】choose_payment からロックを外す
+ *   ご本人の行しか触らず定員の判断もしないので、ロックは不要だった。
+ *   つけたままだと受付の殺到中に submit_application と取り合ってしまう。
+ *   （本番で busy が返ることを確認して修正）
+ *
 /*** 神谷梓さん 受付管理システム GAS v10.3 ***************************
  * 【v10.3 2026-09-02】20分きざみの期限切れを、トリガーに頼らず処理する
  *   Apps Scriptの5分トリガーが保存できなかったため、
@@ -1170,35 +1176,32 @@ function choosePayment_(p) {
   if (!uid) return out_({ ok: false, error: 'uid required' });
   if (['card', 'bank'].indexOf(method) === -1) return out_({ ok: false, error: 'bad method' });
 
-  var lock = LockService.getScriptLock();
-  if (!lock.tryLock(LOCK_WAIT_MS)) return out_({ ok: false, error: 'busy', retry: true });
+  /* ここではロックを取らない（v10.4）。
+     触るのはご本人の行のF列とJ列だけで、定員の判断はしていない。
+     ロックを取ると、受付が殺到しているあいだ submit_application と
+     取り合ってしまい、お客さまに「混み合っております」が出てしまう。 */
+  var found = (p.seminar && SEMINARS[p.seminar])
+    ? findUserInSeminar_(uid, p.seminar)
+    : findUserAcrossSeminars_(uid);
+  if (!found) return out_({ ok: false, error: 'user not found' });
 
-  var newDeadline = '', label = '';
-  try {
-    var found = (p.seminar && SEMINARS[p.seminar])
-      ? findUserInSeminar_(uid, p.seminar)
-      : findUserAcrossSeminars_(uid);
-    if (!found) return out_({ ok: false, error: 'user not found' });
-
-    var status = String(found.data[6]);
-    if (status !== '決済案内中') {
-      return out_({ ok: false, error: 'not_payable', status: status });
-    }
-
-    var config = SEMINARS[found.seminarKey];
-    label = (method === 'bank') ? '銀行振込' : 'カード';
-
-    if (method === 'bank') {
-      newDeadline = formatDate_(deadlineFrom_(config, new Date(), 'bank'));
-      found.sheet.getRange(found.row, 6).setValue(newDeadline);
-    } else {
-      var cur = found.data[5];
-      newDeadline = cur ? formatDateValue_(cur) : '';
-    }
-    found.sheet.getRange(found.row, 10).setValue(label);
-  } finally {
-    lock.releaseLock();
+  var status = String(found.data[6]);
+  if (status !== '決済案内中') {
+    return out_({ ok: false, error: 'not_payable', status: status });
   }
+
+  var config = SEMINARS[found.seminarKey];
+  var label = (method === 'bank') ? '銀行振込' : 'カード';
+  var newDeadline = '';
+
+  if (method === 'bank') {
+    newDeadline = formatDate_(deadlineFrom_(config, new Date(), 'bank'));
+    found.sheet.getRange(found.row, 6).setValue(newDeadline);
+  } else {
+    var cur = found.data[5];
+    newDeadline = cur ? formatDateValue_(cur) : '';
+  }
+  found.sheet.getRange(found.row, 10).setValue(label);
 
   logAction_('choose_payment', uid, '', '→ ' + label, 'お客さまが選択');
   return out_({ ok: true, method: method, label: label, deadline: newDeadline });
