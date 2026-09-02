@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>受付フォーム｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=62">
+<link rel="stylesheet" href="css/style.css?v=63">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -166,13 +166,13 @@
     <div class="card">
       <span class="icon-large">🌸</span>
       <h2>お申込みを承りました</h2>
-      <p class="message-center">
+      <p class="message-center" id="done-payment-lead">
         お席を確保いたしました。<br>
         続けて、お支払いのお手続きを<br>お願いいたします。
       </p>
       <a class="btn btn-primary" id="btn-to-payment" href="index.html" style="margin-top:16px;">お支払いに進む</a>
       <div id="guest-note-payment"></div>
-      <div class="note-box" style="border-left-color:#7da87d; background:#f4f8f4; font-size:12px;">
+      <div class="note-box" id="done-payment-note" style="border-left-color:#7da87d; background:#f4f8f4; font-size:12px;">
         💡 <strong style="font-size:14px; color:#5c8a5c;">いますぐお支払いされなくても大丈夫です</strong><br>
         LINEのトーク履歴にあるボタンをもう一度タップすれば、いつでもお支払い画面に戻ってこられます（再度のお申込みは不要です）。
       </div>
@@ -232,8 +232,8 @@
 
 </div>
 
-<script src="js/config.js?v=62"></script>
-<script src="js/common.js?v=62"></script>
+<script src="js/config.js?v=63"></script>
+<script src="js/common.js?v=63"></script>
 <script>
 let uid = getUid();
 const seminarKey = new URLSearchParams(location.search).get('seminar');
@@ -630,6 +630,28 @@ document.getElementById('apply-form').addEventListener('submit', async (e) => {
     } else if (res.status === '決済案内中') {
       renderSteps('steps-done-payment', 2, false, false);
       if (isGuest) showGuestNote('guest-note-payment');
+
+      /* 「いますぐでなくても大丈夫」は、お支払い期限が3日あるセルフ向けの文言。
+         期限が20分のマーケでそのまま出すと、真逆のことを伝えてしまう（v63）。 */
+      if (sem.paymentChoice) {
+        const lead = document.getElementById('done-payment-lead');
+        if (lead) {
+          lead.innerHTML = 'お席を確保いたしました。<br>' +
+            '<strong>お支払いのお手続きには、お時間の期限がございます。</strong><br>' +
+            'このままお進みくださいませ。';
+        }
+        const note = document.getElementById('done-payment-note');
+        if (note) {
+          note.style.borderLeftColor = '#c96f5e';
+          note.style.background = '#fdf3ef';
+          note.innerHTML =
+            '⏳ <strong style="font-size:14px; color:#c96f5e;">お時間はすでに進んでおります</strong><br>' +
+            '残りのお時間は、次の画面でご確認いただけます。' +
+            'この画面を閉じても、LINEのトーク履歴にあるボタンから戻ってこられますが、' +
+            '<strong>お支払い期限は止まりません。</strong>';
+        }
+      }
+
       showScreen('screen-done-payment');
     } else if (res.status === 'キャンセル待ち') {
       if (isGuest) {
