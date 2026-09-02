@@ -1,3 +1,10 @@
+/*** 神谷梓さん 受付管理システム GAS v11.0 ***************************
+ * 【v11.0 2026-09-02】状態（G列）が空の行があってもアプリを壊さない
+ *   スプレッドシートで状態のセルだけ消すと、アプリが行き先を失って
+ *   「読み込みできませんでした」になっていた（テスト中に実際に発生）。
+ *   状態が空なら『確認中』として返し、お客さまには落ち着いた画面を出す。
+ *   あわせて運営へお知らせする（同じ方につき1時間に1回まで）。
+ *
 /*** 神谷梓さん 受付管理システム GAS v10.9 ***************************
  * 【v10.9 2026-09-02】お支払い方法の選び直しで期限を延ばせる穴をふさぐ
  *   ① 振込で24時間にしたあとカードへ戻すと、24時間のカード枠になっていた
@@ -861,11 +868,34 @@ function getStatus_(p) {
   }
 
   var row = found.data;
+
+  /* 状態（G列）が空の行を守る（v11.0）。
+     スプレッドシートで状態のセルだけ消してしまうと、アプリが行き先を失って
+     「読み込みできませんでした」になっていた。
+     ここでは『確認中』という状態にしてお客さまに落ち着いた画面をお見せし、
+     運営へお知らせして直していただく。通知は1時間に1回まで。 */
+  var statusText = String(row[6] || '').trim();
+  if (!statusText) {
+    statusText = '確認中';
+    try {
+      var cache = CacheService.getScriptCache();
+      var key = 'blankstatus_' + uid;
+      if (!cache.get(key)) {
+        cache.put(key, '1', 3600);
+        notifyOps_('⚠️ 状態が空のお申込みがあります',
+          (row[1] || 'お名前未記入') + ' 様（' + SEMINARS[found.seminarKey].sheet.replace('📋 ', '') + '）の' +
+          '「状態」欄が空になっています。スプレッドシートでご確認ください。' +
+          'そのままだと、お客さまのアプリに画面が出せません。');
+        logAction_('blank_status', uid, SEMINARS[found.seminarKey].sheet, '状態が空', '');
+      }
+    } catch (_) {}
+  }
+
   return out_({
     ok: true,
     uid: uid,
     seminar: found.seminarKey,
-    status: row[6],
+    status: statusText,
     deadline: row[5] ? formatDateValue_(row[5]) : null,
     wait_number: row[7] || null,
     name: row[1] || '',

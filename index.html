@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=65">
+<link rel="stylesheet" href="css/style.css?v=66">
 </head>
 <body>
 <div class="container">
@@ -44,6 +44,24 @@
   </div>
 
   <!-- エラー -->
+  <!-- 状態が空になっていたとき（運営のお手元で確認していただく間の画面） -->
+  <div class="screen" id="screen-checking">
+    <div class="badge-wrap"><span class="badge info">確認中</span></div>
+    <div class="card">
+      <span class="icon-large">🕊</span>
+      <h2>お手続きの確認中です</h2>
+      <p class="message-center">
+        ただいま、お申込みの状況を<br>確認させていただいております。<br><br>
+        恐れ入りますが、しばらくお待ちくださいませ。<br>
+        確認が取れましたら、LINEにてご連絡いたします。
+      </p>
+      <div class="note-box">
+        お急ぎの場合は、LINEのチャットにてお気軽にお問い合わせください。
+      </div>
+      <button class="btn btn-outline" onclick="location.reload()" style="margin-top:12px;">最新の状況を見る</button>
+    </div>
+  </div>
+
   <div class="screen" id="screen-error">
     <div class="card">
       <span class="icon-large">🙏</span>
@@ -294,8 +312,8 @@
 
 </div>
 
-<script src="js/config.js?v=65"></script>
-<script src="js/common.js?v=65"></script>
+<script src="js/config.js?v=66"></script>
+<script src="js/common.js?v=66"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -467,6 +485,10 @@ function render(st) {
       break;
     case 'キャンセル済':
       showScreen('screen-cancelled');
+      break;
+    case '確認中':
+      // スプレッドシートの「状態」が空になっている行。運営には別途お知らせ済み
+      showScreen('screen-checking');
       break;
     default:
       renderSelect();
