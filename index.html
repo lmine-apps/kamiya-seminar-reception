@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=54">
+<link rel="stylesheet" href="css/style.css?v=55">
 </head>
 <body>
 <div class="container">
@@ -265,8 +265,8 @@
 
 </div>
 
-<script src="js/config.js?v=54"></script>
-<script src="js/common.js?v=54"></script>
+<script src="js/config.js?v=55"></script>
+<script src="js/common.js?v=55"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -473,6 +473,17 @@ function renderPayment(st, sem) {
   // 支払い方法出し分け
   const isGuest = uid && String(uid).indexOf('guest_') === 0;
   const box = document.getElementById('pay-methods');
+
+  /* お支払い方法をお選びいただくセミナー（マーケ一般）。
+     お選びいただくまでは案内を出さない。選ばれた方法で期限が変わるため。
+     ※特別受付（ゲスト）は銀行振込のみなので、選択はお見せしない。 */
+  const chosenMethod = String(st.payment_method || '');
+  if (sem.paymentChoice && !isGuest && !chosenMethod) {
+    renderMethodChoice_(sem);
+    showScreen('screen-payment');
+    return;
+  }
+
   if (sem.payment === 'cash') {
     box.innerHTML = '<div class="note-box">' + esc(sem.paymentNote) + '</div>';
   } else {
@@ -492,7 +503,17 @@ function renderPayment(st, sem) {
         '🧪 テスト決済モード中のため、このセミナーのカードでのお支払いは一時停止しています。' +
         '<br><span style="font-weight:400; color:#8a7d76;">動作確認は銀行振込の手順でお願いします。</span></p>';
     }
-    if (stripeUrl && !isGuest && !blockedByTestMode) {
+    // お選びいただいた方法だけをお見せする（選んでいない方法は出さない）
+    const onlyCard = (chosenMethod === 'カード');
+    const onlyBank = (chosenMethod === '銀行振込');
+    if (onlyCard || onlyBank) {
+      html += '<div class="note-box" style="border-left-color:#9c6f5f; background:#fdf6f2;">' +
+        '<strong>' + esc(chosenMethod) + '</strong>でお手続き中です。' +
+        '<button type="button" class="btn btn-text" onclick="changeMethod_()" ' +
+        'style="margin:6px 0 0; padding:0; font-size:13px;">お支払い方法を変更する</button>' +
+        '</div>';
+    }
+    if (stripeUrl && !isGuest && !blockedByTestMode && !onlyBank) {
       html += '<p style="font-size:16px; font-weight:700; color:var(--primary-dark); margin:16px 0 8px; padding-bottom:6px; border-bottom:2px solid var(--accent);">💳 カードでのお支払いの方はこちら</p>';
       if (useTestPay) {
         html += '<p style="font-size:12px; font-weight:700; color:#8a5ca5; margin:0 0 6px;">🧪 テスト決済モード中（本番の請求は発生しません）</p>';
@@ -510,6 +531,7 @@ function renderPayment(st, sem) {
     if (isGuest) {
       html += '<p class="form-note">※特別受付のため、お支払いは銀行振込のみのご対応となります。</p>';
     }
+    if (!onlyCard)
     html += '<p style="font-size:16px; font-weight:700; color:var(--primary-dark); margin:26px 0 8px; padding-bottom:6px; border-bottom:2px solid var(--accent);">🏦 銀行振込ご希望の方はこちら</p>' +
       '<div class="note-box" style="margin:8px 0 10px; font-size:13px; color:var(--text);">' +
       '<strong>お振込の手順</strong><br>' +
@@ -533,6 +555,59 @@ function renderPayment(st, sem) {
     box.innerHTML = html;
   }
   showScreen('screen-payment');
+}
+
+/* ============ お支払い方法をお選びいただく（2026-09-02） ============ */
+
+/** 2つのボタンをお見せする */
+function renderMethodChoice_(sem) {
+  const pc = sem.paymentChoice;
+  const btn = (key, icon, o) =>
+    '<button type="button" class="btn btn-primary" data-method="' + key + '" ' +
+    'onclick="chooseMethod_(this)" style="margin-top:10px; text-align:left; line-height:1.5;">' +
+    icon + ' ' + esc(o.label) +
+    '<br><span style="font-size:12px; font-weight:400; opacity:.9;">' + esc(o.note) + '</span>' +
+    '</button>';
+
+  document.getElementById('pay-methods').innerHTML =
+    '<h3>お支払い方法をお選びください</h3>' +
+    '<div class="note-box" style="border-left-color:#c96f5e; background:#fdf3ef;">' +
+    '<strong>お選びいただくと、お支払い期限が決まります。</strong><br>' +
+    '<span style="font-size:13px;">期限までにご確認できない場合は、お待ちの方にお席をお譲りいたします。</span>' +
+    '</div>' +
+    btn('card', '💳', pc.card) +
+    btn('bank', '🏦', pc.bank);
+
+  // 選ぶまでは期限のカウントダウンを出さない（まだ決まっていないため）
+  const cd = document.getElementById('pay-countdown-box');
+  if (cd) cd.style.display = 'none';
+}
+
+/** 選ばれた方法をサーバーへ伝え、期限を確定させる */
+async function chooseMethod_(el) {
+  const method = el.getAttribute('data-method');
+  const buttons = document.querySelectorAll('#pay-methods button[data-method]');
+  buttons.forEach(b => { b.disabled = true; });
+  const label = el.innerHTML;
+  el.innerHTML = 'お手続き中…';
+
+  try {
+    const res = await apiPost('choose_payment', { uid: uid, seminar: (currentStatus && currentStatus.seminar) || savedSeminar(), method: method });
+    if (res && res.ok) { await loadStatus(); return; }
+    if (res && res.error === 'not_payable') { await loadStatus(); return; }
+    alert('うまく選択できませんでした。恐れ入りますが、もう一度お試しくださいませ。');
+  } catch (_) {
+    alert('通信が不安定なようです。少し時間をおいてお試しくださいませ。');
+  }
+  el.innerHTML = label;
+  buttons.forEach(b => { b.disabled = false; });
+}
+
+/** お支払い方法を選び直す */
+async function changeMethod_() {
+  if (!confirm('お支払い方法を変更しますか？\n銀行振込をお選びの場合、お支払い期限が変わります。')) return;
+  const sem = CONFIG.SEMINARS[(currentStatus && currentStatus.seminar) || ''];
+  if (sem) renderMethodChoice_(sem);
 }
 
 /** キャンセル待ち */

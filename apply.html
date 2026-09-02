@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>受付フォーム｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=54">
+<link rel="stylesheet" href="css/style.css?v=55">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -231,8 +231,8 @@
 
 </div>
 
-<script src="js/config.js?v=54"></script>
-<script src="js/common.js?v=54"></script>
+<script src="js/config.js?v=55"></script>
+<script src="js/common.js?v=55"></script>
 <script>
 let uid = getUid();
 const seminarKey = new URLSearchParams(location.search).get('seminar');
@@ -387,11 +387,16 @@ function init() {
       const note = document.getElementById('capacity-note');
       if (WAIT_ENTRY) {
         enterWaitEntryMode();          // 専用入口：空席の有無にかかわらず待機
+      } else if (isGuest && res.available <= 0) {
+        enterGuestFullMode();          // 特別受付は通知が届かないため満席なら入れない
+      } else if (sem.hideCapacity) {
+        /* 残席を出さないセミナー（マーケ一般）。
+           満席でも「キャンセル待ち」と先に見せず、そのままご入力いただく。
+           結果は送信後にお伝えする（決済案内中／キャンセル待ち◯番目）。 */
+        note.innerHTML = '';
       } else if (res.available > 0) {
         note.innerHTML = '<span style="font-size:16px; font-weight:700; color:#9c6f5f;">残席：' + res.available + ' 席</span><br>' +
           '<span style="font-size:12px; color:#8a7d76;">※残席数は目安です。反映までに時間差が生じる場合があります。</span>';
-      } else if (isGuest) {
-        enterGuestFullMode();
       } else {
         enterWaitlistMode();
       }
@@ -635,8 +640,10 @@ document.getElementById('apply-form').addEventListener('submit', async (e) => {
         return;
       }
       document.getElementById('done-wait-num').textContent = res.waitNum || '-';
-      // 「空席のつもりで送信→実は満席」のレアケースだけお詫びを表示
-      document.getElementById('done-waiting-race-note').style.display = (waitlistMode || WAIT_ENTRY) ? 'none' : '';
+      // 「空席のつもりで送信→実は満席」のレアケースだけお詫びを表示。
+      // 残席を出さないセミナー（マーケ一般）では、そもそも空席を見せていないので出さない。
+      document.getElementById('done-waiting-race-note').style.display =
+        (waitlistMode || WAIT_ENTRY || sem.hideCapacity) ? 'none' : '';
       showScreen('screen-done-waiting');
     } else {
       showScreen('screen-already');

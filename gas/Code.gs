@@ -1,3 +1,17 @@
+/*** 神谷梓さん 受付管理システム GAS v10.2 ***************************
+ * 【v10.2 2026-09-02】マーケ一般：受付してから空き状況が分かる方式へ
+ *   ① 受付前に残席を見せない（hide_capacity）。フォームは誰にでも出し、
+ *      送信して初めて「お支払いへ」か「キャンセル待ち◯番目」かが分かる。
+ *   ② お支払い期限を短く
+ *        カード       … 受付できてから 20分（deadline_min）
+ *        銀行振込     … お選びいただいてから 24時間（bank_deadline_min）
+ *        繰上げの方   … ご案内から 24時間（promote_deadline_min）
+ *      20分きざみを効かせるため、checkExpiredFast を5分ごとに走らせる。
+ *      （setupFastTrigger を一度実行してトリガーを作ること）
+ *   ③ 期限を過ぎたあとのご入金・ご決済も、返金せずお受けする。
+ *      そのぶん定員15名を超えることがある。会場上限25名に近づいたら
+ *      watchAttendees_ が運営へお知らせする（受付は止めない）。
+ *
 /*** 神谷梓さん 受付管理システム GAS v10.1 ***************************
  * 【v10.1 2026-09-02】マーケ一般を当初の【公式LINE連携】方式へ戻す
  *   受付は apply.html?seminar=marke_general&uid=[[uid]]、決済はプロライン経由。
@@ -277,11 +291,44 @@ var SEMINARS = {
   'marke_priority':  { sheet: '📋 マーケ先行',  capacity: 5,  payment: 'prepaid', open_at: '2026-09-05 21:00',
                        close_at: '2026-09-28 23:59', dates: ['2026-09-29', '2026-10-29', '2026-11-25'] },
   // マーケは先行枠なしの一般募集のみ（2026-08-17変更・15名）。先行枠は使わないが定義は温存
+  /* マーケ一般（2026-09-02 改定）
+     ・受付前に残席を見せない（hide_capacity）。送信して初めて結果が分かる
+     ・お支払い期限を短くして席を早く回す
+         deadline_min         … 受付できてから、カードでお支払いいただくまで
+         bank_deadline_min    … 銀行振込をお選びいただいてから
+         promote_deadline_min … 繰上げでご案内してから（LINEに気づく時間が要るので長め）
+     ・max_attendees … 会場の上限。期限切れ後のご入金で定員を超えることを許容するが、
+                       ここに近づいたら運営へ警告を出す */
   'marke_general':   { sheet: '📋 マーケ一般',  capacity: 15, payment: 'prepaid', open_at: '2026-09-05 21:00',
-                       close_at: '2026-09-28 23:59', dates: ['2026-09-29', '2026-10-29', '2026-11-25'] }
+                       close_at: '2026-09-28 23:59', dates: ['2026-09-29', '2026-10-29', '2026-11-25'],
+                       hide_capacity: true,
+                       deadline_min: 20, bank_deadline_min: 1440, promote_deadline_min: 1440,
+                       max_attendees: 25 }
 };
 
-var DEADLINE_DAYS = 3;   // 決済期限（日数）
+var DEADLINE_DAYS = 3;   // 決済期限（日数）※セミナー個別の指定がないときの既定値
+
+/**
+ * お支払い期限を出す。
+ *   kind … 'card'（受付直後の既定）／'bank'（銀行振込をお選びになったとき）
+ *          'promote'（キャンセル待ちから繰り上がったとき）
+ * セミナー設定に分数の指定があればそれを使い、無ければ従来どおり DEADLINE_DAYS。
+ */
+function deadlineFrom_(config, fromDate, kind) {
+  var min = 0;
+  if (config) {
+    if (kind === 'bank')         min = config.bank_deadline_min || 0;
+    else if (kind === 'promote') min = config.promote_deadline_min || config.deadline_min || 0;
+    else                         min = config.deadline_min || 0;
+  }
+  if (!min) return new Date(fromDate.getTime() + DEADLINE_DAYS * 86400000);
+  return new Date(fromDate.getTime() + min * 60000);
+}
+
+/** そのセミナーで「短い期限」を使っているか（＝分きざみの運用か） */
+function usesShortDeadline_(config) {
+  return !!(config && config.deadline_min);
+}
 var DATA_START_ROW = 10; // データ開始行
 var KANA_COL  = 15;      // O列＝読み仮名（v8.5で末尾に追加）
 var INSTA_COL = 16;      // P列＝インスタユーザー名（v8.9で末尾に追加・マーケのみ）
@@ -340,6 +387,7 @@ function handleRequest_(e) {
     // --- v1（プロライン連携） ---
     if (action === 'form_submitted')       return handleFormSubmit_(p);
     if (action === 'payment_completed')    return handlePaymentComplete_(p);
+    if (action === 'choose_payment')       return choosePayment_(p);
     if (action === 'manual_promote')       return manualPromote_(p);
     if (action === 'check_expired')        return out_(checkExpired());
     // --- v2（Webアプリ用） ---
@@ -1068,6 +1116,87 @@ function submitMarke_(p) {
 }
 
 /**
+ * 【v10.2】ご参加が確定するたびに人数を数え、定員を超えていたら運営へお知らせする。
+ * 期限を過ぎたあとのご入金は返金せずお受けする決まりなので、定員（15名）を
+ * 超えることがある。会場の上限（max_attendees）に近づいたら強めにお伝えする。
+ * ※ここは「知らせるだけ」。受付を止めたり、確定を取り消したりはしない。
+ */
+function watchAttendees_(sh, seminarKey) {
+  try {
+    var config = SEMINARS[seminarKey];
+    if (!config || !config.max_attendees) return;
+
+    var confirmed = countByStatuses_(sh, ['確定']);
+    if (confirmed <= config.capacity) return;      // 定員内なら何も言わない
+
+    var over = confirmed - config.capacity;
+    var name = config.sheet.replace('📋 ', '');
+
+    if (confirmed >= config.max_attendees) {
+      notifyOps_('🚨 会場の上限に達しました（' + name + '）',
+        'ご参加確定が' + confirmed + '名になりました（定員' + config.capacity +
+        '名／会場上限' + config.max_attendees + '名）。' +
+        'これ以上はお受けできません。振込のご案内を止めるなど、ご対応をお願いいたします。');
+    } else {
+      notifyOps_('⚠️ 定員を' + over + '名超えています（' + name + '）',
+        'ご参加確定が' + confirmed + '名になりました（定員' + config.capacity +
+        '名／会場上限' + config.max_attendees + '名）。' +
+        '期限後のご入金をお受けした分です。会場の席数をご確認くださいませ。');
+    }
+    logAction_('over_capacity', '', config.sheet, confirmed + '名（定員' + config.capacity + '）', '');
+  } catch (err) {
+    logAction_('error', '', '', 'watchAttendees failed: ' + err, '');
+  }
+}
+
+/**
+ * お支払い方法をお選びいただいたときに呼ばれる（v10.2）。
+ *   method='bank' … 銀行振込。お選びいただいた時点から bank_deadline_min 分に期限を延ばす
+ *   method='card' … カード。期限は受付時のまま（変えない）
+ * どちらもJ列（決済方法）に記録しておき、運営がひと目で分かるようにする。
+ * ※「決済案内中」の方だけ。確定済み・キャンセル済みの方は動かさない。
+ */
+function choosePayment_(p) {
+  var uid = String(p.uid || '').trim();
+  var method = String(p.method || '').trim();
+  if (!uid) return out_({ ok: false, error: 'uid required' });
+  if (['card', 'bank'].indexOf(method) === -1) return out_({ ok: false, error: 'bad method' });
+
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(LOCK_WAIT_MS)) return out_({ ok: false, error: 'busy', retry: true });
+
+  var newDeadline = '', label = '';
+  try {
+    var found = (p.seminar && SEMINARS[p.seminar])
+      ? findUserInSeminar_(uid, p.seminar)
+      : findUserAcrossSeminars_(uid);
+    if (!found) return out_({ ok: false, error: 'user not found' });
+
+    var status = String(found.data[6]);
+    if (status !== '決済案内中') {
+      return out_({ ok: false, error: 'not_payable', status: status });
+    }
+
+    var config = SEMINARS[found.seminarKey];
+    label = (method === 'bank') ? '銀行振込' : 'カード';
+
+    if (method === 'bank') {
+      newDeadline = formatDate_(deadlineFrom_(config, new Date(), 'bank'));
+      found.sheet.getRange(found.row, 6).setValue(newDeadline);
+    } else {
+      var cur = found.data[5];
+      newDeadline = cur ? formatDateValue_(cur) : '';
+    }
+    found.sheet.getRange(found.row, 10).setValue(label);
+  } finally {
+    lock.releaseLock();
+  }
+
+  logAction_('choose_payment', uid, '', '→ ' + label, 'お客さまが選択');
+  return out_({ ok: true, method: method, label: label, deadline: newDeadline });
+}
+
+/**
  * Stripeの決済が終わって戻ってきたとき、「確定」にする。
  * ※ご自分のお席の確保が生きていれば、必ず「確定」になる。
  *   確保が切れたあとにお支払いされた場合だけ、保険としてキャンセル待ちに回す。
@@ -1305,7 +1434,7 @@ function submitApplication_(p, dryRun) {
         status = '確定';       deadline = '';  waitNum = '';  scenarioName = '確定';
       } else {
         status = '決済案内中';
-        deadline = formatDate_(new Date(now.getTime() + DEADLINE_DAYS * 86400000));
+        deadline = formatDate_(deadlineFrom_(config, now, 'card'));
         waitNum = '';          scenarioName = '決済案内';
       }
     } else {
@@ -1728,6 +1857,17 @@ function handlePaymentComplete_(p) {
   // ここで再度⑦を叩くと⑦がもう一度実行され、同じメッセージが2通届く（2026-08-19 修正）。
   logAction_('payment_completed', p.uid, sh.getName(), '→ 確定', p.method || '');
 
+  // 期限を過ぎたあとのご入金も、返金せずお受けする決まり（2026-09-02）。
+  // そのぶん定員を超えることがあるので、人数を見て運営へお知らせする。
+  var paidKey = null;
+  Object.keys(SEMINARS).forEach(function (k) {
+    if (SEMINARS[k].sheet === sh.getName()) paidKey = k;
+  });
+  if (paidKey) {
+    capacityCacheClear_(paidKey);
+    watchAttendees_(sh, paidKey);
+  }
+
   return out_({ ok: true });
 }
 
@@ -1782,6 +1922,11 @@ function onEdit(e) {
     if (newValue === '確定') {
       moveScenario_(uid, '確定');
       logAction_('manual_confirm', uid, sheetName, '→ 確定', '手動確認');
+      var manualKey = null;
+      Object.keys(SEMINARS).forEach(function (k) {
+        if (SEMINARS[k].sheet === sheetName) manualKey = k;
+      });
+      if (manualKey) { capacityCacheClear_(manualKey); watchAttendees_(sh, manualKey); }
     }
   } catch (err) {
     // onEditはエラーを外に投げると危険なのでログのみ
@@ -1840,6 +1985,62 @@ function remindPromote_() {
     sent++;
   });
   return sent;
+}
+
+/**
+ * 【v10.2】5分ごとに走らせる軽い期限切れ処理。
+ * マーケの期限は20分きざみなので、1時間に1回では間に合わない。
+ * 重い処理（名簿の作り直し・お知らせ送信など）は入れず、期限切れと繰上げだけを見る。
+ */
+function checkExpiredFast() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var now = new Date();
+  var expiredCount = 0;
+
+  Object.keys(SEMINARS).forEach(function (key) {
+    var config = SEMINARS[key];
+    if (!usesShortDeadline_(config)) return;   // 分きざみのセミナーだけ
+
+    var sh = ss.getSheetByName(config.sheet);
+    if (!sh) return;
+    var lastRow = sh.getLastRow();
+    if (lastRow < DATA_START_ROW) return;
+
+    var data = sh.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, 8).getValues();
+    for (var i = 0; i < data.length; i++) {
+      if (String(data[i][6]) !== '決済案内中') continue;
+      var deadline = data[i][5];
+      if (!deadline) continue;
+      var dl = new Date(deadline);
+      if (isNaN(dl.getTime()) || dl >= now) continue;
+
+      var uid = data[i][0];
+      sh.getRange(DATA_START_ROW + i, 7).setValue('期限切れ');
+      moveScenario_(uid, '期限切れ');
+      logAction_('auto_expire_fast', uid, sh.getName(), '→ 期限切れ', 'お支払い期限を過ぎたため');
+      promoteNextWaiting_(sh);
+      expiredCount++;
+    }
+  });
+
+  if (expiredCount > 0) {
+    Object.keys(SEMINARS).forEach(function (k) { capacityCacheClear_(k); });
+    notifyOps_('⏰ お支払い期限切れ（' + expiredCount + '件）',
+      'キャンセル待ちの方がいらっしゃる場合は、自動で繰上げています。');
+  }
+  return { ok: true, expiredCount: expiredCount };
+}
+
+/**
+ * 5分ごとのトリガーを用意する（一度だけ手で実行すればOK）。
+ * 同じ関数のトリガーが既にあれば作り直す。
+ */
+function setupFastTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'checkExpiredFast') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('checkExpiredFast').timeBased().everyMinutes(5).create();
+  return '⏱ checkExpiredFast を5分ごとに実行するようにしました';
 }
 
 function checkExpired() {
@@ -1955,7 +2156,11 @@ function promoteNextWaiting_(sh) {
 
   var row = DATA_START_ROW + minWaitIdx;
   var uid = data[minWaitIdx][0];
-  var deadline = new Date(Date.now() + DEADLINE_DAYS * 86400000);
+  var promoteConfig = null;
+  Object.keys(SEMINARS).forEach(function (k) {
+    if (SEMINARS[k].sheet === sh.getName()) promoteConfig = SEMINARS[k];
+  });
+  var deadline = deadlineFrom_(promoteConfig, new Date(), 'promote');
   sh.getRange(row, 6).setValue(formatDate_(deadline));
   sh.getRange(row, 7).setValue('決済案内中');
   sh.getRange(row, 8).setValue('');
