@@ -1,3 +1,11 @@
+/*** 神谷梓さん 受付管理システム GAS v10.8 ***************************
+ * 【v10.8 2026-09-02】お支払いと期限切れが行き違いになった方を受け止める
+ *   マーケの期限は20分と短く、カード決済の最中に期限切れになって
+ *   キャンセルのお知らせが届くことが起こりうる。
+ *   ・カード決済のご連絡が「期限切れ」だと弾かれていたのを受け付けるように
+ *   ・振込のご連絡は、確定済み・キャンセル済みの方を上書きしないよう保護
+ *   ・どちらも期限切れ後だった場合は備考に印を付け、運営へ強めにお知らせする
+ *
 /*** 神谷梓さん 受付管理システム GAS v10.7 ***************************
  * 【v10.7 2026-09-02】セルフにも繰上げ期限の分数を明記
  *   v10.6 でキャンセル待ちの画面の「3日以内」を自動生成に変えたところ、
@@ -1564,9 +1572,21 @@ function reportBankTransfer_(p) {
 
   var sh = found.sheet;
   var row = found.row;
+  var current = String(sh.getRange(row, 7).getValue());
+
+  /* すでにご参加が確定している方・キャンセル済みの方は動かさない（v10.8）。
+     「期限切れ」の方は受け付ける。お振込みを済ませたあとに行き違いで
+     キャンセルのお知らせが届くことがあり、そのご連絡を受け取る必要があるため。 */
+  if (current === '確定' || current === '振込報告済み' || current === 'キャンセル済') {
+    return out_({ ok: true, already: true, status: current });
+  }
+  var wasExpired = (current === '期限切れ');
+
   sh.getRange(row, 7).setValue('振込報告済み');
+  sh.getRange(row, 6).setValue('');   // 期限は役目を終えたので消す
   sh.getRange(row, 10).setValue('銀行振込');
-  var memo = '名義:' + (p.transfer_name || '') +
+  var memo = (wasExpired ? '⚠️期限切れ後のご連絡／要確認 ' : '') +
+    '名義:' + (p.transfer_name || '') +
     (p.transfer_date ? ' 振込日:' + p.transfer_date : '') +
     ' 報告:' + formatDate_(new Date());
   sh.getRange(row, 11).setValue(memo);
@@ -1574,10 +1594,16 @@ function reportBankTransfer_(p) {
   logAction_('bank_transfer_reported', uid, sh.getName(), '→ 振込報告済み', memo);
 
   // 運営へプッシュ通知（入金確認のアクションが必要なため）
-  notifyOps_('🏦 振込のご報告が届きました',
-    (found.data[1] || 'どなたか') + 'さんから振込のご報告がありました。入金確認をお願いします。');
+  if (wasExpired) {
+    notifyOps_('⚠️ 期限切れ後に振込のご報告が届きました',
+      (found.data[1] || 'どなたか') + 'さんです。お手続きの行き違いの可能性があります。' +
+      '入金をご確認のうえ、ご参加いただけるかご判断ください。');
+  } else {
+    notifyOps_('🏦 振込のご報告が届きました',
+      (found.data[1] || 'どなたか') + 'さんから振込のご報告がありました。入金確認をお願いします。');
+  }
 
-  return out_({ ok: true });
+  return out_({ ok: true, was_expired: wasExpired });
 }
 
 // ========== 【v7.3】カード決済完了のご連絡（お客さま申告） ==========
@@ -1595,20 +1621,38 @@ function reportCardPayment_(p) {
 
   var sh = found.sheet, row = found.row;
   var current = String(sh.getRange(row, 7).getValue());
-  // 二重報告・確定済みへの上書きを防ぐ
-  if (current !== '決済案内中') {
+
+  /* 二重報告・確定済みへの上書きを防ぐ。
+     ただし「期限切れ」の方は受け付ける（v10.8）。
+     お支払い期限が20分と短いため、決済の最中に期限切れになり、
+     行き違いでキャンセルのお知らせが届くことが起こりうる。
+     期限を過ぎたあとのご決済も返金せずお受けする決まりなので、
+     ここで門前払いにしてはいけない。 */
+  var wasExpired = (current === '期限切れ');
+  if (current !== '決済案内中' && !wasExpired) {
     return out_({ ok: true, already: true, status: current });
   }
 
   sh.getRange(row, 7).setValue('振込報告済み');
+  sh.getRange(row, 6).setValue('');   // 期限は役目を終えたので消す
   if (!sh.getRange(row, 10).getValue()) sh.getRange(row, 10).setValue('カード（要確認）');
-  sh.getRange(row, 11).setValue('カード決済完了のご連絡 ' + formatDate_(new Date()));
+  sh.getRange(row, 11).setValue(
+    (wasExpired ? '⚠️期限切れ後のご連絡／要確認 ' : '') +
+    'カード決済完了のご連絡 ' + formatDate_(new Date()));
 
-  logAction_('card_payment_reported', uid, sh.getName(), '→ 振込報告済み', 'カード決済完了の申告');
-  notifyOps_('💳 カード決済のご連絡が届きました',
-    (found.data[1] || 'どなたか') + 'さんがカード決済を完了されました。Stripeで入金をご確認のうえ、確定の操作をお願いします。');
+  logAction_('card_payment_reported', uid, sh.getName(), '→ 振込報告済み',
+    wasExpired ? '期限切れ後のカード決済の申告' : 'カード決済完了の申告');
 
-  return out_({ ok: true, status: '振込報告済み' });
+  if (wasExpired) {
+    notifyOps_('⚠️ 期限切れ後にカード決済のご連絡が届きました',
+      (found.data[1] || 'どなたか') + 'さんです。お手続きの行き違いの可能性があります。' +
+      'Stripeで入金をご確認のうえ、ご参加いただけるかご判断ください。');
+  } else {
+    notifyOps_('💳 カード決済のご連絡が届きました',
+      (found.data[1] || 'どなたか') + 'さんがカード決済を完了されました。Stripeで入金をご確認のうえ、確定の操作をお願いします。');
+  }
+
+  return out_({ ok: true, status: '振込報告済み', was_expired: wasExpired });
 }
 
 // ========== 【v2】残席照会 ==========

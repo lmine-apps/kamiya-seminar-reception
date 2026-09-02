@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=60">
+<link rel="stylesheet" href="css/style.css?v=61">
 </head>
 <body>
 <div class="container">
@@ -143,7 +143,7 @@
           <input type="date" name="transfer_date">
         </div>
         <button type="submit" class="btn btn-primary" id="btn-bank-submit">振込完了を連絡する</button>
-        <button type="button" class="btn btn-text" onclick="showScreen('screen-payment')">戻る</button>
+        <button type="button" class="btn btn-text" onclick="showScreen(bankReportBackTo)">戻る</button>
       </form>
     </div>
   </div>
@@ -237,11 +237,25 @@
       <span class="icon-large">🙇‍♀️</span>
       <h2>お手続き期限を過ぎました</h2>
       <p class="message-center">
-        お支払い期限（3日以内）を過ぎましたため、<br>
+        お支払い期限を過ぎましたため、<br>
         今回のお申込みはキャンセル扱いと<br>させていただきました。
       </p>
-      <div class="note-box">
-        引き続きご検討いただける場合は、LINEのチャットにてご連絡くださいませ。状況に応じて、再度お席をご案内できる場合がございます。
+
+      <!-- お支払いと行き違いになった方の受け皿（v61）。
+           期限が短いため、決済の最中にこのお知らせが届くことがある。 -->
+      <div class="note-box" style="border-left-color:#9c6f5f; background:#fdf6f2;">
+        <strong>すでにお支払いをお済ませの方へ</strong><br>
+        <span style="font-size:13px;">
+          お手続きと行き違いになっている場合がございます。<br>
+          お心当たりのある方は、下記よりお知らせくださいませ。<br>
+          <strong>ご入金が確認できましたら、そのままご参加いただけます。</strong>
+        </span>
+      </div>
+      <button class="btn btn-outline" id="btn-expired-bank" style="margin-top:10px;">お振込がお済みの方はこちら</button>
+      <button class="btn btn-outline" id="btn-expired-card" style="margin-top:10px;">カードでお支払い済みの方はこちら</button>
+
+      <div class="note-box" style="margin-top:16px;">
+        上記にあてはまらない場合で、引き続きご検討いただけるときは、LINEのチャットにてご連絡くださいませ。状況に応じて、再度お席をご案内できる場合がございます。
       </div>
     </div>
   </div>
@@ -267,8 +281,8 @@
 
 </div>
 
-<script src="js/config.js?v=60"></script>
-<script src="js/common.js?v=60"></script>
+<script src="js/config.js?v=61"></script>
+<script src="js/common.js?v=61"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -557,7 +571,7 @@ function renderPayment(st, sem) {
       '<div class="row"><span class="k">口座</span><span>' + esc(CONFIG.BANK_INFO.type) + ' ' + esc(CONFIG.BANK_INFO.number) + '</span></div>' +
       '<div class="row"><span class="k">名義</span><span>' + esc(CONFIG.BANK_INFO.holder) + '</span></div>' +
       '</div>' +
-      '<button class="btn btn-outline" onclick="showScreen(\'screen-bank-report\')">振込完了のご連絡はこちら</button>';
+      '<button class="btn btn-outline" onclick="bankReportBackTo=\'screen-payment\'; showScreen(\'screen-bank-report\')">振込完了のご連絡はこちら</button>';
     // ゲストにはLINEの代わりに専用URLの保存を案内
     if (isGuest) {
       html += '<div class="note-box" style="border-left-color:#c8a96b; background:#fdf9f4; font-size:12px;">' +
@@ -747,6 +761,15 @@ document.getElementById('cancel-confirm-form').addEventListener('submit', async 
 });
 
 /** カード決済完了のご連絡（お客さま申告） */
+/* 期限切れの方が、お支払い済みのご連絡をするための導線（v61） */
+let bankReportBackTo = 'screen-payment';
+
+document.getElementById('btn-expired-bank').addEventListener('click', () => {
+  bankReportBackTo = 'screen-expired';
+  showScreen('screen-bank-report');
+});
+document.getElementById('btn-expired-card').addEventListener('click', () => reportCardPaid());
+
 async function reportCardPaid() {
   if (!confirm('カードでのお支払いが完了したことを、主催者へご連絡します。よろしいですか？')) return;
   showLoading(true);
