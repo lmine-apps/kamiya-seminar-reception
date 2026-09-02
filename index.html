@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=59">
+<link rel="stylesheet" href="css/style.css?v=60">
 </head>
 <body>
 <div class="container">
@@ -267,8 +267,8 @@
 
 </div>
 
-<script src="js/config.js?v=59"></script>
-<script src="js/common.js?v=59"></script>
+<script src="js/config.js?v=60"></script>
+<script src="js/common.js?v=60"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -802,7 +802,7 @@ function demoShow_(kind) {
     news: [{ title: '当日のお持ち物について', body: '筆記用具のほかに、飲みもののご用意をおすすめしております。\n会場は少し冷えることがございますので、羽織るものがあると安心です。' }] };
   let st;
   if (kind === 'payment')        st = Object.assign(base, { status: '決済案内中', seminar: 'marke_general', deadline: dl });
-  else if (kind === 'waiting')   st = Object.assign(base, { status: 'キャンセル待ち', seminar: 'self_general', wait_number: 2 });
+  else if (kind === 'waiting')   st = Object.assign(base, { status: 'キャンセル待ち', seminar: 'self_general', wait_number: 2, promote_deadline_min: 4320 });
   else if (kind === 'confirmed') st = Object.assign(base, { status: '確定', seminar: 'self_priority' });
   else if (kind === 'expired')   st = Object.assign(base, { status: '期限切れ', seminar: 'marke_general' });
   demoState_ = st;
