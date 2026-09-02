@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>マーケティングセミナー 受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=51">
+<link rel="stylesheet" href="css/style.css?v=52">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -306,8 +306,8 @@
 
 </div>
 
-<script src="js/config.js?v=51"></script>
-<script src="js/common.js?v=51"></script>
+<script src="js/config.js?v=52"></script>
+<script src="js/common.js?v=52"></script>
 <script>
 /* =====================================================================
  * マーケティングセミナー：LINEを使わない受付（2026-08-27〜）
@@ -468,6 +468,29 @@ function preparePay_() {
     // 決済後、このページに戻ってきたときに分かるよう申込IDを持たせる
     const sep = link.indexOf('?') === -1 ? '?' : '&';
     btn.href = link + sep + 'client_reference_id=' + encodeURIComponent(appId);
+
+    /* 押した瞬間にも残席を確かめる。
+       画面を開いてから押すまでの間に満席になることがあり、
+       そのままStripeへ行くと「払ったのに満席」になってしまうため。 */
+    if (!btn.dataset.guard) {
+      btn.dataset.guard = '1';
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const href = btn.href;
+        const label = btn.textContent;
+        btn.textContent = 'お席を確認しています…';
+        btn.style.pointerEvents = 'none';
+        let full = false;
+        try {
+          const res = await apiGet('get_capacity', { seminar: SEM_KEY });
+          full = !!(res && res.ok && res.available <= 0);
+        } catch (_) { /* 確認できなければ止めない（サーバー側で最終判定） */ }
+        btn.textContent = label;
+        btn.style.pointerEvents = '';
+        if (full) { checkStillOpen_(); return; }   // 満席の案内に切り替える
+        location.href = href;
+      });
+    }
   }
 }
 
