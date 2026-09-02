@@ -1,3 +1,11 @@
+/*** 神谷梓さん 受付管理システム GAS v10.1 ***************************
+ * 【v10.1 2026-09-02】マーケ一般を当初の【公式LINE連携】方式へ戻す
+ *   受付は apply.html?seminar=marke_general&uid=[[uid]]、決済はプロライン経由。
+ *   LINEなし方式のコードは消していない。MARKE_NO_LINE を true にすれば戻る。
+ *   ・残席の数え方 … 確定／決済案内中／振込報告済み（当初どおり）
+ *   ・自動繰上げ  … 復活（プロラインの「空きできました」が飛ぶため）
+ *   ・LINEなし方式の入口（submit_marke ほか）は閉じてある
+ *
 /*** 神谷梓さん 受付管理システム GAS v10.0 ***************************
  * 【v10.0 2026-09-02】マーケ：受付できた時点でお席を確保する
  *   これまでは「お支払いが済んだ人」だけを残席から引いていたため、
@@ -343,10 +351,14 @@ function handleRequest_(e) {
     if (action === 'cancel_application')   return cancelApplication_(p);
     if (action === 'save_kana')            return saveKana_(p);
     // --- v9.1 マーケ（LINEを通らない申込） ---
-    if (action === 'submit_marke')         return submitMarke_(p);
-    if (action === 'marke_paid')           return markePaid_(p);
-    if (action === 'marke_lookup')         return markeLookup_(p);
-    if (action === 'marke_to_wait')        return markeToWait_(p);
+    // LINEなし方式の入口。いまは閉じている（MARKE_NO_LINE = false）
+    if (['submit_marke', 'marke_paid', 'marke_lookup', 'marke_to_wait'].indexOf(action) !== -1) {
+      if (!MARKE_NO_LINE) return out_({ ok: false, error: 'marke_no_line_disabled' });
+      if (action === 'submit_marke')       return submitMarke_(p);
+      if (action === 'marke_paid')         return markePaid_(p);
+      if (action === 'marke_lookup')       return markeLookup_(p);
+      if (action === 'marke_to_wait')      return markeToWait_(p);
+    }
 
     return out_({ ok: false, error: 'unknown action: ' + action });
   } catch (err) {
@@ -870,7 +882,15 @@ function gateInfo_(seminarKey) {
  *     開く鍵は「メールアドレス＋生年月日」（markeLookup_）。
  * ===================================================================== */
 
-var MARKE_PENDING = '決済待ち';   // 受付済み・未決済。お席を確保している
+/* ★ マーケ一般の方式スイッチ（v10.1 2026-09-02）
+     false … 当初どおり【公式LINE連携】。apply.html から受付し、
+              プロライン経由でStripe決済。← いまはこちら
+     true  … LINEを使わない方式。marke.html から受付し、
+              受付時にお席を確保してStripeの決済リンクへ。
+     戻すときは、この1行を true にして marke.html を復活させるだけ。 */
+var MARKE_NO_LINE = false;
+
+var MARKE_PENDING = '決済待ち';   // LINEなし方式のみ。受付済み・未決済でお席を確保
 var MARKE_HOLD_MIN = 20;          // 受付後、お席を確保しておく時間（分）
 
 /**
@@ -879,7 +899,9 @@ var MARKE_HOLD_MIN = 20;          // 受付後、お席を確保しておく時�
  * 「期限切れ」に落とすので、ここでは持っている扱いのまま（多めに数える側に倒す）。
  */
 function holdsSeat_(status) {
-  return ['確定', '決済案内中', '振込報告済み', MARKE_PENDING].indexOf(String(status)) !== -1;
+  var held = ['確定', '決済案内中', '振込報告済み'];
+  if (MARKE_NO_LINE) held.push(MARKE_PENDING);
+  return held.indexOf(String(status)) !== -1;
 }
 
 /**
@@ -891,6 +913,7 @@ function holdsSeat_(status) {
 function seatHeld_(status, deadline, now) {
   var st = String(status);
   if (['確定', '決済案内中', '振込報告済み'].indexOf(st) !== -1) return true;
+  if (!MARKE_NO_LINE) return false;               // LINE連携方式では「決済待ち」は使わない
   if (st !== MARKE_PENDING) return false;
   if (!deadline) return false;                    // 期限なしの古い行は席を持たない
   var dl = new Date(deadline);
@@ -1838,8 +1861,8 @@ function checkExpired() {
       var deadline = data[i][5];
       var status = data[i][6];
 
-      // マーケ：お席の確保時間を過ぎた「決済待ち」を外す（v10.0）
-      if (status === MARKE_PENDING && deadline) {
+      // マーケ：お席の確保時間を過ぎた「決済待ち」を外す（v10.0／LINEなし方式のみ）
+      if (MARKE_NO_LINE && status === MARKE_PENDING && deadline) {
         var hd = new Date(deadline);
         if (!isNaN(hd.getTime()) && hd < now) {
           var hrow = DATA_START_ROW + i;
@@ -1898,11 +1921,12 @@ function promoteNextWaiting_(sh) {
   var lastRow = sh.getLastRow();
   if (lastRow < DATA_START_ROW) return;
 
-  /* マーケ一般は自動で繰り上げない（v10.0）。
-     公式LINEを使わないため「空きました」のご案内が自動では届かず、
-     勝手に「決済案内中」へ動かすとお客さまが気づけないまま期限を迎えてしまう。
-     お席が空いたことだけを運営へお知らせし、ご案内の仕方は神谷さんにお任せする。 */
-  if (sh.getName() === SEMINARS['marke_general'].sheet) {
+  /* LINEなし方式のときだけ、マーケ一般は自動で繰り上げない（v10.0）。
+     「空きました」のご案内が自動では届かず、勝手に「決済案内中」へ動かすと
+     お客さまが気づけないまま期限を迎えてしまうため。
+     公式LINE連携（いまの方式）では、プロラインの「空きできました」が
+     自動で飛ぶので、これまでどおり自動で繰り上げる。 */
+  if (MARKE_NO_LINE && sh.getName() === SEMINARS['marke_general'].sheet) {
     var waitingCount = countByStatuses_(sh, ['キャンセル待ち']);
     if (waitingCount > 0) {
       notifyOps_('🪑 お席が1つ空きました（マーケ一般）',
