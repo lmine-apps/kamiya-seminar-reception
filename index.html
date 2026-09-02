@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=68">
+<link rel="stylesheet" href="css/style.css?v=69">
 </head>
 <body>
 <div class="container">
@@ -267,11 +267,14 @@
 
       <!-- お支払いと行き違いになった方の受け皿（v61）。
            期限が短いため、決済の最中にこのお知らせが届くことがある。 -->
+      <!-- ここでの救済は【期限内にすでにお支払いを済ませていた方】だけが対象。
+           「これから振り込めば参加できる」と読まれると、満席後のご入金を
+           招いてしまい、ご返金のお手続きが発生する（2026-09-02 修正）。 -->
       <div class="note-box" style="border-left-color:#9c6f5f; background:#fdf6f2;">
-        <strong>すでにお支払いをお済ませの方へ</strong><br>
+        <strong>期限内に、すでにお支払いをお済ませだった方へ</strong><br>
         <span style="font-size:13px;">
           お手続きと行き違いになっている場合がございます。<br>
-          <strong>ご入金が確認できましたら、そのままご参加いただけます。</strong>
+          <strong>期限内に</strong>お支払いをお済ませでしたら、下記よりお知らせくださいませ。
         </span>
         <div id="expired-watch" style="margin-top:10px; font-size:13px; color:#8a7d76;">
           <span id="expired-watch-text">💳 カードでお支払いの方は、確認が届くのをお待ちしております…</span>
@@ -279,14 +282,19 @@
       </div>
       <div id="expired-manual" style="display:none;">
         <p class="form-note" style="text-align:center; margin-top:12px;">
-          お支払いがお済みなのに画面が変わらない場合は、下記よりお知らせくださいませ。
+          期限内にお支払いがお済みなのに画面が変わらない場合は、下記よりお知らせくださいませ。
         </p>
-        <button class="btn btn-outline" id="btn-expired-bank" style="margin-top:6px;">お振込がお済みの方はこちら</button>
-        <button class="btn btn-outline" id="btn-expired-card" style="margin-top:10px;">カードでお支払い済みの方はこちら</button>
+        <button class="btn btn-outline" id="btn-expired-bank" style="margin-top:6px;">期限内にお振込がお済みだった方</button>
+        <button class="btn btn-outline" id="btn-expired-card" style="margin-top:10px;">期限内にカードでお支払い済みだった方</button>
       </div>
 
-      <div class="note-box" style="margin-top:16px;">
-        上記にあてはまらない場合で、引き続きご検討いただけるときは、LINEのチャットにてご連絡くださいませ。状況に応じて、再度お席をご案内できる場合がございます。
+      <div class="note-box" style="margin-top:16px; border-left-color:#c96f5e; background:#fdf3ef;">
+        ⚠️ <strong style="color:#c96f5e;">これから新たにお振込みされませんよう、お願いいたします</strong><br>
+        <span style="font-size:13px;">お席が埋まっている場合、ご参加いただけず、ご返金のお手続きとなってしまいます。</span>
+      </div>
+
+      <div class="note-box" style="margin-top:12px;">
+        引き続きご検討いただける場合は、LINEのチャットにてご連絡くださいませ。状況に応じて、再度お席をご案内できる場合がございます。
       </div>
     </div>
   </div>
@@ -312,8 +320,8 @@
 
 </div>
 
-<script src="js/config.js?v=68"></script>
-<script src="js/common.js?v=68"></script>
+<script src="js/config.js?v=69"></script>
+<script src="js/common.js?v=69"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
