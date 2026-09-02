@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>受付フォーム｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=63">
+<link rel="stylesheet" href="css/style.css?v=64">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -232,8 +232,8 @@
 
 </div>
 
-<script src="js/config.js?v=63"></script>
-<script src="js/common.js?v=63"></script>
+<script src="js/config.js?v=64"></script>
+<script src="js/common.js?v=64"></script>
 <script>
 let uid = getUid();
 const seminarKey = new URLSearchParams(location.search).get('seminar');
@@ -447,6 +447,21 @@ function showGateOpenButton_() {
   };
 }
 
+/** 「1440」→「24時間」のように読みやすくする（期限の長さはセミナーごとに違う） */
+function fmtMin_(m) {
+  const n = Number(m);
+  if (!n || n <= 0) return '';
+  if (n % 60 === 0 && n < 2880) return (n / 60) + '時間';
+  if (n % 1440 === 0)           return (n / 1440) + '日';
+  return n + '分';
+}
+
+/** 繰上げのご案内が届いてからの期限を、そのセミナーの設定から文にする */
+function promoteLimitText_() {
+  const t = fmtMin_(sem.promoteFallback);
+  return t ? 'お知らせが届いてから' + t + '以内にお手続きが必要です' : 'お手続きには期限がございます';
+}
+
 /** キャンセル待ち専用の入口から来た方（空席があっても待機に入る）。
     「知らないうちに待機になっていた」を防ぐため、はっきりお伝えする。 */
 function enterWaitEntryMode() {
@@ -455,7 +470,7 @@ function enterWaitEntryMode() {
     '<span style="font-size:16px; font-weight:700; color:#9c6f5f;">キャンセル待ちのお申込みです</span><br>' +
     'こちらは<strong>キャンセル待ち専用</strong>の受付フォームです。<br>' +
     '<span style="font-size:12px; color:#8a7d76;">お席が空きましたら、お待ちの順にLINEでお知らせいたします' +
-    '（お手続き期限は3日以内）。<br>いますぐご参加をご希望の場合は、通常の受付フォームからお申込みくださいませ。</span>';
+    '（' + promoteLimitText_() + '）。<br>いますぐご参加をご希望の場合は、通常の受付フォームからお申込みくださいませ。</span>';
   document.getElementById('btn-submit').textContent = 'キャンセル待ちで申し込む';
 }
 
@@ -466,7 +481,7 @@ function enterWaitlistMode() {
   document.getElementById('capacity-note').innerHTML =
     '<span style="font-size:16px; font-weight:700; color:#c96f5e;">ただいま満席です。</span><br>' +
     'このフォームからは<strong>キャンセル待ち</strong>としてお申込みいただけます。<br>' +
-    '<span style="font-size:12px; color:#8a7d76;">空きが出ましたら、お待ちの順にLINEでお知らせいたします（お手続き期限は3日以内）。<br>' +
+    '<span style="font-size:12px; color:#8a7d76;">空きが出ましたら、お待ちの順にLINEでお知らせいたします（' + promoteLimitText_() + '）。<br>' +
     '※残席の反映には時間差が生じる場合があります。</span>';
   document.getElementById('btn-submit').textContent = 'キャンセル待ちで申し込む';
 }
@@ -667,8 +682,7 @@ document.getElementById('apply-form').addEventListener('submit', async (e) => {
       const wdn = document.getElementById('done-wait-deadline');
       const pmin = res.promote_deadline_min || sem.promoteFallback;
       if (wdn && pmin) {
-        const t = (pmin % 60 === 0 && pmin < 2880) ? (pmin / 60) + '時間'
-                : (pmin % 1440 === 0) ? (pmin / 1440) + '日' : pmin + '分';
+        const t = fmtMin_(pmin);
         wdn.innerHTML = '<strong>お知らせが届いてから' + t + '以内</strong>に' +
           'お手続きがない場合は、次にお待ちの方へお席をお譲りいたします。<br>' +
           '<span style="font-size:12px;">※お時間は、お知らせが届いた時点から数えます。' +
