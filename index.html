@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=67">
+<link rel="stylesheet" href="css/style.css?v=68">
 </head>
 <body>
 <div class="container">
@@ -312,8 +312,8 @@
 
 </div>
 
-<script src="js/config.js?v=67"></script>
-<script src="js/common.js?v=67"></script>
+<script src="js/config.js?v=68"></script>
+<script src="js/common.js?v=68"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -566,21 +566,29 @@ function renderPayment(st, sem) {
         '🧪 テスト決済モード中のため、このセミナーのカードでのお支払いは一時停止しています。' +
         '<br><span style="font-weight:400; color:#8a7d76;">動作確認は銀行振込の手順でお願いします。</span></p>';
     }
-    // お選びいただいた方法だけをお見せする（選んでいない方法は出さない）
-    const onlyCard = (chosenMethod === 'カード');
-    const onlyBank = (chosenMethod === '銀行振込');
+    /* お選びいただいた方法だけをお見せする（選んでいない方法は出さない）。
+       J列には「カード（変更）」のように印が付くことがあるので、印を外して見る。 */
+    const methodBase = chosenMethod.replace('（変更）', '');
+    const changedAlready = chosenMethod.indexOf('（変更）') !== -1;
+    const onlyCard = (methodBase === 'カード');
+    const onlyBank = (methodBase === '銀行振込');
     if (onlyCard || onlyBank) {
       const pc2 = sem.paymentChoice || {};
       html += '<div class="note-box" style="border-left-color:#9c6f5f; background:#fdf6f2;">' +
-        '<strong>' + esc(chosenMethod) + '</strong>でお手続き中です。' +
+        '<strong>' + esc(methodBase) + '</strong>でお手続き中です。' +
         // 振込をお選びの方には、ここで初めて期限と注意点をお伝えする
         (onlyBank
           ? '<br><span style="font-size:13px;">お支払い期限は<strong>上の残り時間</strong>のとおりです。' +
             (pc2.bank && pc2.bank.afterNote
               ? '<br>※ ' + esc(pc2.bank.afterNote) : '') + '</span>'
           : '') +
-        '<button type="button" class="btn btn-text" onclick="changeMethod_()" ' +
-        'style="margin:6px 0 0; padding:0; font-size:13px;">お支払い方法を変更する</button>' +
+        // 変更は1回まで。すでに変えた方にはボタンを出さない
+        (changedAlready
+          ? '<br><span style="font-size:12px; color:#8a7d76;">' +
+            'お支払い方法は変更済みです。これ以上は変更いただけません。' +
+            'お困りの際は、LINEのチャットにてご連絡くださいませ。</span>'
+          : '<button type="button" class="btn btn-text" onclick="changeMethod_()" ' +
+            'style="margin:6px 0 0; padding:0; font-size:13px;">お支払い方法を変更する（1回まで）</button>') +
         '</div>';
     }
     if (stripeUrl && !isGuest && !blockedByTestMode && !onlyBank) {
@@ -687,6 +695,11 @@ async function chooseMethod_(el) {
     const res = await apiPost('choose_payment', { uid: uid, seminar: (currentStatus && currentStatus.seminar) || savedSeminar(), method: method });
     if (res && res.ok) { await loadStatus(); return; }
     if (res && res.error === 'not_payable') { await loadStatus(); return; }
+    if (res && res.error === 'change_limit') {
+      alert('お支払い方法の変更は1回までとなっております。\n恐れ入りますが、LINEのチャットにてご連絡くださいませ。');
+      await loadStatus();
+      return;
+    }
     alert('うまく選択できませんでした。恐れ入りますが、もう一度お試しくださいませ。');
   } catch (_) {
     alert('通信が不安定なようです。少し時間をおいてお試しくださいませ。');
@@ -697,7 +710,7 @@ async function chooseMethod_(el) {
 
 /** お支払い方法を選び直す */
 async function changeMethod_() {
-  if (!confirm('お支払い方法を変更しますか？\n\nお支払い期限も、お選びいただいた方法に合わせて変わります。\nカードをお選びの場合は、そこからお時間が短くなりますのでご注意ください。')) return;
+  if (!confirm('お支払い方法を変更しますか？\n\n変更は1回までです。\nお支払い期限も、お選びいただいた方法に合わせて変わります。\nカードをお選びの場合は、そこからお時間が短くなりますのでご注意ください。')) return;
   const sem = CONFIG.SEMINARS[(currentStatus && currentStatus.seminar) || ''];
   if (sem) renderMethodChoice_(sem, currentStatus);
 }

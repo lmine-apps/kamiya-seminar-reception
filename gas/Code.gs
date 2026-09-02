@@ -1,3 +1,9 @@
+/*** 神谷梓さん 受付管理システム GAS v11.1 ***************************
+ * 【v11.1 2026-09-02】お支払い方法の変更は1回まで
+ *   列は増やさず、J列（決済方法）に「（変更）」の印を残して見分ける。
+ *     空／カード／カード（変更）の3段階。
+ *   同じ方法を選び直した場合は変更に数えない。
+ *
 /*** 神谷梓さん 受付管理システム GAS v11.0 ***************************
  * 【v11.0 2026-09-02】状態（G列）が空の行があってもアプリを壊さない
  *   スプレッドシートで状態のセルだけ消すと、アプリが行き先を失って
@@ -1277,7 +1283,27 @@ function choosePayment_(p) {
   }
 
   var config = SEMINARS[found.seminarKey];
-  var label = (method === 'bank') ? '銀行振込' : 'カード';
+  var baseLabel = (method === 'bank') ? '銀行振込' : 'カード';
+
+  /* お支払い方法の変更は1回まで（v11.1）。
+     列を増やさず、J列に「（変更）」の印を残して見分ける。
+       空            … まだ選んでいない（初回）
+       カード        … 1回目を選んだ状態。変更できる
+       カード（変更）… もう変更した。これ以上は変えられない
+     同じ方法を選び直した場合は、変更に数えない。 */
+  var curMethod = String(found.data[9] || '').trim();
+  var curBase = curMethod.replace('（変更）', '');
+
+  if (curBase === baseLabel) {
+    // 同じ方法。何も変えずに、いまの状態をそのまま返す
+    return out_({ ok: true, unchanged: true, method: method, label: curMethod,
+                  deadline: found.data[5] ? formatDateValue_(found.data[5]) : '' });
+  }
+  if (curMethod.indexOf('（変更）') !== -1) {
+    return out_({ ok: false, error: 'change_limit', label: curMethod });
+  }
+
+  var label = baseLabel + (curBase ? '（変更）' : '');
 
   /* お支払い方法を選び直しても期限を延ばせないようにする（v10.9）。
        銀行振込 … 【受付日時】から数える。何度選び直しても延びない。
