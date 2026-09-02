@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>受付フォーム｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=58">
+<link rel="stylesheet" href="css/style.css?v=59">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -208,6 +208,7 @@
         <strong><span id="done-wait-num">-</span>番目</strong>のキャンセル待ちで<br>お受けいたしました。<br><br>
         空きが出ましたら、<br>LINEでお知らせいたします。
       </p>
+      <div class="note-box" id="done-wait-deadline" style="text-align:left;"></div>
       <a class="btn btn-outline" href="index.html" style="margin-top:16px;">待機状況を見る</a>
     </div>
   </div>
@@ -231,8 +232,8 @@
 
 </div>
 
-<script src="js/config.js?v=58"></script>
-<script src="js/common.js?v=58"></script>
+<script src="js/config.js?v=59"></script>
+<script src="js/common.js?v=59"></script>
 <script>
 let uid = getUid();
 const seminarKey = new URLSearchParams(location.search).get('seminar');
@@ -640,6 +641,17 @@ document.getElementById('apply-form').addEventListener('submit', async (e) => {
         return;
       }
       document.getElementById('done-wait-num').textContent = res.waitNum || '-';
+      // 繰上げの期限は「LINEのお知らせが届いた瞬間」から数え始めることを、ここで伝える
+      const wdn = document.getElementById('done-wait-deadline');
+      const pmin = res.promote_deadline_min || sem.promoteFallback;
+      if (wdn && pmin) {
+        const t = (pmin % 60 === 0 && pmin < 2880) ? (pmin / 60) + '時間'
+                : (pmin % 1440 === 0) ? (pmin / 1440) + '日' : pmin + '分';
+        wdn.innerHTML = '<strong>お知らせが届いてから' + t + '以内</strong>に' +
+          'お手続きがない場合は、次にお待ちの方へお席をお譲りいたします。<br>' +
+          '<span style="font-size:12px;">※お時間は、お知らせが届いた時点から数えます。' +
+          'LINEの通知をオンにしてお待ちくださいませ。</span>';
+      }
       // 「空席のつもりで送信→実は満席」のレアケースだけお詫びを表示。
       // 残席を出さないセミナー（マーケ一般）では、そもそも空席を見せていないので出さない。
       document.getElementById('done-waiting-race-note').style.display =

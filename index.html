@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=58">
+<link rel="stylesheet" href="css/style.css?v=59">
 </head>
 <body>
 <div class="container">
@@ -173,8 +173,8 @@
         <span class="unit">番目</span>
       </div>
       <p class="wait-note">現在、キャンセル待ちでお待ちいただいています。<br>お席に空きが出ましたら、LINEでお知らせいたします。</p>
-      <div class="note-box">
-        空きが出た際は<strong>3日以内</strong>にお手続きをお願いいたします。この画面は自動で更新されます。
+      <div class="note-box" id="wait-deadline-note">
+        空きが出た際はお早めにお手続きをお願いいたします。この画面は自動で更新されます。
       </div>
       <button class="btn btn-text" id="btn-cancel-waiting">キャンセル待ちをやめる</button>
     </div>
@@ -267,8 +267,8 @@
 
 </div>
 
-<script src="js/config.js?v=58"></script>
-<script src="js/common.js?v=58"></script>
+<script src="js/config.js?v=59"></script>
+<script src="js/common.js?v=59"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -646,6 +646,20 @@ async function changeMethod_() {
 /** キャンセル待ち */
 function renderWaiting(st, sem) {
   document.getElementById('wait-seminar-title').textContent = sem.title || st.seminar;
+
+  /* 繰上げの期限は「LINEのお知らせが届いた瞬間」から数え始めます。
+     開いたときからではないので、そのことがはっきり伝わるように書く。 */
+  const note = document.getElementById('wait-deadline-note');
+  const pm = (st && st.promote_deadline_min) || sem.promoteFallback;
+  if (note) {
+    note.innerHTML = pm
+      ? 'お席に空きが出ましたら、LINEでお知らせいたします。<br>' +
+        '<strong>お知らせが届いてから' + fmtMinutes_(pm) + '以内</strong>にお手続きがない場合は、' +
+        '次にお待ちの方へお席をお譲りいたします。<br>' +
+        '<span style="font-size:12px;">※お時間は、お知らせが届いた時点から数えます。' +
+        'LINEの通知をオンにしてお待ちくださいませ。</span>'
+      : '空きが出た際はお早めにお手続きをお願いいたします。この画面は自動で更新されます。';
+  }
   document.getElementById('wait-num').textContent = st.wait_number || '-';
   showScreen('screen-waiting');
 

@@ -1,3 +1,10 @@
+/*** 神谷梓さん 受付管理システム GAS v10.6 ***************************
+ * 【v10.6 2026-09-02】繰上げの期限の長さも画面へ返す
+ *   キャンセル待ちの画面に「3日以内」とベタ書きされていて、
+ *   マーケ（24時間）と食い違っていたため。
+ *   ※繰上げの期限は「繰り上げた瞬間＝LINEを送った瞬間」から数えている。
+ *     アプリを開いたときからではないので、開かれずに席がふさがることはない。
+ *
 /*** 神谷梓さん 受付管理システム GAS v10.5 ***************************
  * 【v10.5 2026-09-02】お支払い期限の長さを get_status で返す
  *   画面の「◯分以内」「◯時間以内」はこの値から作る。
@@ -833,8 +840,10 @@ function getStatus_(p) {
     payment_method: row[9] || '',
     // お支払い期限の長さ（分）。画面の文言はこれを見て作るので、
     // 期限を変えるときは SEMINARS の数字だけ直せばよい（v10.5）
-    deadline_min:      (SEMINARS[found.seminarKey] || {}).deadline_min || null,
-    bank_deadline_min: (SEMINARS[found.seminarKey] || {}).bank_deadline_min || null,
+    deadline_min:         (SEMINARS[found.seminarKey] || {}).deadline_min || null,
+    bank_deadline_min:    (SEMINARS[found.seminarKey] || {}).bank_deadline_min || null,
+    // 繰上げのご案内が届いてから、お手続きいただくまでの長さ（分）
+    promote_deadline_min: (SEMINARS[found.seminarKey] || {}).promote_deadline_min || null,
     test_pay: isTestPayOn_(),
     news: pickNews_(found.seminarKey, String(row[6] || ''))   // 📣 お知らせ（v7.7）
   });
@@ -1526,7 +1535,10 @@ function submitApplication_(p, dryRun) {
     }
   } catch (_) {}
 
-  return out_({ ok: true, status: status, waitNum: waitNum, deadline: deadline, lock_held_ms: lockHeld });
+  return out_({ ok: true, status: status, waitNum: waitNum, deadline: deadline,
+                // キャンセル待ちの画面で「お知らせが届いてから◯時間」を出すため
+                promote_deadline_min: config.promote_deadline_min || null,
+                lock_held_ms: lockHeld });
 }
 
 // ========== 【v2】振込報告受信 ==========
