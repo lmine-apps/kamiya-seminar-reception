@@ -1,3 +1,9 @@
+/*** 神谷梓さん 受付管理システム GAS v10.5 ***************************
+ * 【v10.5 2026-09-02】お支払い期限の長さを get_status で返す
+ *   画面の「◯分以内」「◯時間以内」はこの値から作る。
+ *   期限を変えるときは SEMINARS の deadline_min / bank_deadline_min
+ *   だけを直せばよく、文言との食い違いが起きない。
+ *
 /*** 神谷梓さん 受付管理システム GAS v10.4 ***************************
  * 【v10.4 2026-09-02】choose_payment からロックを外す
  *   ご本人の行しか触らず定員の判断もしないので、ロックは不要だった。
@@ -825,6 +831,10 @@ function getStatus_(p) {
     need_kana: !String(row[14] || '').trim() && ['確定', '決済案内中', '振込報告済み', 'キャンセル待ち', MARKE_PENDING].indexOf(String(row[6])) !== -1,
     payment_completed: row[6] === '確定',
     payment_method: row[9] || '',
+    // お支払い期限の長さ（分）。画面の文言はこれを見て作るので、
+    // 期限を変えるときは SEMINARS の数字だけ直せばよい（v10.5）
+    deadline_min:      (SEMINARS[found.seminarKey] || {}).deadline_min || null,
+    bank_deadline_min: (SEMINARS[found.seminarKey] || {}).bank_deadline_min || null,
     test_pay: isTestPayOn_(),
     news: pickNews_(found.seminarKey, String(row[6] || ''))   // 📣 お知らせ（v7.7）
   });

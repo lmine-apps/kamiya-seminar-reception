@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=57">
+<link rel="stylesheet" href="css/style.css?v=58">
 </head>
 <body>
 <div class="container">
@@ -267,8 +267,8 @@
 
 </div>
 
-<script src="js/config.js?v=57"></script>
-<script src="js/common.js?v=57"></script>
+<script src="js/config.js?v=58"></script>
+<script src="js/common.js?v=58"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -491,7 +491,7 @@ function renderPayment(st, sem) {
      ※特別受付（ゲスト）は銀行振込のみなので、選択はお見せしない。 */
   const chosenMethod = String(st.payment_method || '');
   if (sem.paymentChoice && !isGuest && !chosenMethod) {
-    renderMethodChoice_(sem);
+    renderMethodChoice_(sem, st);
     showScreen('screen-payment');
     return;
   }
@@ -571,14 +571,31 @@ function renderPayment(st, sem) {
 
 /* ============ お支払い方法をお選びいただく（2026-09-02） ============ */
 
+/** 「90」→「90分」、「1440」→「24時間」のように、読みやすい長さにする */
+function fmtMinutes_(m) {
+  const n = Number(m);
+  if (!n || n <= 0) return '';
+  // 24時間を「1日」と書くと分かりにくいので、48時間までは「◯時間」で表す
+  if (n % 60 === 0 && n < 2880) return (n / 60) + '時間';
+  if (n % 1440 === 0)           return (n / 1440) + '日';
+  return n + '分';
+}
+
 /** 2つのボタンをお見せする */
-function renderMethodChoice_(sem) {
+function renderMethodChoice_(sem, st) {
   const pc = sem.paymentChoice;
+  // 期限の長さはGASの設定を正とする（届かなければ config の控えを使う）
+  const mins = {
+    card: (st && st.deadline_min)      || pc.card.fallback,
+    bank: (st && st.bank_deadline_min) || pc.bank.fallback
+  };
   const btn = (key, icon, o) =>
     '<button type="button" class="btn btn-primary" data-method="' + key + '" ' +
     'onclick="chooseMethod_(this)" style="margin-top:10px; text-align:left; line-height:1.5;">' +
     icon + ' ' + esc(o.label) +
-    '<br><span style="font-size:12px; font-weight:400; opacity:.9;">' + esc(o.note) + '</span>' +
+    '<br><span style="font-size:12px; font-weight:400; opacity:.9;">' +
+    esc(String(o.note).replace('{T}', fmtMinutes_(mins[key]))) + '</span>' +
+    (o.extra ? '<br><span style="font-size:11px; font-weight:400; opacity:.85;">※ ' + esc(o.extra) + '</span>' : '') +
     '</button>';
 
   document.getElementById('pay-methods').innerHTML =
@@ -587,7 +604,7 @@ function renderMethodChoice_(sem) {
     '<strong>上の残り時間は、すでに進んでいます。</strong><br>' +
     '<span style="font-size:13px;">' +
     'カードでお支払いの場合の期限です。<strong>銀行振込</strong>をお選びいただくと、' +
-    'そこから<strong>24時間</strong>に延びます。<br>' +
+    'そこから<strong>' + fmtMinutes_(mins.bank) + '</strong>に延びます。<br>' +
     'この時間を過ぎますと、お待ちの方にお席をお譲りいたします。お早めにお選びくださいませ。' +
     '</span></div>' +
     btn('card', '💳', pc.card) +
@@ -623,7 +640,7 @@ async function chooseMethod_(el) {
 async function changeMethod_() {
   if (!confirm('お支払い方法を変更しますか？\n銀行振込をお選びの場合、お支払い期限が変わります。')) return;
   const sem = CONFIG.SEMINARS[(currentStatus && currentStatus.seminar) || ''];
-  if (sem) renderMethodChoice_(sem);
+  if (sem) renderMethodChoice_(sem, currentStatus);
 }
 
 /** キャンセル待ち */
