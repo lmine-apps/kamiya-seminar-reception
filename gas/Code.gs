@@ -1,3 +1,10 @@
+/*** 神谷梓さん 受付管理システム GAS v10.9 ***************************
+ * 【v10.9 2026-09-02】お支払い方法の選び直しで期限を延ばせる穴をふさぐ
+ *   ① 振込で24時間にしたあとカードへ戻すと、24時間のカード枠になっていた
+ *   ② 振込を選び直すたび「そこから24時間」に更新され、無限に延ばせた
+ *   直し方：振込は【受付日時】から数え、カードは【いまから20分】と
+ *   【いまの期限】の短いほうにする。選び直しても得をしない。
+ *
 /*** 神谷梓さん 受付管理システム GAS v10.8 ***************************
  * 【v10.8 2026-09-02】お支払いと期限切れが行き違いになった方を受け止める
  *   マーケの期限は20分と短く、カード決済の最中に期限切れになって
@@ -371,6 +378,15 @@ function deadlineFrom_(config, fromDate, kind) {
   }
   if (!min) return new Date(fromDate.getTime() + DEADLINE_DAYS * 86400000);
   return new Date(fromDate.getTime() + min * 60000);
+}
+
+/** シートに入っている日時を Date にする（文字列でも Date でも受ける） */
+function parseSheetDate_(v) {
+  if (v instanceof Date) return v;
+  var t = String(v || '').trim();
+  if (!t) return null;
+  var d = new Date(t.replace(/-/g, '/'));   // Safari対策と同じ書き方でそろえる
+  return isNaN(d.getTime()) ? null : d;
 }
 
 /** そのセミナーで「短い期限」を使っているか（＝分きざみの運用か） */
@@ -1232,15 +1248,25 @@ function choosePayment_(p) {
 
   var config = SEMINARS[found.seminarKey];
   var label = (method === 'bank') ? '銀行振込' : 'カード';
-  var newDeadline = '';
+
+  /* お支払い方法を選び直しても期限を延ばせないようにする（v10.9）。
+       銀行振込 … 【受付日時】から数える。何度選び直しても延びない。
+       カード   … 【いまから20分】と【いまの期限】の短いほう。
+                  振込で24時間にしたあとカードへ戻しても、そこから20分に締まる。
+     どちらも「選び直すと得をする」ことがない形にしてある。 */
+  var appliedAt = parseSheetDate_(found.data[4]) || new Date();
+  var newDate;
 
   if (method === 'bank') {
-    newDeadline = formatDate_(deadlineFrom_(config, new Date(), 'bank'));
-    found.sheet.getRange(found.row, 6).setValue(newDeadline);
+    newDate = deadlineFrom_(config, appliedAt, 'bank');
   } else {
-    var cur = found.data[5];
-    newDeadline = cur ? formatDateValue_(cur) : '';
+    var byCard = deadlineFrom_(config, new Date(), 'card');
+    var cur = parseSheetDate_(found.data[5]);
+    newDate = (cur && cur.getTime() < byCard.getTime()) ? cur : byCard;
   }
+
+  var newDeadline = formatDate_(newDate);
+  found.sheet.getRange(found.row, 6).setValue(newDeadline);
   found.sheet.getRange(found.row, 10).setValue(label);
 
   logAction_('choose_payment', uid, '', '→ ' + label, 'お客さまが選択');

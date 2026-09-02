@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=64">
+<link rel="stylesheet" href="css/style.css?v=65">
 </head>
 <body>
 <div class="container">
@@ -294,8 +294,8 @@
 
 </div>
 
-<script src="js/config.js?v=64"></script>
-<script src="js/common.js?v=64"></script>
+<script src="js/config.js?v=65"></script>
+<script src="js/common.js?v=65"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -633,7 +633,7 @@ function renderMethodChoice_(sem, st) {
     '<strong>上の残り時間は、すでに進んでいます。</strong><br>' +
     '<span style="font-size:13px;">' +
     'カードでお支払いの場合の期限です。<strong>銀行振込</strong>をお選びいただくと、' +
-    'そこから<strong>' + fmtMinutes_(mins.bank) + '</strong>に延びます。<br>' +
+    '受付から<strong>' + fmtMinutes_(mins.bank) + '</strong>に延びます。<br>' +
     'この時間を過ぎますと、お待ちの方にお席をお譲りいたします。お早めにお選びくださいませ。' +
     '</span></div>' +
     btn('card', '💳', pc.card) +
@@ -667,7 +667,7 @@ async function chooseMethod_(el) {
 
 /** お支払い方法を選び直す */
 async function changeMethod_() {
-  if (!confirm('お支払い方法を変更しますか？\n銀行振込をお選びの場合、お支払い期限が変わります。')) return;
+  if (!confirm('お支払い方法を変更しますか？\n\nお支払い期限も、お選びいただいた方法に合わせて変わります。\nカードをお選びの場合は、そこからお時間が短くなりますのでご注意ください。')) return;
   const sem = CONFIG.SEMINARS[(currentStatus && currentStatus.seminar) || ''];
   if (sem) renderMethodChoice_(sem, currentStatus);
 }

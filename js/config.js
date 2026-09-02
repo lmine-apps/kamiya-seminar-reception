@@ -110,7 +110,7 @@ const CONFIG = {
       paymentChoice: {
         card: { label: 'クレジットカード', note: '受付から{T}以内にお支払い',
                 fallback: 20 },
-        bank: { label: '銀行振込',         note: '{T}以内にお振込ください',
+        bank: { label: '銀行振込',         note: '受付から{T}以内にお振込ください',
                 fallback: 1440,
                 extra: 'お振込後、アプリから「振込完了のご連絡」をいただければ、お席は確保されます' }
       },
