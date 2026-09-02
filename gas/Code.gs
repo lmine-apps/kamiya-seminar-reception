@@ -1,3 +1,11 @@
+/*** 神谷梓さん 受付管理システム GAS v10.3 ***************************
+ * 【v10.3 2026-09-02】20分きざみの期限切れを、トリガーに頼らず処理する
+ *   Apps Scriptの5分トリガーが保存できなかったため、
+ *   受付ページが開かれた瞬間（get_capacity）にその場で片づける方式にした。
+ *   sweepIfNeeded_ は30秒に1回までなので、殺到しても重くならない。
+ *   毎時の checkExpired からも呼んでいる（保険）。
+ *   将来トリガーを作れたら setupFastTrigger を実行すればよい（任意）。
+ *
 /*** 神谷梓さん 受付管理システム GAS v10.2 ***************************
  * 【v10.2 2026-09-02】マーケ一般：受付してから空き状況が分かる方式へ
  *   ① 受付前に残席を見せない（hide_capacity）。フォームは誰にでも出し、
@@ -1576,6 +1584,10 @@ function getCapacity_(p) {
   var config = SEMINARS[p.seminar];
   if (!config) return out_({ ok: false, error: 'unknown seminar' });
 
+  // 分きざみの期限を使うセミナーは、ここで期限切れを片づけてから数える（v10.3）。
+  // こうしておくと、受付ページを開いた方に常に正しい残席が見える。
+  sweepIfNeeded_(p.seminar);
+
   var gate = gateInfo_(p.seminar);   // ゲートはキャッシュしない（開始判定なので）
   var counts = capacityCounts_(p.seminar);
   if (!counts) return out_({ ok: false, error: 'sheet not found' });
@@ -1993,42 +2005,85 @@ function remindPromote_() {
  * 重い処理（名簿の作り直し・お知らせ送信など）は入れず、期限切れと繰上げだけを見る。
  */
 function checkExpiredFast() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var now = new Date();
-  var expiredCount = 0;
-
+  var total = 0;
   Object.keys(SEMINARS).forEach(function (key) {
-    var config = SEMINARS[key];
-    if (!usesShortDeadline_(config)) return;   // 分きざみのセミナーだけ
-
-    var sh = ss.getSheetByName(config.sheet);
-    if (!sh) return;
-    var lastRow = sh.getLastRow();
-    if (lastRow < DATA_START_ROW) return;
-
-    var data = sh.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, 8).getValues();
-    for (var i = 0; i < data.length; i++) {
-      if (String(data[i][6]) !== '決済案内中') continue;
-      var deadline = data[i][5];
-      if (!deadline) continue;
-      var dl = new Date(deadline);
-      if (isNaN(dl.getTime()) || dl >= now) continue;
-
-      var uid = data[i][0];
-      sh.getRange(DATA_START_ROW + i, 7).setValue('期限切れ');
-      moveScenario_(uid, '期限切れ');
-      logAction_('auto_expire_fast', uid, sh.getName(), '→ 期限切れ', 'お支払い期限を過ぎたため');
-      promoteNextWaiting_(sh);
-      expiredCount++;
-    }
+    total += sweepSeminar_(key);
   });
-
-  if (expiredCount > 0) {
-    Object.keys(SEMINARS).forEach(function (k) { capacityCacheClear_(k); });
-    notifyOps_('⏰ お支払い期限切れ（' + expiredCount + '件）',
+  if (total > 0) {
+    notifyOps_('⏰ お支払い期限切れ（' + total + '件）',
       'キャンセル待ちの方がいらっしゃる場合は、自動で繰上げています。');
   }
-  return { ok: true, expiredCount: expiredCount };
+  return { ok: true, expiredCount: total };
+}
+
+/**
+ * 1つのセミナーについて、お支払い期限を過ぎた「決済案内中」を片づける。
+ * 分きざみの期限を使っているセミナー（マーケ一般）だけが対象。
+ * 片づけた件数を返す。
+ */
+function sweepSeminar_(seminarKey) {
+  var config = SEMINARS[seminarKey];
+  if (!usesShortDeadline_(config)) return 0;
+
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(config.sheet);
+  if (!sh) return 0;
+  var lastRow = sh.getLastRow();
+  if (lastRow < DATA_START_ROW) return 0;
+
+  var now = new Date();
+  var n = lastRow - DATA_START_ROW + 1;
+  // F列（期限）とG列（状態）だけ読む。軽くしておく
+  var col = sh.getRange(DATA_START_ROW, 6, n, 2).getValues();
+
+  var hits = [];
+  for (var i = 0; i < col.length; i++) {
+    if (String(col[i][1]) !== '決済案内中') continue;
+    if (!col[i][0]) continue;
+    var dl = new Date(col[i][0]);
+    if (isNaN(dl.getTime()) || dl >= now) continue;
+    hits.push(i);
+  }
+  if (!hits.length) return 0;
+
+  for (var h = 0; h < hits.length; h++) {
+    var row = DATA_START_ROW + hits[h];
+    var uid = sh.getRange(row, 1).getValue();
+    sh.getRange(row, 7).setValue('期限切れ');
+    moveScenario_(uid, '期限切れ');
+    logAction_('auto_expire_fast', uid, sh.getName(), '→ 期限切れ', 'お支払い期限を過ぎたため');
+    promoteNextWaiting_(sh);
+  }
+  capacityCacheClear_(seminarKey);
+  return hits.length;
+}
+
+/**
+ * 【v10.3】アクセスのついでに期限切れを片づける。
+ * トリガーに頼らず、受付ページが開かれた瞬間に残席を正しくするための仕組み。
+ * SWEEP_INTERVAL_SEC 秒に1回までに抑えるので、殺到しても重くならない。
+ */
+var SWEEP_INTERVAL_SEC = 30;
+
+function sweepIfNeeded_(seminarKey) {
+  var config = SEMINARS[seminarKey];
+  if (!usesShortDeadline_(config)) return;
+
+  var cache = CacheService.getScriptCache();
+  var key = 'sweep_' + seminarKey;
+  try {
+    if (cache.get(key)) return;          // ついさっき掃除したので何もしない
+    cache.put(key, '1', SWEEP_INTERVAL_SEC);
+  } catch (_) { return; }
+
+  try {
+    var n = sweepSeminar_(seminarKey);
+    if (n > 0) {
+      notifyOps_('⏰ お支払い期限切れ（' + n + '件）',
+        'キャンセル待ちの方がいらっしゃる場合は、自動で繰上げています。');
+    }
+  } catch (err) {
+    logAction_('error', '', '', 'sweep failed: ' + err, '');
+  }
 }
 
 /**
@@ -2094,6 +2149,9 @@ function checkExpired() {
     notifyOps_('⏰ 期限切れ処理を行いました',
       expiredCount + '件のお申込みが期限切れになりました。待機の方がいる場合は自動で繰上げています。');
   }
+
+  // ⏰ 分きざみの期限（マーケ）も、ここで念のため片づける（v10.3）
+  try { checkExpiredFast(); } catch (err) { logAction_('error', '', '', 'fast sweep failed: ' + err, ''); }
 
   // ⏳ 空席があるのに待機の方がいたら、運営へお知らせ（1日1回まで）
   try { remindPromote_(); } catch (err) { logAction_('error', '', '', 'remindPromote failed: ' + err, ''); }
