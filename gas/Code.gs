@@ -1,3 +1,10 @@
+/*** 神谷梓さん 受付管理システム GAS v11.2 ***************************
+ * 【v11.2 2026-09-02】マーケの繰上げ期限を 24時間 → 30分
+ *   「あなたの番です」のLINEを送った瞬間から30分。早い者勝ちにするため。
+ *   深夜の繰上げは間に合わず次々に流れる可能性があるが、
+ *   空席が残れば remindPromote_ が運営へお知らせする。
+ *   セルフは従来どおり3日（promote_deadline_min: 4320）。
+ *
 /*** 神谷梓さん 受付管理システム GAS v11.1 ***************************
  * 【v11.1 2026-09-02】お支払い方法の変更は1回まで
  *   列は増やさず、J列（決済方法）に「（変更）」の印を残して見分ける。
@@ -67,7 +74,7 @@
  *   ② お支払い期限を短く
  *        カード       … 受付できてから 20分（deadline_min）
  *        銀行振込     … お選びいただいてから 24時間（bank_deadline_min）
- *        繰上げの方   … ご案内から 24時間（promote_deadline_min）
+ *        繰上げの方   … ご案内から 30分（promote_deadline_min）
  *      20分きざみを効かせるため、checkExpiredFast を5分ごとに走らせる。
  *      （setupFastTrigger を一度実行してトリガーを作ること）
  *   ③ 期限を過ぎたあとのご入金・ご決済も、返金せずお受けする。
@@ -364,13 +371,14 @@ var SEMINARS = {
      ・お支払い期限を短くして席を早く回す
          deadline_min         … 受付できてから、カードでお支払いいただくまで
          bank_deadline_min    … 銀行振込をお選びいただいてから
-         promote_deadline_min … 繰上げでご案内してから（LINEに気づく時間が要るので長め）
+         promote_deadline_min … 「あなたの番です」のLINEを送った瞬間から数える。
+                                早い者勝ちにするため短くしてある（2026-09-02 とーるさん指示）
      ・max_attendees … 会場の上限。期限切れ後のご入金で定員を超えることを許容するが、
                        ここに近づいたら運営へ警告を出す */
   'marke_general':   { sheet: '📋 マーケ一般',  capacity: 15, payment: 'prepaid', open_at: '2026-09-05 21:00',
                        close_at: '2026-09-28 23:59', dates: ['2026-09-29', '2026-10-29', '2026-11-25'],
                        hide_capacity: true,
-                       deadline_min: 20, bank_deadline_min: 1440, promote_deadline_min: 1440,
+                       deadline_min: 20, bank_deadline_min: 1440, promote_deadline_min: 30,
                        max_attendees: 25 }
 };
 
