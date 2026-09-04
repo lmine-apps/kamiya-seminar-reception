@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=71">
+<link rel="stylesheet" href="css/style.css?v=72">
 </head>
 <body>
 <div class="container">
@@ -322,8 +322,8 @@
 
 </div>
 
-<script src="js/config.js?v=71"></script>
-<script src="js/common.js?v=71"></script>
+<script src="js/config.js?v=72"></script>
+<script src="js/common.js?v=72"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -528,6 +528,10 @@ function renderPayment(st, sem) {
     document.getElementById('pay-countdown-box').style.display = '';
     document.getElementById('pay-deadline-date').textContent = formatDeadline(st.deadline);
     startFlipCountdown(st.deadline, 'pay-countdown-box');
+    /* 期限が来たら、その場でお支払いボタンを引っ込める（v72）。
+       カウントダウンが0になっても決済ページへ行けてしまい、
+       満席後のお支払いとご返金を招いてしまうため。 */
+    watchPayDeadline_(st.deadline);
   } else {
     document.getElementById('pay-countdown-box').style.display = 'none';
   }
@@ -764,6 +768,7 @@ function renderWaiting(st, sem) {
 /** 参加確定 */
 function renderConfirmed(st, sem) {
   stopExpiredWatch_();
+  stopPayDeadlineWatch_();
   /* キャンセルのお知らせと行き違った方に、この画面が正しいことをお伝えする。
      期限の短いセミナー（マーケ）でだけ起こりうるので、そのときだけ出す。 */
   const crossed = document.getElementById('conf-crossed-note');
@@ -833,6 +838,44 @@ document.getElementById('cancel-confirm-form').addEventListener('submit', async 
 });
 
 /** カード決済完了のご連絡（お客さま申告） */
+/* ============ お支払い期限が来たら、その場で閉じる（v72） ============
+   カウントダウンが0になっても決済ページへ行けてしまうと、
+   満席後のお支払いとご返金を招く。時間が来たらボタンを消して、
+   サーバーの状態を取り直す。 */
+let payDeadlineTimer_ = null;
+
+function watchPayDeadline_(deadlineStr) {
+  if (payDeadlineTimer_) clearTimeout(payDeadlineTimer_);
+  if (!deadlineStr) return;
+  const until = new Date(String(deadlineStr).replace(/-/g, '/'));   // Safari対策
+  if (isNaN(until.getTime())) return;
+
+  const ms = until.getTime() - Date.now();
+  if (ms <= 0) { closePayScreen_(); return; }
+  if (ms > 3 * 86400000) return;   // 遠すぎる期限は見張らない
+  payDeadlineTimer_ = setTimeout(closePayScreen_, ms + 1500);
+}
+
+function stopPayDeadlineWatch_() {
+  if (payDeadlineTimer_) { clearTimeout(payDeadlineTimer_); payDeadlineTimer_ = null; }
+}
+
+/** お支払いの導線を閉じて、状態を取り直す */
+function closePayScreen_() {
+  stopPayDeadlineWatch_();
+  const box = document.getElementById('pay-methods');
+  if (box) {
+    box.innerHTML =
+      '<div class="note-box" style="border-left-color:#c96f5e; background:#fdf3ef;">' +
+      '<strong>お支払い期限を過ぎました</strong><br>' +
+      '<span style="font-size:13px;">恐れ入りますが、お手続きはここまでとなります。' +
+      'すでにお支払いがお済みの場合は、このまましばらくお待ちくださいませ。</span>' +
+      '</div>';
+  }
+  // サーバーの状態を取り直す（期限切れになっていれば、その画面へ切り替わる）
+  loadStatus();
+}
+
 /**
  * 期限切れ画面を、その方が選んだお支払い方法に合わせて整える（v70）。
  * 救済の対象は【期限内にすでにお支払いを済ませていた方】だけ。
@@ -840,6 +883,7 @@ document.getElementById('cancel-confirm-form').addEventListener('submit', async 
  * 救済の案内をお見せしない（「いまから払えば入れる」と読まれないため）。
  */
 function renderExpired_(st, sem) {
+  stopPayDeadlineWatch_();
   const method = String(st.payment_method || '').replace('（変更）', '');
   const rescue = document.getElementById('expired-rescue');
   const watchTxt = document.getElementById('expired-watch-text');
