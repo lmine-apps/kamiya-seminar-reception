@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=74">
+<link rel="stylesheet" href="css/style.css?v=75">
 </head>
 <body>
 <div class="container">
@@ -333,8 +333,8 @@
 
 </div>
 
-<script src="js/config.js?v=74"></script>
-<script src="js/common.js?v=74"></script>
+<script src="js/config.js?v=75"></script>
+<script src="js/common.js?v=75"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -1042,16 +1042,46 @@ function demoShow_(kind) {
     pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
   const base = { ok: true, uid: 'DEMO', name: 'デモ 花子',
     news: [{ title: '当日のお持ち物について', body: '筆記用具のほかに、飲みもののご用意をおすすめしております。\n会場は少し冷えることがございますので、羽織るものがあると安心です。' }] };
+  // 「いまから○分後（マイナスなら○分前）」の期限をつくる
+  const at = function (min) {
+    const t = new Date(Date.now() + min * 60000);
+    return t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate()) + ' ' +
+      pad(t.getHours()) + ':' + pad(t.getMinutes()) + ':' + pad(t.getSeconds());
+  };
+  const marke = function (o) {
+    return Object.assign(base, { seminar: 'marke_general' }, o);
+  };
+
   let st;
-  if (kind === 'payment')        st = Object.assign(base, { status: '決済案内中', seminar: 'marke_general', deadline: dl });
+  // ① お支払い方法をお選びいただく画面（受付の直後）
+  if (kind === 'payment')        st = marke({ status: '決済案内中', deadline: dl });
+  // ② カードをお選びになったあと（残り18分）
+  else if (kind === 'paycard')   st = marke({ status: '決済案内中', deadline: dl, payment_method: 'カード' });
+  // ③ 銀行振込をお選びになったあと（残り23時間）
+  else if (kind === 'paybank')   st = marke({ status: '決済案内中', deadline: at(23 * 60), payment_method: '銀行振込' });
+  // ④ 一度ご変更ずみ（もう変更できない）
+  else if (kind === 'changed')   st = marke({ status: '決済案内中', deadline: at(15), payment_method: 'カード（変更）' });
+  // ⑤ 期限は過ぎたが、お席に余裕があってお手続きいただける（v11.5の決まり）
+  else if (kind === 'grace')     st = marke({ status: '決済案内中', deadline: at(-5), payment_method: 'カード' });
+  // ⑥ 期限切れ（銀行振込をお選びだった方）→ 振込のご報告ボタンだけ出る
+  else if (kind === 'expiredbank') st = marke({ status: '期限切れ', payment_method: '銀行振込' });
+  // ⑦ 期限切れ（方法をお選びになる前）→ 救済のご案内は出さない
+  else if (kind === 'expired')   st = marke({ status: '期限切れ' });
+  // ⑧ キャンセル待ち（マーケ＝ご案内が届いてから30分）
+  else if (kind === 'waitmarke') st = marke({ status: 'キャンセル待ち', wait_number: 3, promote_deadline_min: 30 });
+  // ⑨ キャンセル待ち（セルフ＝3日）
   else if (kind === 'waiting')   st = Object.assign(base, { status: 'キャンセル待ち', seminar: 'self_general', wait_number: 2, promote_deadline_min: 4320 });
+  // ⑩ ご参加確定
   else if (kind === 'confirmed') st = Object.assign(base, { status: '確定', seminar: 'self_priority' });
-  else if (kind === 'expired')   st = Object.assign(base, { status: '期限切れ', seminar: 'marke_general' });
+  else if (kind === 'confirmmarke') st = marke({ status: '確定' });
   demoState_ = st;
   render(st);
 }
 
 function demoInit_() {
+  /* ?bare=1 … デモの帯とツールバーを出さない（マニュアルの画面写真を撮るとき用）。
+     お客さまの目に入るものではないので、見た目だけの切り替え。 */
+  const BARE = new URLSearchParams(location.search).get('bare') === '1';
   // API呼び出しをすべて偽装（スプシ・LINEには何も起きない）
   apiGet = async function (action) {
     if (action === 'get_status') return demoState_ || { ok: true, status: '未登録' };
@@ -1064,24 +1094,32 @@ function demoInit_() {
   const b = document.createElement('div');
   b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999;background:#8a5ca5;color:#fff;text-align:center;font-size:12px;padding:6px;font-weight:600;letter-spacing:.05em;';
   b.textContent = '👀 デモ表示中（実際のデータ・LINE通知は発生しません）';
-  document.body.appendChild(b);
-  document.body.style.paddingTop = '30px';
+  if (!BARE) { document.body.appendChild(b); document.body.style.paddingTop = '30px'; }
 
   // 下部の状態切替ツールバー
   const tb = document.createElement('div');
   tb.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:999;background:rgba(138,92,165,.96);padding:8px 6px calc(8px + env(safe-area-inset-bottom));display:flex;gap:6px;justify-content:center;flex-wrap:wrap;';
-  [['📝 受付', null], ['💳 決済', 'payment'], ['🕊 待機', 'waiting'], ['🌸 確定', 'confirmed'], ['⏰ 期限切れ', 'expired']].forEach(function (item) {
+  [['📝 受付', null],
+   ['①方法選択', 'payment'],
+   ['②カード', 'paycard'],
+   ['③振込', 'paybank'],
+   ['④変更ずみ', 'changed'],
+   ['⑤余裕あり', 'grace'],
+   ['⑥期限切れ(振込)', 'expiredbank'],
+   ['⑦期限切れ(未選択)', 'expired'],
+   ['⑧待機マーケ', 'waitmarke'],
+   ['⑨待機セルフ', 'waiting'],
+   ['⑩確定', 'confirmmarke']].forEach(function (item) {
     const btn = document.createElement('button');
     btn.textContent = item[0];
-    btn.style.cssText = 'background:#fff;color:#8a5ca5;border:none;border-radius:16px;padding:8px 12px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;';
+    btn.style.cssText = 'background:#fff;color:#8a5ca5;border:none;border-radius:14px;padding:6px 9px;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;';
     btn.onclick = function () {
       if (item[1] === null) location.href = 'apply.html?seminar=marke_general&demo=1';
       else demoShow_(item[1]);
     };
     tb.appendChild(btn);
   });
-  document.body.appendChild(tb);
-  document.body.style.paddingBottom = '64px';
+  if (!BARE) { document.body.appendChild(tb); document.body.style.paddingBottom = '64px'; }
 
   // 外部リンク（決済ページ等）はデモでは移動させない
   document.addEventListener('click', function (e) {
@@ -1094,7 +1132,9 @@ function demoInit_() {
 
   // ?state=payment/waiting/confirmed/expired で初期表示を指定可能（受付ページのメニューから遷移用）
   var initState = new URLSearchParams(location.search).get('state');
-  if (['payment', 'waiting', 'confirmed', 'expired'].indexOf(initState) === -1) initState = 'payment';
+  if (['payment', 'paycard', 'paybank', 'changed', 'grace', 'expiredbank',
+       'expired', 'waitmarke', 'waiting', 'confirmed', 'confirmmarke']
+      .indexOf(initState) === -1) initState = 'payment';
   demoShow_(initState);
 }
 
