@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=76">
+<link rel="stylesheet" href="css/style.css?v=77">
 </head>
 <body>
 <div class="container">
@@ -333,8 +333,8 @@
 
 </div>
 
-<script src="js/config.js?v=76"></script>
-<script src="js/common.js?v=76"></script>
+<script src="js/config.js?v=77"></script>
+<script src="js/common.js?v=77"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -562,10 +562,15 @@ function renderPayment(st, sem) {
      期限が20分のマーケでそのまま出すと、離れてよいと受け取られてしまう。 */
   const closeNote = document.getElementById('pay-close-note');
   if (closeNote && sem.paymentChoice) {
-    closeNote.innerHTML =
-      '⏳ <strong style="font-size:15px; color:#c96f5e;">お時間が経つと、お席はお譲りいたします</strong><br>' +
-      'この画面を閉じても、LINEのトーク履歴にあるボタンから戻ってこられます' +
-      '（再度のお申込みにはなりません）。ただし、<strong>お支払い期限は止まりません。</strong>';
+    /* すでに期限を過ぎている場合に「期限は止まりません」と書くと矛盾する（v77）。
+       その状態でお伝えすべきは「満席になりしだい締め切ります」のほう。 */
+    closeNote.innerHTML = dlPast_
+      ? '⏳ <strong style="font-size:15px; color:#c96f5e;">満席になりしだい、締め切らせていただきます</strong><br>' +
+        'この画面を閉じても、LINEのトーク履歴にあるボタンから戻ってこられます' +
+        '（再度のお申込みにはなりません）。どうぞお早めにお願いいたします。'
+      : '⏳ <strong style="font-size:15px; color:#c96f5e;">お時間が経つと、お席はお譲りいたします</strong><br>' +
+        'この画面を閉じても、LINEのトーク履歴にあるボタンから戻ってこられます' +
+        '（再度のお申込みにはなりません）。ただし、<strong>お支払い期限は止まりません。</strong>';
   }
 
   // 支払い方法出し分け
@@ -937,6 +942,15 @@ function renderExpired_(st, sem) {
       : '🏦 お振込のご確認をお待ちしております…';
   }
   startExpiredWatch_();
+
+  /* お振込をお選びだった方には、はじめからご連絡ボタンをお見せする（v77）。
+     お振込は自動では確認できず、運営が入金を見てから確定にする流れなので、
+     お待ちいただいても画面は変わらない。
+     カードは自動で反映されるため、これまでどおり少し待ってからお見せする。 */
+  if (!isCard) {
+    const manualBox = document.getElementById('expired-manual');
+    if (manualBox) manualBox.style.display = '';
+  }
 }
 
 /* ============ 期限切れ画面：お支払いの反映を自動で待つ（v62） ============
