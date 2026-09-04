@@ -1,3 +1,12 @@
+/*** 神谷梓さん 受付管理システム GAS v11.5 ***************************
+ * 【v11.5 2026-09-02】満席のときだけ、お支払い期限を効かせる
+ *   期限の目的は「お支払いのない方の席を、お待ちの方へお渡しする」こと。
+ *   お席が余っているのに流すのは機会損失でしかない
+ *   （例：10名しか集まっていないのに20分過ぎた5名を落としてしまう）。
+ *   満席になった時点で、期限を過ぎている方は流れ、お待ちの方が繰り上がる。
+ *   ※期限切れになった方は、空きがあればもう一度お申込みいただける
+ *     （submitApplication_ は「期限切れ」を重複とみなさない）。
+ *
 /*** 神谷梓さん 受付管理システム GAS v11.4 ***************************
  * 【v11.4 2026-09-02】get_status の掃除を「行を読む前」に動かす
  *   v11.3 では行を読んだあとに掃除していたため、掃除の結果がその回の
@@ -2226,8 +2235,9 @@ function sweepSeminar_(seminarKey) {
   // F列（期限）とG列（状態）だけ読む。軽くしておく
   var col = sh.getRange(DATA_START_ROW, 6, n, 2).getValues();
 
-  var hits = [];
+  var hits = [], seats = 0;
   for (var i = 0; i < col.length; i++) {
+    if (seatHeld_(col[i][1], col[i][0], now)) seats++;
     if (String(col[i][1]) !== '決済案内中') continue;
     if (!col[i][0]) continue;
     var dl = new Date(col[i][0]);
@@ -2235,6 +2245,13 @@ function sweepSeminar_(seminarKey) {
     hits.push(i);
   }
   if (!hits.length) return 0;
+
+  /* 満席のときだけ期限を効かせる（v11.5）。
+     期限の目的は「お支払いのない方の席を、お待ちの方へお渡しする」こと。
+     お席が余っているのに流してしまうと、ただの機会損失になる。
+     例）10名しか集まっていないのに、20分過ぎた5名を落としてしまう。
+     満席になった時点で、期限を過ぎている方は流れ、お待ちの方が繰り上がる。 */
+  if (seats < config.capacity) return 0;
 
   for (var h = 0; h < hits.length; h++) {
     var row = DATA_START_ROW + hits[h];

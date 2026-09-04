@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=72">
+<link rel="stylesheet" href="css/style.css?v=73">
 </head>
 <body>
 <div class="container">
@@ -322,8 +322,8 @@
 
 </div>
 
-<script src="js/config.js?v=72"></script>
-<script src="js/common.js?v=72"></script>
+<script src="js/config.js?v=73"></script>
+<script src="js/common.js?v=73"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -851,7 +851,11 @@ function watchPayDeadline_(deadlineStr) {
   if (isNaN(until.getTime())) return;
 
   const ms = until.getTime() - Date.now();
-  if (ms <= 0) { closePayScreen_(); return; }
+  /* すでに期限を過ぎている場合は、ここでは閉じない（v73）。
+     満席でなければサーバーは流さないので、そのままお支払いいただける。
+     満席なら次の状態の取得で「期限切れ」に変わり、その画面へ移る。
+     ここで閉じてしまうと、閉じる→取り直す→また閉じる、を繰り返してしまう。 */
+  if (ms <= 0) return;
   if (ms > 3 * 86400000) return;   // 遠すぎる期限は見張らない
   payDeadlineTimer_ = setTimeout(closePayScreen_, ms + 1500);
 }
