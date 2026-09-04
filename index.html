@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=73">
+<link rel="stylesheet" href="css/style.css?v=74">
 </head>
 <body>
 <div class="container">
@@ -99,6 +99,17 @@
         <tr><th>会場</th><td id="pay-venue"></td></tr>
         <tr><th>受講料</th><td id="pay-price"></td></tr>
       </table>
+
+      <!-- 期限は過ぎているが、お席が空いていてお手続きいただける状態のご案内（v74）。
+           残り時間が 00:00 のままボタンだけ生きていると、お客さまが不安になるため。 -->
+      <div class="note-box" id="pay-grace-note"
+           style="display:none; border-left-color:#7a8b6f; background:#f4f7f2;">
+        <strong>お席に、まだ余裕がございます</strong><br>
+        <span style="font-size:13px;">
+          お支払い期限は過ぎておりますが、<strong>お席が埋まるまではお手続きいただけます。</strong><br>
+          満席になりますと、その時点で締め切らせていただきます。どうぞお早めにお願いいたします。
+        </span>
+      </div>
 
       <div class="luxury-countdown" id="pay-countdown-box">
         <div class="luxury-countdown__eyebrow">PAYMENT DEADLINE</div>
@@ -322,8 +333,8 @@
 
 </div>
 
-<script src="js/config.js?v=73"></script>
-<script src="js/common.js?v=73"></script>
+<script src="js/config.js?v=74"></script>
+<script src="js/common.js?v=74"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -524,16 +535,27 @@ function renderPayment(st, sem) {
   document.getElementById('pay-venue').textContent = getVenue(sem).name;
   document.getElementById('pay-price').textContent = sem.price || '';
 
-  if (st.deadline) {
-    document.getElementById('pay-countdown-box').style.display = '';
+  /* 期限を過ぎていても、お席が埋まっていなければお手続きいただける（v11.5）。
+     その場合、残り時間を 00:00 のままお見せすると不安にさせてしまうので、
+     カウントダウンは引っ込めて「まだ余裕がございます」とお伝えする（v74）。 */
+  const cdBox_ = document.getElementById('pay-countdown-box');
+  const graceNote_ = document.getElementById('pay-grace-note');
+  const dlPast_ = st.deadline &&
+    new Date(String(st.deadline).replace(/-/g, '/')).getTime() <= Date.now();
+
+  if (st.deadline && !dlPast_) {
+    cdBox_.style.display = '';
+    if (graceNote_) graceNote_.style.display = 'none';
     document.getElementById('pay-deadline-date').textContent = formatDeadline(st.deadline);
     startFlipCountdown(st.deadline, 'pay-countdown-box');
-    /* 期限が来たら、その場でお支払いボタンを引っ込める（v72）。
+    /* 期限が来たら、その場でお支払いボタンを引っ込めて状況を取り直す（v72）。
        カウントダウンが0になっても決済ページへ行けてしまい、
        満席後のお支払いとご返金を招いてしまうため。 */
     watchPayDeadline_(st.deadline);
   } else {
-    document.getElementById('pay-countdown-box').style.display = 'none';
+    cdBox_.style.display = 'none';
+    stopPayDeadlineWatch_();
+    if (graceNote_) graceNote_.style.display = dlPast_ ? '' : 'none';
   }
 
   /* 「閉じても大丈夫」は、お支払い期限が3日あるセルフ向けの文言。
@@ -870,10 +892,14 @@ function closePayScreen_() {
   const box = document.getElementById('pay-methods');
   if (box) {
     box.innerHTML =
-      '<div class="note-box" style="border-left-color:#c96f5e; background:#fdf3ef;">' +
-      '<strong>お支払い期限を過ぎました</strong><br>' +
-      '<span style="font-size:13px;">恐れ入りますが、お手続きはここまでとなります。' +
-      'すでにお支払いがお済みの場合は、このまましばらくお待ちくださいませ。</span>' +
+      /* ここで「期限を過ぎました」と断定してはいけない（v74）。
+         お席が埋まっていなければ、そのままお手続きいただける決まりのため、
+         このあと状況を取り直すとボタンが戻ってくる。
+         断定してしまうと、戻ってきたときにお客さまが混乱される。 */
+      '<div class="note-box">' +
+      '<strong>お時間になりました</strong><br>' +
+      '<span style="font-size:13px;">ただいま状況を確認しております。' +
+      'そのまま少々お待ちくださいませ…</span>' +
       '</div>';
   }
   // サーバーの状態を取り直す（期限切れになっていれば、その画面へ切り替わる）
