@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>受付フォーム｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=75">
+<link rel="stylesheet" href="css/style.css?v=76">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -238,8 +238,8 @@
 
 </div>
 
-<script src="js/config.js?v=75"></script>
-<script src="js/common.js?v=75"></script>
+<script src="js/config.js?v=76"></script>
+<script src="js/common.js?v=76"></script>
 <script>
 let uid = getUid();
 const seminarKey = new URLSearchParams(location.search).get('seminar');
@@ -271,10 +271,46 @@ if (IS_DEMO) {
     return { ok: true, status: '未登録' };
   };
   apiPost = async function () { return { ok: true, status: '決済案内中' }; };
-  addDemoBanner_();
-  addDemoToolbar_();
+
+  /* ?done=payment / ?done=waiting … 受付完了のページまで、実際と同じ流れでお見せする。
+     見本の値をフォームに入れて、本番と同じ送信処理をそのまま通している。
+     （マニュアルづくりと、当日の見え方の確認のため） */
+  var demoDone = new URLSearchParams(location.search).get('done');
+  if (demoDone === 'payment' || demoDone === 'waiting') {
+    apiPost = async function () {
+      if (demoDone === 'waiting') {
+        return { ok: true, status: 'キャンセル待ち', waitNum: 3, promote_deadline_min: 30 };
+      }
+      var p2 = function (n) { return String(n).padStart(2, '0'); };
+      var t = new Date(Date.now() + 20 * 60000);
+      var dl = t.getFullYear() + '-' + p2(t.getMonth() + 1) + '-' + p2(t.getDate()) + ' ' +
+        p2(t.getHours()) + ':' + p2(t.getMinutes()) + ':' + p2(t.getSeconds());
+      return { ok: true, status: '決済案内中', deadline: dl };
+    };
+    setTimeout(demoAutoSubmit_, 700);
+  }
+
+  var BARE_A = new URLSearchParams(location.search).get('bare') === '1';
+  if (!BARE_A) { addDemoBanner_(); addDemoToolbar_(); }
   var toPay = document.getElementById('btn-to-payment');
   if (toPay) toPay.href = 'index.html?demo=1';
+}
+
+/** デモ：見本の値を入れて、本番と同じ送信処理を走らせる */
+function demoAutoSubmit_() {
+  var form = document.getElementById('apply-form');
+  if (!form) return;
+  var v = {
+    name: 'デモ 花子', kana: 'デモ ハナコ', phone: '090-1234-5678',
+    birthday: '1988-04-15', email: 'demo@example.com', insta: 'demo_hanako',
+    job: 'セラピスト', worries: '集客が安定せず、毎月の売上に波があることに悩んでおります。'
+  };
+  Object.keys(v).forEach(function (k) {
+    var el = form.querySelector('[name="' + k + '"]');
+    if (el) el.value = v[k];
+  });
+  form.querySelectorAll('input[type="checkbox"]').forEach(function (c) { c.checked = true; });
+  form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 }
 function addDemoBanner_() {
   var b = document.createElement('div');
