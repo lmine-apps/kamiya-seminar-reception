@@ -737,3 +737,55 @@ body.page-photo-bg .steps-bar {
     transition-duration: .01ms !important;
   }
 }
+
+
+/* ===== たたんでおけるご案内（分割払いなど・v80） =====
+   必要な方だけ開いてご覧いただく。閉じているときは1行しか場所を取らない。 */
+.acc-note {
+  margin-top: 14px;
+  border: 1px solid #e6dace;
+  border-radius: 10px;
+  background: #fbf7f2;
+  overflow: hidden;
+}
+.acc-note > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 12px 14px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--primary-dark);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.acc-note > summary::-webkit-details-marker { display: none; }
+.acc-note > summary::marker { content: ""; }
+.acc-note > summary::after {
+  content: "＋";
+  margin-left: auto;
+  font-size: 15px;
+  color: var(--gold);
+  font-weight: 400;
+}
+.acc-note[open] > summary::after { content: "−"; }
+.acc-note[open] > summary { border-bottom: 1px solid #eee2d6; }
+.acc-note .acc-body {
+  padding: 13px 14px 15px;
+  font-size: 12.5px;
+  line-height: 1.95;
+  color: var(--text);
+}
+.acc-note .acc-step {
+  display: block;
+  margin-top: 3px;
+}
+.acc-note .acc-fine {
+  display: block;
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px dashed #e0d3c4;
+  font-size: 11.5px;
+  color: #8a7d76;
+  line-height: 1.85;
+}

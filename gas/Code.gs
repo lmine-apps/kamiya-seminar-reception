@@ -1,3 +1,13 @@
+/*** 神谷梓さん 受付管理システム GAS v11.7 ***************************
+ * 【v11.7 2026-09-06】毎時トリガーが、満席でないのにお席を流していた（緊急修正）
+ *   v11.5 の「満席のときだけ期限を効かせる」ガードを sweepSeminar_ にだけ入れ、
+ *   古い checkExpired()（毎時トリガー）に入れ忘れていた。
+ *   そのためアプリ経由では流れないのに、毎時トリガーが回ったときだけ
+ *   満席でなくても「期限切れ」にされ、⑥期限切れのご案内まで届いてしまった。
+ *   → マーケ一般（deadline_min を持つセミナー）は checkExpired の対象から外し、
+ *     checkExpiredFast() → sweepSeminar_ に一本化した。
+ *   ※セルフ3本は deadline_min を持たないため、挙動は変わらない。
+ *
 /*** 神谷梓さん 受付管理システム GAS v11.6 ***************************
  * 【v11.6 2026-09-05】繰上げの方が「銀行振込」を選ぶと期限が過去になっていた
  *   振込の期限は「申込日時＋24時間」で計算していたため、キャンセル待ちから
@@ -2329,6 +2339,14 @@ function checkExpired() {
   Object.keys(SEMINARS).forEach(function (key) {
     var sh = ss.getSheetByName(SEMINARS[key].sheet);
     if (!sh) return;
+
+    /* 分きざみの期限を使うセミナー（マーケ一般）は、この古い処理では触らない（v11.7）。
+       「満席のときだけ期限を効かせる」判定を持っているのは sweepSeminar_ のほう。
+       ここで流してしまうと、お席が空いているのに期限切れになり、
+       ⑥期限切れのご案内まで届いてしまう。
+       （2026-09-06 本番で発生。お席が5つ空いている状態で2名の方が流された）
+       マーケは、この関数の最後で呼ぶ checkExpiredFast() が受け持つ。 */
+    if (usesShortDeadline_(SEMINARS[key])) return;
 
     var lastRow = sh.getLastRow();
     if (lastRow < DATA_START_ROW) return;
