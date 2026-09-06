@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=78">
+<link rel="stylesheet" href="css/style.css?v=79">
 </head>
 <body>
 <div class="container">
@@ -100,15 +100,30 @@
         <tr><th>受講料</th><td id="pay-price"></td></tr>
       </table>
 
-      <!-- 期限は過ぎているが、お席が空いていてお手続きいただける状態のご案内（v74）。
-           残り時間が 00:00 のままボタンだけ生きていると、お客さまが不安になるため。 -->
-      <div class="note-box" id="pay-grace-note"
-           style="display:none; border-left-color:#7a8b6f; background:#f4f7f2;">
-        <strong>お席に、まだ余裕がございます</strong><br>
-        <span style="font-size:13px;">
-          お支払い期限は過ぎておりますが、<strong>お席が埋まるまではお手続きいただけます。</strong><br>
-          満席になりますと、その時点で締め切らせていただきます。どうぞお早めにお願いいたします。
-        </span>
+      <!-- 期限は過ぎているが、お席が空いていてお手続きいただける状態のご案内（v74→v79）。
+           カウントダウンとまったく同じ大きさ・質感の箱にしてある。
+           【理由】v74では控えめなメモにしていたところ、それまで大きな箱があった場所が
+           急に軽くなるため「もう終わった」と受け取られ、お支払いボタンが出ているのに
+           あきらめてお帰りになる方がいらっしゃった（2026-09-05 本番で確認）。
+           箱の重みをそろえ、「まだ間に合う」と「埋まったら締め切る」を並べて置く。 -->
+      <div class="luxury-countdown" id="pay-grace-note" style="display:none;">
+        <div class="luxury-countdown__eyebrow">STILL AVAILABLE</div>
+        <div style="font-family:var(--font-serif); font-size:24px; font-weight:700;
+             color:#5f7d5c; letter-spacing:.08em; line-height:1.45;">
+          まだ間に合います
+        </div>
+        <div style="font-size:13.5px; color:var(--text); line-height:1.9; margin-top:12px;">
+          お支払い期限は過ぎておりますが、<br>
+          <strong>お席が空いているあいだは、<br>このままお手続きいただけます。</strong>
+        </div>
+        <div style="margin:15px 10px 0; padding-top:13px;
+             border-top:1px solid rgba(189,154,88,.42);
+             font-size:14px; color:#c96f5e; font-weight:700; line-height:1.7;">
+          ⚠️ お席が埋まりましたら、<br>その時点で締め切らせていただきます
+        </div>
+        <div style="font-size:12.5px; color:#8a7d76; margin-top:7px;">
+          どうぞお早めに、お手続きくださいませ
+        </div>
       </div>
 
       <div class="luxury-countdown" id="pay-countdown-box">
@@ -333,8 +348,8 @@
 
 </div>
 
-<script src="js/config.js?v=78"></script>
-<script src="js/common.js?v=78"></script>
+<script src="js/config.js?v=79"></script>
+<script src="js/common.js?v=79"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -545,7 +560,13 @@ function renderPayment(st, sem) {
 
   if (st.deadline && !dlPast_) {
     cdBox_.style.display = '';
-    if (graceNote_) graceNote_.style.display = 'none';
+    if (graceNote_) {
+      graceNote_.style.display = 'none';
+      // 元の位置（カウントダウンの直前）へ戻しておく
+      if (graceNote_.nextElementSibling !== cdBox_) {
+        cdBox_.parentNode.insertBefore(graceNote_, cdBox_);
+      }
+    }
     document.getElementById('pay-deadline-date').textContent = formatDeadline(st.deadline);
     startFlipCountdown(st.deadline, 'pay-countdown-box');
     /* 期限が来たら、その場でお支払いボタンを引っ込めて状況を取り直す（v72）。
@@ -555,7 +576,19 @@ function renderPayment(st, sem) {
   } else {
     cdBox_.style.display = 'none';
     stopPayDeadlineWatch_();
-    if (graceNote_) graceNote_.style.display = dlPast_ ? '' : 'none';
+    if (graceNote_) {
+      graceNote_.style.display = dlPast_ ? '' : 'none';
+      /* スクロールせずに目に入る位置（ロゴのすぐ下）へ移す（v79）。
+         もとの位置は受講料の下で、スマートフォンでは必ずスクロールが要る。
+         「期限が切れた」と思って画面を閉じてしまわれる前に、
+         まず「まだ間に合います」を見ていただく。 */
+      if (dlPast_) {
+        const topAnchor = document.getElementById('news-box');
+        if (topAnchor && topAnchor.parentNode && graceNote_.nextElementSibling !== topAnchor) {
+          topAnchor.parentNode.insertBefore(graceNote_, topAnchor);
+        }
+      }
+    }
   }
 
   /* 「閉じても大丈夫」は、お支払い期限が3日あるセルフ向けの文言。
@@ -632,7 +665,10 @@ function renderPayment(st, sem) {
         '</div>';
     }
     if (stripeUrl && !isGuest && !blockedByTestMode && !onlyBank) {
-      html += '<p style="font-size:16px; font-weight:700; color:var(--primary-dark); margin:16px 0 8px; padding-bottom:6px; border-bottom:2px solid var(--accent);">💳 カードでのお支払いの方はこちら</p>';
+      /* 期限が過ぎている方には「このまま進める」と言い切る（v79）。
+         「〜の方はこちら」は選択肢の案内に見えて、あきらめている方の背中を押せない。 */
+      html += '<p style="font-size:16px; font-weight:700; color:var(--primary-dark); margin:16px 0 8px; padding-bottom:6px; border-bottom:2px solid var(--accent);">' +
+        (dlPast_ ? '💳 このまま、お支払いいただけます' : '💳 カードでのお支払いの方はこちら') + '</p>';
       if (useTestPay) {
         html += '<p style="font-size:12px; font-weight:700; color:#8a5ca5; margin:0 0 6px;">🧪 テスト決済モード中（本番の請求は発生しません）</p>';
       }
@@ -650,7 +686,8 @@ function renderPayment(st, sem) {
       html += '<p class="form-note">※特別受付のため、お支払いは銀行振込のみのご対応となります。</p>';
     }
     if (!onlyCard)
-    html += '<p style="font-size:16px; font-weight:700; color:var(--primary-dark); margin:26px 0 8px; padding-bottom:6px; border-bottom:2px solid var(--accent);">🏦 銀行振込ご希望の方はこちら</p>' +
+    html += '<p style="font-size:16px; font-weight:700; color:var(--primary-dark); margin:26px 0 8px; padding-bottom:6px; border-bottom:2px solid var(--accent);">' +
+      (dlPast_ ? '🏦 このまま、お振込みいただけます' : '🏦 銀行振込ご希望の方はこちら') + '</p>' +
       '<div class="note-box" style="margin:8px 0 10px; font-size:13px; color:var(--text);">' +
       '<strong>お振込の手順</strong><br>' +
       '<span style="display:block; margin-top:4px;">① 下記の口座へお振込みください</span>' +
