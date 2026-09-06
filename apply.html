@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>受付フォーム｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=81">
+<link rel="stylesheet" href="css/style.css?v=82">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -114,6 +114,27 @@
       <!-- 受講料をご覧になったその場で「分割にできる」と分かるようにする（v81）。
            ②入口のLINEは詳細を書かずにこのページへ流すため、
            このページが詳細ページを兼ねている。 -->
+      <!-- お申込みからご参加までの流れ（v82）。
+           ②入口のLINEを短くして詳細をこのページに任せたため、
+           「お支払いに期限がある」ことをここでお伝えしておく。
+           具体的な分数は書かない（20分と24時間を並べると、
+           急いでいない方が期限の長い振込を選んでしまうため）。 -->
+      <div id="form-flow" style="display:none; margin-top:15px;
+           border:1px solid #e6dace; border-radius:10px; background:#fbf7f2; padding:15px 15px 16px;">
+        <div style="font-size:13.5px; font-weight:700; color:var(--primary-dark);">
+          お申込みからご参加までの流れ
+        </div>
+        <div style="display:flex; gap:11px; align-items:flex-start; margin-top:12px;"><div style="flex:0 0 23px; height:23px; border-radius:50%; background:#9c6f5f; color:#fff; font-size:12px; font-weight:700; line-height:23px; text-align:center;">1</div><div style="font-size:12.5px; line-height:1.8;"><strong>お申込み</strong>（このページ）<br><span style="color:#8a7d76;">お席を「お取り置き」いたします</span></div></div>
+        <div style="display:flex; gap:11px; align-items:flex-start; margin-top:10px;"><div style="flex:0 0 23px; height:23px; border-radius:50%; background:#9c6f5f; color:#fff; font-size:12px; font-weight:700; line-height:23px; text-align:center;">2</div><div style="font-size:12.5px; line-height:1.8;"><strong>お支払い</strong>（カード／銀行振込）<br><span style="color:#8a7d76;">お申込みのあと、続けてお進みいただきます</span></div></div>
+        <div style="display:flex; gap:11px; align-items:flex-start; margin-top:10px;"><div style="flex:0 0 23px; height:23px; border-radius:50%; background:#7a9c78; color:#fff; font-size:12px; font-weight:700; line-height:23px; text-align:center;">3</div><div style="font-size:12.5px; line-height:1.8;"><strong>ご参加が確定</strong><br><span style="color:#8a7d76;">お支払いが確認できました時点で確定いたします</span></div></div>
+        <div style="margin-top:13px; padding-top:12px; border-top:1px dashed #e0d3c4;
+             font-size:12.5px; line-height:1.8;">
+          <strong style="color:#c96f5e;">お支払いのお手続きには、短めの期限を設けております。</strong><br>
+          <span style="color:#8a7d76;">期限を過ぎますと、次にお待ちの方へお席をお譲りいたします。
+          最後までお進みいただけるときに、お申込みくださいませ。</span>
+        </div>
+      </div>
+
       <div id="form-installment"></div>
       <p class="form-note" id="capacity-note" style="text-align:center; margin-top:10px;"></p>
     </div>
@@ -262,8 +283,8 @@
 
 </div>
 
-<script src="js/config.js?v=81"></script>
-<script src="js/common.js?v=81"></script>
+<script src="js/config.js?v=82"></script>
+<script src="js/common.js?v=82"></script>
 <script>
 let uid = getUid();
 const seminarKey = new URLSearchParams(location.search).get('seminar');
@@ -415,6 +436,11 @@ function init() {
     instBox.innerHTML = (sem.paymentChoice && typeof installmentNote_ === 'function')
       ? installmentNote_(sem) : '';
   }
+
+  /* お申込みからご参加までの流れも、期限が短いマーケだけにお見せする（v82）。
+     セルフは当日現金／期限3日で事情が違うため、これまでどおり出さない。 */
+  const flowBox = document.getElementById('form-flow');
+  if (flowBox) flowBox.style.display = sem.paymentChoice ? '' : 'none';
 
   // マーケはインスタのユーザー名を必須で伺う
   if (NEEDS_INSTA) {
