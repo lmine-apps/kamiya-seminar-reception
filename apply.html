@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>受付フォーム｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=80">
+<link rel="stylesheet" href="css/style.css?v=81">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -111,6 +111,10 @@
         <tr><th>受講料</th><td id="form-price"></td></tr>
         <tr><th>お支払い</th><td id="form-payment"></td></tr>
       </table>
+      <!-- 受講料をご覧になったその場で「分割にできる」と分かるようにする（v81）。
+           ②入口のLINEは詳細を書かずにこのページへ流すため、
+           このページが詳細ページを兼ねている。 -->
+      <div id="form-installment"></div>
       <p class="form-note" id="capacity-note" style="text-align:center; margin-top:10px;"></p>
     </div>
 
@@ -258,8 +262,8 @@
 
 </div>
 
-<script src="js/config.js?v=80"></script>
-<script src="js/common.js?v=80"></script>
+<script src="js/config.js?v=81"></script>
+<script src="js/common.js?v=81"></script>
 <script>
 let uid = getUid();
 const seminarKey = new URLSearchParams(location.search).get('seminar');
@@ -403,6 +407,14 @@ function init() {
   document.getElementById('form-price').textContent = sem.price;
   document.getElementById('form-payment').textContent =
     sem.payment === 'cash' ? '当日 会場にて現金' : 'クレジットカード／銀行振込';
+
+  /* 分割のご案内は、カードでお支払いいただけるセミナーだけに出す（v81）。
+     セルフ先行は当日現金なのでお見せしない。 */
+  const instBox = document.getElementById('form-installment');
+  if (instBox) {
+    instBox.innerHTML = (sem.paymentChoice && typeof installmentNote_ === 'function')
+      ? installmentNote_(sem) : '';
+  }
 
   // マーケはインスタのユーザー名を必須で伺う
   if (NEEDS_INSTA) {
