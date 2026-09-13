@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>受付フォーム｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=82">
+<link rel="stylesheet" href="css/style.css?v=83">
 </head>
 <body class="page-photo-bg">
 <div class="container">
@@ -283,8 +283,8 @@
 
 </div>
 
-<script src="js/config.js?v=82"></script>
-<script src="js/common.js?v=82"></script>
+<script src="js/config.js?v=83"></script>
+<script src="js/common.js?v=83"></script>
 <script>
 let uid = getUid();
 const seminarKey = new URLSearchParams(location.search).get('seminar');
@@ -578,7 +578,8 @@ function startDoneCountdown_(deadlineStr) {
 function fmtMin_(m) {
   const n = Number(m);
   if (!n || n <= 0) return '';
-  if (n % 60 === 0 && n < 2880) return (n / 60) + '時間';
+  // 48時間ちょうどが「2日」に落ちないよう n <= 2880 にする（2026-09-13）
+  if (n % 60 === 0 && n <= 2880) return (n / 60) + '時間';
   if (n % 1440 === 0)           return (n / 1440) + '日';
   return n + '分';
 }

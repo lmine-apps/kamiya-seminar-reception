@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <title>セミナー受付｜Bonheur Lelien</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="stylesheet" href="css/style.css?v=82">
+<link rel="stylesheet" href="css/style.css?v=83">
 </head>
 <body>
 <div class="container">
@@ -348,8 +348,8 @@
 
 </div>
 
-<script src="js/config.js?v=82"></script>
-<script src="js/common.js?v=82"></script>
+<script src="js/config.js?v=83"></script>
+<script src="js/common.js?v=83"></script>
 <script>
 const uid = getUid();
 // 決済完了メッセージのボタンから来た印（?paid=1）
@@ -720,8 +720,11 @@ function renderPayment(st, sem) {
 function fmtMinutes_(m) {
   const n = Number(m);
   if (!n || n <= 0) return '';
-  // 24時間を「1日」と書くと分かりにくいので、48時間までは「◯時間」で表す
-  if (n % 60 === 0 && n < 2880) return (n / 60) + '時間';
+  /* 24時間を「1日」と書くと分かりにくいので、48時間までは「◯時間」で表す。
+     n < 2880 だと48時間ちょうどが「2日」に落ちてしまっていたので
+     n <= 2880 に直した（2026-09-13）。「2日」より「48時間」のほうが
+     お客さまに切迫感が伝わる。 */
+  if (n % 60 === 0 && n <= 2880) return (n / 60) + '時間';
   if (n % 1440 === 0)           return (n / 1440) + '日';
   return n + '分';
 }

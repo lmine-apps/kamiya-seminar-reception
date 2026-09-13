@@ -48,7 +48,7 @@ const CONFIG = {
   // セミナー定義
   SEMINARS: {
     self_priority: {
-      promoteFallback: 4320,   // 繰上げのご案内が届いてからの期限（分）＝3日
+      promoteFallback: 2880,   // 繰上げのご案内が届いてからの期限（分）＝48時間（2026-09-13）
       title: 'セルフイメージセミナー【先行受付】',
       shortTitle: 'セルフイメージセミナー',
       schedule: '9月18日（金）11:00〜15:00',
@@ -65,7 +65,7 @@ const CONFIG = {
       }
     },
     self_general: {
-      promoteFallback: 4320,   // 繰上げのご案内が届いてからの期限（分）＝3日
+      promoteFallback: 2880,   // 繰上げのご案内が届いてからの期限（分）＝48時間（2026-09-13）
       title: 'セルフイメージセミナー【一般受付】',
       shortTitle: 'セルフイメージセミナー',
       schedule: '9月18日（金）11:00〜15:00',
