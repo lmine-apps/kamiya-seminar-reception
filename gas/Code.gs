@@ -1,3 +1,12 @@
+/*** 神谷梓さん 受付管理システム GAS v11.8 ***************************
+ * 【v11.8 2026-09-13】クロスセミナー繰上げ（セルフ先行 → セルフ一般）
+ *   セルフ先行でキャンセルが出たとき、先行の待機がいなければ
+ *   セルフ一般の待機1番の方を繰り上げる。
+ *   繰り上がった方はセルフ一般のシートのままなので、
+ *   お支払いは事前決済のまま（先行の当日現金にはならない）。
+ *   `SEMINARS['self_priority'].overflow_to = 'self_general'` で有効化。
+ *   ※ 一度たどったシートには戻らないガードつき（相互設定での無限再帰よけ）。
+ *
 /*** 神谷梓さん 受付管理システム GAS v11.7 ***************************
  * 【v11.7 2026-09-06】毎時トリガーが、満席でないのにお席を流していた（緊急修正）
  *   v11.5 の「満席のときだけ期限を効かせる」ガードを sweepSeminar_ にだけ入れ、
@@ -397,7 +406,11 @@ var SEMINARS = {
      「お知らせが届いてから3日以内」と正しく出すため（v10.7） */
   'self_priority':   { sheet: '📋 セルフ先行',  capacity: 20, payment: 'cash',    open_at: '2026-08-20 00:00',  // 先行は8/20から受付中
                        close_at: '2026-09-17 23:59', dates: ['2026-09-18'],
-                       promote_deadline_min: 4320 },
+                       promote_deadline_min: 4320,
+                       // クロスセミナー繰上げ（v10.9 追加 2026-09-13）:
+                       // セルフ先行キャンセル時、自シートの待機がゼロならセルフ一般の待機から補填。
+                       // 補填された方はセルフ一般のシートで確定（＝事前決済フロー継続）
+                       overflow_to: 'self_general' },
   'self_general':    { sheet: '📋 セルフ一般',  capacity: 30, payment: 'prepaid', open_at: '2026-08-24 21:00',
                        close_at: '2026-09-17 23:59', dates: ['2026-09-18'],
                        promote_deadline_min: 4320 },
@@ -2417,9 +2430,46 @@ function manualPromote_(p) {
 }
 
 // ========== ヘルパー：待機順1番を繰上げ ==========
-function promoteNextWaiting_(sh) {
+function promoteNextWaiting_(sh, seen) {
+  // まず自シート内で繰上げを試みる（v10.9 で分割）
+  var didPromote = tryPromoteWithinSheet_(sh);
+  if (didPromote) return;
+
+  /* 一度たどったシートには戻らない（v11.8）。
+     いまは セルフ先行 → セルフ一般 の一方向だけなので循環しないが、
+     将来 overflow_to を相互に設定すると、その場で無限再帰になり
+     GASが止まってしまう。繰上げはキャンセルのたびに走るので、
+     設定を足した瞬間に本番で踏むことになる。 */
+  seen = seen || {};
+  seen[sh.getName()] = true;
+
+  /* オーバーフロー繰上げ（v10.9 追加 2026-09-13）：
+     自シートの待機がゼロで、config.overflow_to が設定されていれば、
+     指定先セミナーの待機から補填する。
+     例：セルフ先行キャンセル → 先行の待機がいない → セルフ一般の待機1番を繰上げ。
+     繰上げされた方は補填先シート（セルフ一般）のまま確定するので、
+     支払い方式・シナリオはそのシートの設定通り（＝事前決済）で進む。 */
+  var seminarKey = findSeminarBySheetName_(sh.getName());
+  var config = seminarKey ? SEMINARS[seminarKey] : null;
+  if (config && config.overflow_to && SEMINARS[config.overflow_to]) {
+    var overflowConfig = SEMINARS[config.overflow_to];
+    if (seen[overflowConfig.sheet]) return;   // すでにたどったシート（循環よけ・v11.8）
+    var overflowSh = SpreadsheetApp.getActiveSpreadsheet()
+      .getSheetByName(overflowConfig.sheet);
+    if (overflowSh) {
+      logAction_('overflow_promote_try', '', sh.getName(),
+        '自シート待機不在→' + overflowConfig.sheet + ' から繰上げ試行', '');
+      // 補填先シート内で通常の繰上げロジックを走らせる（再帰）
+      promoteNextWaiting_(overflowSh, seen);
+    }
+  }
+}
+
+/** 自シート内の待機1番を繰上げる。繰上げが発生したら true、待機不在なら false。
+ *  v10.9 で promoteNextWaiting_ から分割（クロスセミナー繰上げ対応のため）。 */
+function tryPromoteWithinSheet_(sh) {
   var lastRow = sh.getLastRow();
-  if (lastRow < DATA_START_ROW) return;
+  if (lastRow < DATA_START_ROW) return false;
 
   /* LINEなし方式のときだけ、マーケ一般は自動で繰り上げない（v10.0）。
      「空きました」のご案内が自動では届かず、勝手に「決済案内中」へ動かすと
@@ -2434,7 +2484,7 @@ function promoteNextWaiting_(sh) {
         '※ Stripeの決済リンクの「支払い回数の上限」を 1 つ上げてください。');
     }
     logAction_('marke_seat_open', '', sh.getName(), '空席1（自動繰上げはしません）', '');
-    return;
+    return true; // オーバーフロー抑止（マーケ一般は独自運用）
   }
 
   var data = sh.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, 11).getValues();
@@ -2451,7 +2501,7 @@ function promoteNextWaiting_(sh) {
     }
   }
 
-  if (minWaitIdx === -1) return; // 待機者なし
+  if (minWaitIdx === -1) return false; // 待機者なし
 
   var row = DATA_START_ROW + minWaitIdx;
   var uid = data[minWaitIdx][0];
@@ -2481,6 +2531,8 @@ function promoteNextWaiting_(sh) {
   // 運営へプッシュ通知（繰上げ発生のお知らせ）
   notifyOps_('⬆ 繰上げが発生しました',
     (data[minWaitIdx][1] || 'どなたか') + 'さんが繰上げで「決済案内中」になりました（' + sh.getName() + '）。');
+
+  return true;
 }
 
 // ========== プロラインへシナリオ移動指示 ==========
