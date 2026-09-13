@@ -1,3 +1,12 @@
+/*** 神谷梓さん 受付管理システム GAS v11.9 ***************************
+ * 【v11.9 2026-09-13】
+ *  ① セルフ先行の定員を 20 → 19。
+ *     キャンセル1名分をセルフ一般から補填するため、先行の枠を1つ減らす。
+ *     こうしないと空いた1席に新規が入り、先行20＋一般31＝51名になってしまう。
+ *  ② 管理アプリの「⬆ 繰上げる」の期限を、自動繰上げと同じ計算にそろえた。
+ *     これまで DEADLINE_DAYS（3日）固定で promote_deadline_min を見ておらず、
+ *     猶予を短くしても手動繰上げだけ3日のまま、という食い違いがあった。
+ *
 /*** 神谷梓さん 受付管理システム GAS v11.8 ***************************
  * 【v11.8 2026-09-13】クロスセミナー繰上げ（セルフ先行 → セルフ一般）
  *   セルフ先行でキャンセルが出たとき、先行の待機がいなければ
@@ -404,7 +413,12 @@ var SEMINARS = {
   /* promote_deadline_min = 4320分（3日）。DEADLINE_DAYS と同じ長さで、
      繰上げの期限は従来どおり。数字を書いておくのは、キャンセル待ちの画面に
      「お知らせが届いてから3日以内」と正しく出すため（v10.7） */
-  'self_priority':   { sheet: '📋 セルフ先行',  capacity: 20, payment: 'cash',    open_at: '2026-08-20 00:00',  // 先行は8/20から受付中
+  /* 定員は 20 → 19（v11.9 2026-09-13）。
+     先行でキャンセルが1名出て、その分をセルフ一般の待機から補填したため、
+     先行の枠を1つ減らしてある。こうしないと空いた1席に新規のお申込みが入り、
+     先行20＋一般31＝51名になってしまう。いまは 19＋31＝50名で合う。
+     ※もとに戻すときは 20 に戻すだけ。 */
+  'self_priority':   { sheet: '📋 セルフ先行',  capacity: 19, payment: 'cash',    open_at: '2026-08-20 00:00',  // 先行は8/20から受付中
                        close_at: '2026-09-17 23:59', dates: ['2026-09-18'],
                        promote_deadline_min: 4320,
                        // クロスセミナー繰上げ（v10.9 追加 2026-09-13）:
@@ -824,9 +838,13 @@ function adminUpdateStatus_(p) {
       moveScenario_(uid, 'キャンセル待ち');
 
     } else if (newStatus === '決済案内中') {
-      // 復帰（期限切れ・キャンセル済からの救済など）：期限は今から3日
+      /* 復帰（期限切れ・キャンセル済からの救済／キャンセル待ちからの繰上げ）。
+         期限は自動繰上げとまったく同じ計算にそろえる（v11.9）。
+         これまでは DEADLINE_DAYS（3日）固定で promote_deadline_min を見ておらず、
+         猶予を短くしても手動繰上げだけ3日のまま、という食い違いが起きていた。
+         deadlineFrom_ は promote_deadline_min → なければ DEADLINE_DAYS の順で見る。 */
       var prevWaitNum = Number(sh.getRange(row, 8).getValue());
-      sh.getRange(row, 6).setValue(formatDate_(new Date(now.getTime() + DEADLINE_DAYS * 86400000)));
+      sh.getRange(row, 6).setValue(formatDate_(deadlineFrom_(config, now, 'promote')));
       sh.getRange(row, 7).setValue('決済案内中');
       sh.getRange(row, 8).setValue('');
 
